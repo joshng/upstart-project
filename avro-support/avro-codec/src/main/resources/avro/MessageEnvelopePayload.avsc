@@ -1,0 +1,11 @@
+{
+  "namespace": "io.upstartproject.avro",
+  "name": "MessageEnvelopePayload",
+  "type": "record",
+  "doc": "A streamlined view for MessageEnvelopes that bypasses metadata deserialization",
+  "fields": [
+    {"name": "message", "type": "PackedRecord",
+      "doc": "The enclosed message"
+    }
+  ]
+}

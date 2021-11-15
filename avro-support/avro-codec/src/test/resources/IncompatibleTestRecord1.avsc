@@ -1,0 +1,9 @@
+{
+  "namespace": "io.upstartproject.avro.test",
+  "name": "IncompatibleTestRecord",
+  "published": true,
+  "type": "record",
+  "fields": [
+    {"name": "conflictingField", "type": "string", "default": ""}
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "namespace": "io.upstartproject.avro.event",
+  "name": "ServiceConfigLoadedEvent",
+  "published": true,
+  "type": "record",
+  "fields": [
+    {
+      "name": "configEntries",
+      "type": {
+        "type": "map",
+        "values": {
+          "name": "ConfigValueRecord",
+          "type": "record",
+          "fields": [
+            {"name": "value", "type": "string"},
+            {"name": "origin", "type": "string"}
+          ]
+        },
+        "default": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+- [ ] tasks should accept short-flags, which could be mapped in the TargetSpec
+- [ ] support flag for dry-run (show commands without running them)
+- [ ] docker tags shouldn't use `latest` (but what should they use?)
+   - [ ] <sha>[-dirty]
+- [ ] output should be teed to a logfile
+- [ ] TargetSpec and other stuff should have polymorphic variants for task vs. target
+- [ ] namespace-targets might include any child-target with fully-specified config (no missing required args)
+- [ ] task jars should be added to classpath by config/convention
+- [ ] allow targets to alter specs of other targets (add dependencies, skip/execute, etc)
+- [ ] add more interactive UI features with jline, lanterna, or HTTP
+   - display plan details and prompt for confirmation
+   - support editing a constructed graph/config interactively
+
+  
+- [x] deployments should support either prod-version (from helm-chart) or local build
+- [x] clean
+- [x] force (skip prereqs)
+- [x] verbosity
+- [x] introduce standard `clean` strategy
+   - [ ] how does `cancel` work while cleaning?
+- [x] allow verbosity to be adjusted for specific tasks
+- [x] k8s task should support monitoring for `ready`
+- [x] b4 should build itself if requested before invoking (must be fast!)
+- [x] configs should be accepted from external files
+- [x] task-generators should render back to HOCON, so that generated settings can be merged with other sources (merging now supported w/o rendering)
+- [x] need to rethink global configs, and how they fit into the task/target model
+- [x] configs in HOCON shouldn't need to use cmdline syntax; structure is better (because double-escaping sucks)
+- [x] support individual targets (rather than all with the same "name") being identified by some element of their config
+- [-] should dependencies be called prereqs? something else?

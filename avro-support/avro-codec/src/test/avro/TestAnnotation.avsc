@@ -1,0 +1,9 @@
+{
+  "namespace": "io.upstartproject.avrocodec.test.avro",
+  "name": "TestAnnotation",
+  "type": "record",
+  "published": true,
+  "fields": [
+    {"name": "id", "type": "long"}
+  ]
+}

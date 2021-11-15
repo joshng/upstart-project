@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>io.upstartproject</groupId>
+    <artifactId>upstart-aggregator</artifactId>
+    <version>0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>upstart-parent</artifactId>
+  <packaging>pom</packaging>
+
+  <modules>
+    <module>hojack</module>
+    <module>upstart-annotations</module>
+    <module>upstart-avro-codec</module>
+    <module>upstart-util</module>
+    <module>upstart-command-executor</module>
+    <module>upstart-command-executor-test</module>
+    <module>upstart</module>
+    <module>upstart-log4j</module>
+    <module>upstart-test-log4j</module>
+    <module>upstart-metrics</module>
+    <module>upstart-telemetry-schemas</module>
+    <module>upstart-telemetry</module>
+    <module>upstart-web</module>
+    <module>upstart-web-javalin</module>
+    <module>upstart-web-pippo</module>
+    <module>upstart-web-test</module>
+    <module>upstart-test</module>
+    <module>upstart-cluster</module>
+    <module>upstart-cluster-test</module>
+    <module>upstart-app-parent</module>
+    <module>upstart-example-app</module>
+    <module>upstart-kafka-test</module>
+    <module>upstart-aws</module>
+    <module>upstart-s3-test</module>
+    <module>upstart-coverage</module>
+  </modules>
+
+  <profiles>
+    <profile>
+      <id>b4</id>
+      <modules>
+        <module>b4</module>
+        <module>b4-devops</module>
+      </modules>
+    </profile>
+  </profiles>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.immutables</groupId>
+      <artifactId>value</artifactId>
+      <scope>provided</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-jar-plugin</artifactId>
+          <version>3.2.0</version>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+
+  </build>
+</project>

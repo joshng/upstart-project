@@ -1,0 +1,14 @@
+{
+  "namespace": "io.upstartproject.avrocodec.test",
+  "name": "TestIssueView",
+  "type": "record",
+  "fields": [
+    {"name": "exception", "type": {
+      "name": "TestExceptionView",
+      "type": "record",
+      "fields": [
+        {"name": "message", "type": "string"}
+      ]
+    }}
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "namespace": "io.upstartproject.avrocodec.test.avro",
+  "name": "TestExceptionEvent",
+  "published": true,
+  "type": "record",
+  "fields": [
+    {"name": "timestamp", "type": {"type": "long", "logicalType": "timestamp-millis"}},
+    {"name": "exception", "type": {
+      "name": "TestExceptionRecord",
+      "type": "record",
+      "fields": [
+        {"name": "message", "type": "string"}
+      ]
+    }}
+  ]
+}

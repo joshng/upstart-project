@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="EntryPointsManager">
+    <list size="8">
+      <item index="0" class="java.lang.String" itemvalue="com.fasterxml.jackson.annotation.JsonCreator" />
+      <item index="1" class="java.lang.String" itemvalue="com.google.inject.Provides" />
+      <item index="2" class="java.lang.String" itemvalue="org.immutables.value.Value.Check" />
+      <item index="3" class="java.lang.String" itemvalue="org.junit.jupiter.api.TestFactory" />
+      <item index="4" class="java.lang.String" itemvalue="org.kohsuke.MetaInfServices" />
+      <item index="5" class="java.lang.String" itemvalue="upstart.test.AfterInjection" />
+      <item index="6" class="java.lang.String" itemvalue="upstart.test.AfterServiceStarted" />
+      <item index="7" class="java.lang.String" itemvalue="upstart.test.BeforeServiceStopped" />
+    </list>
+  </component>
+  <component name="FindBugsConfigurable">
+    <option name="make" value="true" />
+    <option name="effort" value="default" />
+    <option name="priority" value="Medium" />
+    <option name="excludeFilter" value="" />
+  </component>
+  <component name="JavaScriptSettings">
+    <option name="languageLevel" value="ES6" />
+  </component>
+  <component name="MavenProjectsManager">
+    <option name="originalFiles">
+      <list>
+        <option value="$PROJECT_DIR$/pom.xml" />
+        <option value="$PROJECT_DIR$/upstart/b4-devops/pom.xml" />
+      </list>
+    </option>
+  </component>
+  <component name="ProjectRootManager" version="2" languageLevel="JDK_17" default="true" project-jdk-name="openjdk-17" project-jdk-type="JavaSDK">
+    <output url="file://$PROJECT_DIR$/out" />
+  </component>
+  <component name="SuppressionsComponent">
+    <option name="suppComments" value="[]" />
+  </component>
+</project>

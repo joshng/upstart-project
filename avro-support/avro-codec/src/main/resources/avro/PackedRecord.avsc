@@ -1,0 +1,13 @@
+{
+ "namespace": "io.upstartproject.avro",
+ "name": "PackedRecord",
+ "type": "record",
+ "fields": [
+   {"name": "fingerprint", "type": "long",
+     "doc": "Identifies the schema used to write the record-data, understood by the AvroCodec"
+   },
+   {"name": "data", "type": "bytes",
+     "doc": "The serialized data, written with the schema identified by the fingerprint"
+   }
+ ]
+}

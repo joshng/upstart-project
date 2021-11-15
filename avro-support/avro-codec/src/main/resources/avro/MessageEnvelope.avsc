@@ -1,0 +1,42 @@
+{
+   "namespace": "io.upstartproject.avro",
+   "name": "MessageEnvelope",
+   "published": true,
+   "type": "record",
+   "fields": [
+     {"name": "message", "type": "io.upstartproject.avro.PackedRecord",
+       "doc": "The enclosed message"
+     },
+     {"name": "annotations", "type": {"type": "array", "items": "io.upstartproject.avro.PackedRecord"},
+       "doc": "Metadata-records added to the record by middleware"
+     },
+     {"name": "uniqueId", "type": "string",
+       "doc": "A unique identifier for deduplication"
+     },
+     {"name": "eventTimestamp", "type": "long",
+       "doc": "A timestamp, as indicated by the producer of the message"
+     },
+     {"name": "timestampResolution", "type": {"type": "enum", "name": "EventTimestampResolution", "symbols": [
+       "Seconds", "Milliseconds", "Microseconds", "Nanoseconds"
+     ], "default": "Milliseconds",
+       "doc": "The resolution of the eventTimestamp"
+     }},
+     {"name": "application", "type": "string",
+       "doc": "The process that emitted this message"
+     },
+     {"name": "owner", "type": "string",
+       "doc": "The process that emitted this message"
+     },
+     {"name": "environment", "type": "string",
+       "doc": "The deployment-environment within which the application was deployed"
+     },
+     {"name": "deploymentStage", "type": {"type": "enum", "name": "DeploymentStage", "symbols": [
+       "prod", "stage", "dev", "test"
+     ],
+       "doc": "The lifecycle-stage of the environment that produced this message"
+     }},
+     {"name": "tags", "type": {"type": "map", "values": "string"},
+       "doc": "Unconstrained metadata tags"
+     }
+   ]
+}

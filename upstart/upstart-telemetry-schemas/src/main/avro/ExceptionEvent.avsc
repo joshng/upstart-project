@@ -1,0 +1,63 @@
+{
+  "namespace": "io.upstartproject.avro.event",
+  "name": "ExceptionEvent",
+  "published": true,
+  "type": "record",
+  "fields": [
+    {"name": "exception", "type": {
+      "name": "ExceptionRecord",
+      "type": "record",
+      "fields": [
+        {
+          "name": "exceptionType",
+          "type": "string"
+        },
+        {
+          "name": "message",
+          "type": "string"
+        },
+        {
+          "name": "stacktraceElements",
+          "type": {
+            "type": "array",
+            "items": {
+              "name": "StackElement",
+              "type": "record",
+              "fields": [
+                {
+                  "name": "declaringClass",
+                  "type": "string"
+                },
+                {
+                  "name": "method",
+                  "type": "string"
+                },
+                {
+                  "name": "fileName",
+                  "type": "string"
+                },
+                {
+                  "name": "line",
+                  "type": "int"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "cause",
+          "type": ["null", "io.upstartproject.avro.event.ExceptionRecord"]
+        },
+        {
+          "name": "suppressed",
+          "type": {
+            "type": "array",
+            "items": "io.upstartproject.avro.event.ExceptionRecord",
+            "default": []
+          }
+        }
+      ]
+    }
+    }
+  ]
+}

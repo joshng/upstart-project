@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+B4_ROOT="$(dirname "$(dirname "$0")")"
+export B4_ROOT
+exec $B4_ROOT/upstart/b4/wrapper/b4.sh upstart/b4-devops "$@"
+

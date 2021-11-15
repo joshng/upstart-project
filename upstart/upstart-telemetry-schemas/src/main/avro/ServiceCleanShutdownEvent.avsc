@@ -1,0 +1,8 @@
+{
+  "namespace": "io.upstartproject.avro.event",
+  "name": "ServiceCleanShutdownEvent",
+  "published": true,
+  "type": "record",
+  "fields": [
+  ]
+}

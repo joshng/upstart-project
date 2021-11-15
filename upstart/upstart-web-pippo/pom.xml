@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>io.upstartproject</groupId>
+    <artifactId>upstart-parent</artifactId>
+    <version>0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>upstart-web-pippo</artifactId>
+
+  <dependencies>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>upstart-web</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>ro.pippo</groupId>
+      <artifactId>pippo-core</artifactId>
+      <version>${pippo.version}</version>
+    </dependency>
+
+    <!-- Provides html templating, which is not strictly needed, but helpful:
+    If client request does not specify accepted content type and an error results, Pippo will want to send an
+    error message in text/html. If no suitable template engine is available, it will log errors on the server
+    and not send the user any helpful message. -->
+    <dependency>
+      <groupId>ro.pippo</groupId>
+      <artifactId>pippo-freemarker</artifactId>
+      <version>${pippo.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>com.fasterxml.jackson.module</groupId>
+      <artifactId>jackson-module-afterburner</artifactId>
+      <version>${jackson.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-core</artifactId>
+      <version>${jackson.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>ro.pippo</groupId>
+      <artifactId>pippo-jackson</artifactId>
+      <version>${pippo.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>com.fasterxml.jackson.module</groupId>
+          <artifactId>jackson-module-afterburner</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.fasterxml.jackson.core</groupId>
+          <artifactId>jackson-core</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <dependency>
+      <groupId>ro.pippo</groupId>
+      <artifactId>pippo-jetty</artifactId>
+      <version>${pippo.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.ow2.asm</groupId>
+          <artifactId>asm</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.ow2.asm</groupId>
+      <artifactId>asm</artifactId>
+      <version>9.1</version>
+    </dependency>
+
+
+    <dependency>
+      <groupId>io.upstartproject</groupId>
+      <artifactId>upstart-web-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+</project>
