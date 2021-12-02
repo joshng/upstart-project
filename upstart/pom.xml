@@ -25,6 +25,7 @@
     <module>upstart-metrics</module>
     <module>upstart-telemetry-schemas</module>
     <module>upstart-telemetry</module>
+    <module>upstart-jdbi</module>
     <module>upstart-web</module>
     <module>upstart-web-javalin</module>
     <module>upstart-web-pippo</module>
