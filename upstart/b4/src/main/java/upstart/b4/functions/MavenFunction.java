@@ -5,6 +5,7 @@ import upstart.b4.B4Function;
 import upstart.b4.B4TargetContext;
 import upstart.b4.TargetInvocation;
 import org.immutables.value.Value;
+import upstart.config.annotations.DeserializedImmutable;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -31,8 +32,7 @@ public class MavenFunction implements B4Function<MavenFunction.MavenBuildConfig>
   public void cancel() {
   }
 
-  @Value.Immutable
-  @JsonDeserialize(as = ImmutableMavenBuildConfig.class)
+  @DeserializedImmutable
   interface MavenBuildConfig {
     String DEFAULT_GOAL = "package";
 

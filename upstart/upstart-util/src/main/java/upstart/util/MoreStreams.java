@@ -88,6 +88,15 @@ public class MoreStreams {
     return Pair.of(take, rest);
   }
 
+  public static <T> Stream<Stream<T>> partition(int size, Stream<T> stream) {
+    Iterator<T> iterator = stream.iterator();
+    return Stream.iterate(
+            Streams.stream(iterator).limit(size),
+            ignored -> iterator.hasNext(),
+            ignored -> Streams.stream(iterator).limit(size)
+    );
+  }
+
   public abstract static class RecursiveIterator<T> implements Iterator<T> {
     private T next;
 

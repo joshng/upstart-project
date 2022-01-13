@@ -13,10 +13,10 @@ public class B4 {
   public static final String DEFAULT_ENVIRONMENT = "DEV";
 
   public static TargetRegistry buildTargetRegistry(Config appConfig) {
-    return new TargetRegistry(loadSupConfig(appConfig), HojackConfigMapper.buildDefaultObjectMapper());
+    return new TargetRegistry(loadB4Config(appConfig), HojackConfigMapper.buildDefaultObjectMapper());
   }
 
-  public static Config loadSupConfig(Config appConfig) {
+  public static Config loadB4Config(Config appConfig) {
     if (!Ambiance.ambientValue(UpstartEnvironment.UPSTART_ENVIRONMENT).isPresent()) {
       System.setProperty(UpstartEnvironment.UPSTART_ENVIRONMENT, DEFAULT_ENVIRONMENT);
     }

@@ -11,7 +11,6 @@ import org.immutables.value.Value;
 import java.util.Map;
 
 @Value.Immutable
-//@JsonDeserialize(as = ImmutableSupConfig.class)
 //@ConfigPath("b4")
 public interface B4Config {
   static ImmutableB4Config.Builder builder() {

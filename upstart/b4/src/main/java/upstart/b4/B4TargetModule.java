@@ -60,7 +60,7 @@ public class B4TargetModule extends UpstartModule {
 
   @Override
   public String toString() {
-    return "SupTargetModule{" +
+    return "B4TargetModule{" +
             "invocation=" + invocation +
             '}';
   }

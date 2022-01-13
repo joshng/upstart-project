@@ -3,7 +3,10 @@ package upstart.util;
 import com.google.common.truth.Truth;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.google.common.truth.Truth8.assertThat;
@@ -35,4 +38,9 @@ class MoreStreamsTest {
     return MoreStreams.generate(1, x -> x + 1);
   }
 
+  @Test
+  void partition() {
+    System.out.println(MoreStreams.partition(10, naturalNumbers().limit(90)).map(ns -> ns.map(Object::toString).collect(Collectors.joining(","))).collect(
+            Collectors.joining("\n")));
+  }
 }
