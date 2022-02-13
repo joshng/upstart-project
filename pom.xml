@@ -157,6 +157,12 @@
       </dependency>
       <dependency>
         <groupId>io.upstartproject</groupId>
+        <artifactId>upstart-dynamodb-test</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>io.upstartproject</groupId>
         <artifactId>upstart-test-log4j</artifactId>
         <version>${project.version}</version>
       </dependency>

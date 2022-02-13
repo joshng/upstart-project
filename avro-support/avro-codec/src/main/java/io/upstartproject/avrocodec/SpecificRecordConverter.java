@@ -3,6 +3,8 @@ package io.upstartproject.avrocodec;
 import org.apache.avro.Schema;
 import org.apache.avro.specific.SpecificRecordBase;
 
+import java.util.concurrent.CompletableFuture;
+
 import static com.google.common.base.Preconditions.checkArgument;
 
 /**

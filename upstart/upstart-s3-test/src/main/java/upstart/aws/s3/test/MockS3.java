@@ -2,6 +2,7 @@ package upstart.aws.s3.test;
 
 import akka.actor.ActorSystem;
 import com.amazonaws.services.s3.model.ObjectMetadata;
+import upstart.aws.Aws;
 import upstart.aws.AwsModule;
 import upstart.test.UpstartTestBuilder;
 import upstart.util.MoreStreams;
@@ -167,7 +168,7 @@ public class MockS3 {
 
   public UpstartTestBuilder setupTest(UpstartTestBuilder testBuilder) {
     return testBuilder
-            .overrideConfig(AwsModule.DefaultAwsConfig.CONFIG_PATH, Map.of(
+            .overrideConfig(Aws.Service.S3.configPath, Map.of(
                             "endpoint", endpointUri,
                             "region", getRegion(),
                             "credentialsProviderType", "Anonymous"

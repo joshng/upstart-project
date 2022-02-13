@@ -15,6 +15,7 @@
 
   <properties>
     <upstart.app.package.directory>${project.basedir}/target/package</upstart.app.package.directory>
+    <upstart.main.class>upstart.UpstartApplication</upstart.main.class>
     <docker.input.directory>${project.basedir}/docker</docker.input.directory>
     <serviceability.version>${project.version}</serviceability.version>
   </properties>
@@ -66,6 +67,7 @@
             <manifest>
               <addClasspath>true</addClasspath>
               <classpathPrefix>lib/</classpathPrefix>
+              <mainClass>${upstart.main.class}</mainClass>
             </manifest>
           </archive>
         </configuration>

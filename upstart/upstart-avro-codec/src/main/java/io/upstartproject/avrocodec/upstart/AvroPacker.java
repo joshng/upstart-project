@@ -13,7 +13,7 @@ import org.apache.avro.specific.SpecificRecordBase;
 import javax.inject.Inject;
 
 public class AvroPacker<T extends SpecificRecordBase>
-        extends ServiceTransformer<SpecificRecordPacker<T>>
+        extends ServiceTransformer<AvroModule.AvroCodecService, SpecificRecordPacker<T>>
         implements RecordPackerApi<T>
 {
 

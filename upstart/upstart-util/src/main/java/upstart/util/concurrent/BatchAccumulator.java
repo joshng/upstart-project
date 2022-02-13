@@ -51,6 +51,10 @@ public class BatchAccumulator<B> {
     return Duration.between(now, timeout.touchDeadline(now));
   }
 
+  public synchronized void flush() {
+    Optional.ofNullable(currentTimeout).ifPresent(BatchTimeout::close);
+  }
+
   private class BatchTimeout {
     private final B batch = newBatchSupplier.get();
     private final Instant accumulationDeadline;

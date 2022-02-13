@@ -11,6 +11,9 @@
   </parent>
 
   <artifactId>upstart-example-app</artifactId>
+  <properties>
+    <upstart.main.class>upstart.example.UpstartExampleApp</upstart.main.class>
+  </properties>
 
   <dependencies>
     <dependency>

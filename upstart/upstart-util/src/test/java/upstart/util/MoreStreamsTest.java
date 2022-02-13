@@ -40,7 +40,14 @@ class MoreStreamsTest {
 
   @Test
   void partition() {
-    System.out.println(MoreStreams.partition(10, naturalNumbers().limit(90)).map(ns -> ns.map(Object::toString).collect(Collectors.joining(","))).collect(
-            Collectors.joining("\n")));
+    List<List<Integer>> lists = MoreStreams.partition(10, naturalNumbers().limit(92))
+            .map(Stream::toList)
+            .toList();
+
+    Truth.assertThat(lists).hasSize(10);
+    Truth.assertThat(lists.get(0)).hasSize(10);
+    List<Integer> lastPartition = lists.get(9);
+    Truth.assertThat(lastPartition).isEqualTo(List.of(91, 92));
+
   }
 }

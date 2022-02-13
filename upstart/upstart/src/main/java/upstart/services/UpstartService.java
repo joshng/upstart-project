@@ -150,8 +150,8 @@ public final class UpstartService extends BaseComposableService<ManagedServiceGr
   }
 
   public static void main(String[] args) {
-    if (!(args.length == 1)) {
-      throw new IllegalArgumentException(USAGE + "\n\nInvalid args: '" + String.join("' '", args) + "'");
+    if (args.length != 1) {
+      throw new IllegalArgumentException(USAGE + "\n\nInvalid args: '" + String.join("' '", args) + "'\n(To package an UpstartApplication, define <upstart.main.class> in pom.xml, and use upstart-app-parent");
     }
     UpstartApplication application;
     try {

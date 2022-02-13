@@ -38,6 +38,7 @@
     <module>upstart-kafka-test</module>
     <module>upstart-aws</module>
     <module>upstart-s3-test</module>
+    <module>upstart-dynamodb-test</module>
     <module>upstart-coverage</module>
   </modules>
 

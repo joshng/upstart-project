@@ -3,6 +3,9 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
+  <properties>
+    <javalin.version>4.3.0</javalin.version>
+  </properties>
 
   <parent>
     <groupId>io.upstartproject</groupId>
@@ -11,8 +14,32 @@
   </parent>
 
   <artifactId>upstart-web-javalin</artifactId>
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>io.javalin</groupId>
+        <artifactId>javalin</artifactId>
+        <version>${javalin.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.javalin</groupId>
+        <artifactId>javalin-jackson</artifactId>
+        <version>${javalin.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.javalin</groupId>
+        <artifactId>javalin-openapi</artifactId>
+        <version>${javalin.version}</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
 
   <dependencies>
+    <dependency>
+      <groupId>io.javalin</groupId>
+      <artifactId>javalin</artifactId>
+    </dependency>
+
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>upstart-web</artifactId>
@@ -22,11 +49,6 @@
       <artifactId>upstart-metrics</artifactId>
     </dependency>
 
-    <dependency>
-      <groupId>io.javalin</groupId>
-      <artifactId>javalin</artifactId>
-      <version>3.13.5</version>
-    </dependency>
     <dependency>
       <groupId>io.upstartproject</groupId>
       <artifactId>upstart-web-test</artifactId>

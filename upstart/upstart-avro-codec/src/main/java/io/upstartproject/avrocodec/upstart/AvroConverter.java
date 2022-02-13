@@ -9,17 +9,21 @@ import io.upstartproject.avrocodec.UnpackableRecord;
 import org.apache.avro.specific.SpecificRecordBase;
 
 import javax.inject.Inject;
+import java.util.concurrent.CompletableFuture;
 
 public class AvroConverter<T extends SpecificRecordBase>
-        extends ServiceTransformer<SpecificRecordConverter<T>>
+        extends ServiceTransformer<AvroModule.AvroCodecService, SpecificRecordConverter<T>>
         implements RecordConverterApi<T>
 {
 
-  @SuppressWarnings("unchecked")
   @Inject
   AvroConverter(TypeLiteral<T> recordTypeLiteral, AvroModule.AvroCodecService avroCodecService) {
     super(avroCodecService, () -> avroCodecService.getCodec()
             .recordConverter(TypeLiterals.getRawType(recordTypeLiteral)));
+  }
+
+  public CompletableFuture<T> readPackedRecord(byte[] bytes) {
+    return readPackedRecord(bytes, service().getCodec());
   }
 
   @Override

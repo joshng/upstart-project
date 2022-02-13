@@ -9,6 +9,9 @@ import org.aopalliance.intercept.MethodInvocation;
 
 import javax.inject.Inject;
 import java.lang.reflect.Method;
+import java.util.concurrent.CompletionStage;
+
+import static com.google.common.base.Preconditions.checkState;
 
 public class TimedInterceptorFactory implements MethodInterceptorFactory {
 
@@ -24,7 +27,17 @@ public class TimedInterceptorFactory implements MethodInterceptorFactory {
   @Override
   public MethodInterceptor buildInterceptor(Class<?> interceptedClass, Method interceptedMethod) {
     String name = namer.buildMetricName(interceptedClass, interceptedMethod, Timed.class, Timed::value);
-    return new TimedMethodInterceptor(metricRegistry.timer(name));
+    Timer timer = metricRegistry.timer(name);
+    if (interceptedMethod.getAnnotation(Timed.class).async()) {
+      checkState(
+              CompletionStage.class.isAssignableFrom(interceptedMethod.getReturnType()),
+              "AsyncTimed methods must return CompletionStage<?>"
+      );
+      return new AsyncTimedMethodInterceptor(timer);
+    } else {
+      return new TimedMethodInterceptor(timer);
+    }
+
   }
 
 
@@ -39,6 +52,26 @@ public class TimedInterceptorFactory implements MethodInterceptorFactory {
     public Object invoke(MethodInvocation invocation) throws Throwable {
       try (Timer.Context ignored = timer.time()) {
         return invocation.proceed();
+      }
+    }
+  }
+
+  public static class AsyncTimedMethodInterceptor implements MethodInterceptor {
+    private final Timer timer;
+
+    public AsyncTimedMethodInterceptor(Timer timer) {
+      this.timer = timer;
+    }
+
+    @Override
+    public Object invoke(MethodInvocation invocation) throws Throwable {
+      Timer.Context context = timer.time();
+      try {
+        CompletionStage<?> result = (CompletionStage<?>) invocation.proceed();
+        return result.whenComplete((ignored, e) -> context.stop());
+      } catch (Throwable e) {
+        context.close();
+        throw e;
       }
     }
   }

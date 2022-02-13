@@ -2,6 +2,8 @@ package upstart.aws;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.common.base.Throwables;
+import com.google.inject.Key;
+import com.google.inject.PrivateModule;
 import upstart.config.annotations.ConfigPath;
 import upstart.config.UpstartModule;
 import org.immutables.value.Value;
@@ -10,6 +12,7 @@ import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.awscore.client.builder.AwsClientBuilder;
 import software.amazon.awssdk.regions.Region;
+import upstart.config.annotations.DeserializedImmutable;
 
 import java.net.URI;
 import java.util.Optional;
@@ -19,9 +22,21 @@ import java.util.function.Supplier;
 public class AwsModule extends UpstartModule {
   @Override
   protected void configure() {
-    DefaultAwsConfig config = bindConfig(DefaultAwsConfig.class);
-    bind(AwsConfig.class).to(DefaultAwsConfig.class);
-    bind(AwsCredentialsProvider.class).toInstance(config.credentialsProvider());
+    for (Aws.Service service : Aws.Service.values()) {
+      DefaultAwsConfig config = bindConfig(service.configPath, Key.get(DefaultAwsConfig.class, service.annotation));
+      bind(AwsConfig.class).annotatedWith(service.annotation).toInstance(config);
+      Key<AwsClientFactory> factoryKey = Key.get(AwsClientFactory.class, service.annotation);
+
+      install(new PrivateModule() {
+        @Override
+        protected void configure() {
+          bind(AwsCredentialsProvider.class).toInstance(config.credentialsProvider());
+          bind(AwsConfig.class).toInstance(config);
+          bind(factoryKey).to(AwsClientFactory.class);
+          expose(factoryKey);
+        }
+      });
+    }
   }
 
   public interface AwsConfig {
@@ -94,8 +109,7 @@ public class AwsModule extends UpstartModule {
     }
   }
 
-  @ConfigPath(DefaultAwsConfig.CONFIG_PATH)
+  @DeserializedImmutable
   public interface DefaultAwsConfig extends AwsConfig {
-    String CONFIG_PATH = "upstart.aws.defaults";
   }
 }
