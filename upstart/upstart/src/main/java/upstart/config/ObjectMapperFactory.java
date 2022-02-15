@@ -37,8 +37,7 @@ public interface ObjectMapperFactory {
               .addHandler(new ImmutableDeserializationHandler());
     }
 
-    private static class ImmutableDeserializationHandler extends DeserializationProblemHandler {
-      private static final Pattern IMMUTABLE_NAME_PATTERN = Pattern.compile("\\*");
+    public static class ImmutableDeserializationHandler extends DeserializationProblemHandler {
       private static final LoadingCache<Class<?>, Optional<Class<?>>> IMMUTABLE_TYPES = CacheBuilder.newBuilder()
               .build(CacheLoader.from(ImmutableDeserializationHandler::immutableClass));
 

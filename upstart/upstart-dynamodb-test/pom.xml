@@ -41,16 +41,16 @@
     </dependency>
 
     <dependency>
+      <groupId>com.amazonaws</groupId>
+      <artifactId>DynamoDBLocal</artifactId>
+      <version>1.15.0</version>
+    </dependency>
+
+    <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>upstart-test-log4j</artifactId>
       <version>${project.version}</version>
       <scope>test</scope>
-    </dependency>
-
-    <dependency>
-      <groupId>com.amazonaws</groupId>
-      <artifactId>DynamoDBLocal</artifactId>
-      <version>1.15.0</version>
     </dependency>
   </dependencies>
 
@@ -78,7 +78,8 @@
                   <configuration>
                     <includeScope>test</includeScope>
                     <includeTypes>so,dll,dylib</includeTypes>
-                    <outputDirectory>${project.basedir}/native-libs</outputDirectory>
+<!--                    <outputDirectory>${project.basedir}/native-libs</outputDirectory>-->
+                    <outputDirectory>/usr/local/lib/sqlite4java/native-libs</outputDirectory>
                   </configuration>
                 </execution>
               </executions>

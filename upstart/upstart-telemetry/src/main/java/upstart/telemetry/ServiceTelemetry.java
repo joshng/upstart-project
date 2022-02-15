@@ -81,6 +81,7 @@ public class ServiceTelemetry extends IdleService {
   public static class Module extends UpstartModule {
     @Override
     protected void configure() {
+      install(EventLogModule.class);
       serviceManager().manage(ServiceTelemetry.class);
       AvroModule.bindAvroFromRecordPackage(binder(), ServiceConfigLoadedEvent.class);
       ManagedServicesModule.bindServiceListener(binder()).to(ServiceListener.class);

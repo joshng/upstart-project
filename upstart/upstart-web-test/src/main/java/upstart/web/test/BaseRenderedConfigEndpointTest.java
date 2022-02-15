@@ -2,6 +2,7 @@ package upstart.web.test;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.collect.ImmutableMap;
+import io.restassured.response.Response;
 import upstart.config.annotations.ConfigPath;
 import upstart.config.UpstartModule;
 import upstart.test.UpstartServiceTest;

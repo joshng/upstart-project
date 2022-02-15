@@ -18,12 +18,14 @@
     <dependencies>
       <dependency>
         <groupId>io.javalin</groupId>
-        <artifactId>javalin</artifactId>
+        <artifactId>javalin-parent</artifactId>
         <version>${javalin.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
       </dependency>
       <dependency>
         <groupId>io.javalin</groupId>
-        <artifactId>javalin-jackson</artifactId>
+        <artifactId>javalin</artifactId>
         <version>${javalin.version}</version>
       </dependency>
       <dependency>

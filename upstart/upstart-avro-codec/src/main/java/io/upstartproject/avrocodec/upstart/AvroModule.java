@@ -28,6 +28,7 @@ import java.util.Set;
 public class AvroModule extends UpstartModule {
 
   public static Multibinder<AvroCodec.PackageKey> avroPackageBinder(Binder binder) {
+    binder.install(new AvroModule());
     return Multibinder.newSetBinder(binder, AvroCodec.PackageKey.class);
   }
 

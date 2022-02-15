@@ -28,7 +28,7 @@ public class SdkAsyncHttpClientService extends IdleService implements SdkAsyncHt
   protected void startUp() {
     delegate = NettyNioAsyncHttpClient.builder()
             .sslProvider(SslProvider.OPENSSL)
-            .connectionAcquisitionTimeout(config.connectionAcquisitionTimeOut())
+            .connectionAcquisitionTimeout(config.connectionAcquisitionTimeout())
             .maxConcurrency(config.maxConcurrency())
             .build();
   }
@@ -50,7 +50,7 @@ public class SdkAsyncHttpClientService extends IdleService implements SdkAsyncHt
 
   @ConfigPath("upstart.aws.asyncDefaults")
   public interface AsyncClientConfig {
-    Duration connectionAcquisitionTimeOut();
+    Duration connectionAcquisitionTimeout();
     int maxConcurrency();
   }
 }

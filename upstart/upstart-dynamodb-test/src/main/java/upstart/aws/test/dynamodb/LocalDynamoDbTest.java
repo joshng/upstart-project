@@ -9,6 +9,6 @@ import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE, ElementType.METHOD})
-@ExtendWith(LocalDynamoDBExtension.class)
-public @interface LocalDynamoDBTest {
+@ExtendWith(LocalDynamoDbExtension.class)
+public @interface LocalDynamoDbTest {
 }
