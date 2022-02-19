@@ -1,6 +1,7 @@
 package upstart.b4;
 
 import com.google.common.base.Functions;
+import com.google.common.base.Stopwatch;
 import com.google.common.util.concurrent.MoreExecutors;
 import upstart.services.ExecutionThreadService;
 import upstart.services.ThreadPoolService;
@@ -10,6 +11,7 @@ import picocli.CommandLine;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -23,19 +25,28 @@ public class B4GraphDriver extends ExecutionThreadService {
   private final TargetInvocationGraph invocationGraph;
   private final Map<TargetInstanceId, TargetRunner> targetRunners;
   private final ThreadPoolService threadPool;
+  private final B4Console console;
+  private final B4Application app;
   private final AtomicBoolean canceled = new AtomicBoolean();
   private final AtomicReference<Throwable> failure = new AtomicReference<>();
   private final Promise<Throwable> failureFuture = new Promise<>();
+  private final boolean statusLogEnabled;
 
   @Inject
   B4GraphDriver(
           TargetInvocationGraph invocationGraph,
           Map<TargetInstanceId, TargetRunner> targetRunners,
-          B4Module.ThreadPool threadPool
+          B4Module.ThreadPool threadPool,
+          B4Console console,
+          B4Application app
   ) {
     this.invocationGraph = invocationGraph;
     this.targetRunners = targetRunners;
     this.threadPool = threadPool;
+    this.console = console;
+    this.app = app;
+    B4Function.Verbosity verbosity = app.baseExecutionConfig().effectiveVerbosity();
+    statusLogEnabled = verbosity.logCommands && !verbosity.logOutput;
   }
 
   public CompletableFuture<Throwable> failureFuture() {
@@ -55,7 +66,9 @@ public class B4GraphDriver extends ExecutionThreadService {
 
     Function<TargetInvocation, TargetRunner> getRunner = Functions.forMap(targetRunners).compose(TargetInvocation::id);
 
-    CompletableFuture<Void> future = CompletableFutures.allOf(
+    Stopwatch stopwatch = Stopwatch.createStarted();
+    logStatus("Starting...", stopwatch);
+    CompletableFuture<Void> completionFuture = CompletableFutures.recover(CompletableFutures.allOf(
             invocationGraph.allInvocations()
                     .filter(TargetExecutionConfig::doClean)
                     .map(targetInvocation -> {
@@ -78,9 +91,24 @@ public class B4GraphDriver extends ExecutionThreadService {
                       ).thenComposeAsync(runner::run, executorFor(runner));
                     })
             )
-    );
-    CompletableFutures.recover(future, Exception.class, e -> null).join();
+    ), Exception.class, e -> null);
+
+    if (statusLogEnabled) {
+      try {
+        while (!CompletableFutures.isDoneWithin(Duration.ofSeconds(8), completionFuture)) {
+          logStatus("In progress...", stopwatch);
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+    }
+    completionFuture.join();
+    logStatus("Completed", stopwatch);
     failure().ifPresent(failureFuture::complete);
+  }
+
+  private void logStatus(String message, Stopwatch stopwatch) {
+    if (statusLogEnabled) B4.WARN_LOG.info(message + "{}\n(after {})", console.renderHighlightPlaceholders(renderStatusGraph()), stopwatch);
   }
 
   @Override
@@ -95,15 +123,17 @@ public class B4GraphDriver extends ExecutionThreadService {
         if (failure.compareAndSet(null, e)) {
           cancel();
         } else if (!B4CancellationException.isCancellation(e)) {
-          boolean retry = false;
-          do {
+          while (true) {
             Throwable prev = failure.get();
             if (B4CancellationException.isCancellation(prev)) {
-              retry = !failure.compareAndSet(prev, e);
+              if (failure.compareAndSet(prev, e)) {
+                break;
+              }
             } else {
               prev.addSuppressed(e);
+              break;
             }
-          } while (retry);
+          }
         }
       }
     });
@@ -124,7 +154,7 @@ public class B4GraphDriver extends ExecutionThreadService {
 
   @Override
   public String toString() {
-    return super.toString() + "\n" + B4Cli.renderHighlightPlaceholders(renderStatusGraph(), CommandLine.Help.Ansi.OFF);
+    return super.toString() + "\n" + B4Console.renderHighlightPlaceholders(renderStatusGraph(), CommandLine.Help.Ansi.OFF);
   }
 
   public String renderStatusGraph() {

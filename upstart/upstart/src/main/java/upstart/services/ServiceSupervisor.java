@@ -176,10 +176,10 @@ public abstract class ServiceSupervisor {
     while (!(sleep = waitTime.apply(Instant.now())).isNegative()) {
       try {
         startedFuture.get(Math.min(sleep.toMillis(), pendingTransitionLogInterval().toMillis()), TimeUnit.MILLISECONDS);
-        logger().info("(startup took {})", stopwatch);
+        logger().info("({} took {})", desc, stopwatch);
         return true;
       } catch (TimeoutException e) {
-        logger().warn("... still awaiting " + desc + " after {}: {}", stopwatch, supervisedService());
+        logger().warn("... still awaiting {} after {}: {}", desc, stopwatch, supervisedService());
       }
     }
     return false;

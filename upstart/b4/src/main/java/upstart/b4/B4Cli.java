@@ -8,7 +8,6 @@ import upstart.config.ConfigMappingException;
 import upstart.services.ServiceSupervisor;
 import upstart.util.Ambiance;
 import upstart.util.BooleanChoice;
-import upstart.util.MoreStrings;
 import upstart.util.PairStream;
 import upstart.util.Patterns;
 import com.typesafe.config.Config;
@@ -37,11 +36,6 @@ import static picocli.CommandLine.Parameters;
 
 public class B4Cli {
   public static final String TARGET_DESCRIPTION_INDENTATION = "\n          ";
-  private static final char HIGHLIGHT_MARKER = '\u2007';
-  private static final char UNHEALTHY_HIGHLIGHT_MARKER = '\u00A0';
-  private static final Pattern HIGHLIGHT_PLACEHOLDER_PATTERN = Pattern.compile(String.format("%1$s.*?%1$s|%2$s.*?%2$s", HIGHLIGHT_MARKER, UNHEALTHY_HIGHLIGHT_MARKER));
-  private static final String HIGHLIGHT_FORMAT = "green";
-  private static final String UNHEALTHY_HIGHLIGHT_FORMAT = "red";
   private final Logger LOG;
   private final String[] rawArgs;
   private final InvocationOptions options;
@@ -62,7 +56,8 @@ public class B4Cli {
       showUsage(System.err);
       throw exitWithException(e);
     }
-    commandLine.setColorScheme(CommandLine.Help.defaultColorScheme(options.noColor ? CommandLine.Help.Ansi.OFF : CommandLine.Help.Ansi.ON));
+    if (options.noColor) System.setProperty("picocli.ansi", "false");
+//    commandLine.setColorScheme(CommandLine.Help.defaultColorScheme(options.noColor ? CommandLine.Help.Ansi.OFF : CommandLine.Help.Ansi.ON));
     invocationMode = options.invocationMode();
   }
 
@@ -134,7 +129,6 @@ public class B4Cli {
     ServiceSupervisor supervisor = ServiceSupervisor.forService(app::getApplication)
             .shutdownGracePeriod(Duration.ofSeconds(300))
             .exitOnUncaughtException(true)
-            .logger(B4.WARN_LOG)
             .build();
 
      app.failureFuture().thenAccept(e -> {
@@ -185,29 +179,7 @@ public class B4Cli {
   }
 
   private void println(PrintStream out, String msg) {
-    println(out, msg, commandLine.getColorScheme().ansi());
-  }
-
-  public static void println(PrintStream out, String msg, CommandLine.Help.Ansi ansi) {
-    out.println(renderHighlightPlaceholders(msg, ansi));
-  }
-
-  public static String renderHighlightPlaceholders(String msg, CommandLine.Help.Ansi ansi) {
-    return ansi.string(MoreStrings.interpolateTokens(msg, HIGHLIGHT_PLACEHOLDER_PATTERN, matcher -> {
-      String match = matcher.group();
-      String format;
-      switch (match.charAt(0)) {
-        case HIGHLIGHT_MARKER:
-          format = HIGHLIGHT_FORMAT;
-          break;
-        case UNHEALTHY_HIGHLIGHT_MARKER:
-          format = UNHEALTHY_HIGHLIGHT_FORMAT;
-          break;
-        default:
-          throw new IllegalStateException("Unexpected format-match: " + match.charAt(0));
-      }
-      return " @|" + format + " " + match.substring(1, match.length() - 1) + "|@ ";
-    }));
+    B4Console.println(out, msg, commandLine.getColorScheme().ansi());
   }
 
   private Error exitWithException(Exception e) {
@@ -221,11 +193,15 @@ public class B4Cli {
             .filter(spec -> filter.map(f -> f.matcher(spec.name().value()).find()).orElse(true))
             .collect(Collectors.groupingBy(spec -> spec.name().parentNamespace().orElse(TargetName.ROOT)));
 
-    println(String.format("Supported targets:"
-                    +" \n%s\n"
-                    + "\n@|red Notes:|@\n"
-                    +"• Underlined namespaces are targets that run all immediate children\n"
-                    +"• Learn more about specific command(s) by running them with '-h' (help)\n",
+    println(String.format(
+            """
+            Supported targets:\s
+            %s
+
+            @|red Notes:|@
+            • Underlined namespaces are targets that run all immediate children
+            • Learn more about specific command(s) by running them with '-h' (help)
+            """,
             PairStream.of(byNamespace)
                     .filterValues(targets -> !targets.stream().allMatch(spec -> byNamespace.containsKey(spec.name())))
                     .sorted(Map.Entry.comparingByKey(TargetName.LEXICAL_COMPARATOR))
@@ -244,7 +220,7 @@ public class B4Cli {
 
   private String namespaceDescription(TargetName namespace, TargetRegistry targetRegistry) {
     return namespace.equals(TargetName.ROOT)
-            ? healthyHighlight(namespace.displayName())
+            ? B4Console.healthyHighlight(namespace.displayName())
             : targetDescription(targetRegistry.spec(namespace), d -> " -- " + d);
   }
 
@@ -253,21 +229,13 @@ public class B4Cli {
   }
 
   private static String targetDescription(TargetSpec spec, Function<String, String> descriptionFormatter) {
-    return healthyHighlight(spec.name().displayName()) + spec.description().map(descriptionFormatter).orElse("");
+    return B4Console.healthyHighlight(spec.name().displayName()) + spec.description().map(descriptionFormatter).orElse("");
   }
 
   static String highlightSummary(TargetInvocation service) {
     String msg = service.id().displayName();
-    return healthyHighlight(msg)
+    return B4Console.healthyHighlight(msg)
             + "\n" + service.effectiveVerbosity() + " " + service.effectivePhases();
-  }
-
-  public static String healthyHighlight(String msg) {
-    return HIGHLIGHT_MARKER + msg + HIGHLIGHT_MARKER;
-  }
-
-  public static String unhealthyHighlight(String msg) {
-    return UNHEALTHY_HIGHLIGHT_MARKER + msg + UNHEALTHY_HIGHLIGHT_MARKER;
   }
 
   @CommandLine.Command(sortOptions = false)

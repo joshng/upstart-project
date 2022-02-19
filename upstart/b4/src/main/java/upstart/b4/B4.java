@@ -9,7 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class B4 {
-  public static final Logger WARN_LOG = LoggerFactory.getLogger("b4.warnings");
+  public static final Logger WARN_LOG = LoggerFactory.getLogger("b4.status");
   public static final String DEFAULT_ENVIRONMENT = "DEV";
 
   public static TargetRegistry buildTargetRegistry(Config appConfig) {

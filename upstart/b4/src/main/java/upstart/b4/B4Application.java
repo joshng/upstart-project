@@ -48,8 +48,10 @@ public class B4Application {
   private final Map<TargetInstanceId, TargetInvocation> activeInvocations;
   private final TargetInvocationGraph invocationGraph;
   private final B4GraphDriver driver;
+  private final ExecutionConfig baseExecutionConfig;
 
   public B4Application(Collection<TargetConfigurator> rootCommands, TargetRegistry targetRegistry, ExecutionConfig executionConfig) {
+    baseExecutionConfig = executionConfig;
     registry = targetRegistry;
     this.rootExecutionConfigs = PairStream.withMappedKeys(TargetConfigurator.mergeConfigurators(rootCommands.stream()), TargetConfigurator::target)
             .mapValues(TargetExecutionConfig::copyOf)
@@ -92,7 +94,7 @@ public class B4Application {
       }
     });
 
-    if (executionConfig.pruneTargetGraph()) pruneNoopInvocations(graph);
+    if (baseExecutionConfig.pruneTargetGraph()) pruneNoopInvocations(graph);
     // TODO: throw exception for cycles
 //    if (Graphs.hasCycle(graph)) {
 //    }
@@ -113,6 +115,10 @@ public class B4Application {
     driver = upstartService.getInstance(B4GraphDriver.class);
 
     if (LOG.isDebugEnabled()) LOG.debug("Config dump:\n{}", dumpConfigs());
+  }
+
+  public ExecutionConfig baseExecutionConfig() {
+    return baseExecutionConfig;
   }
 
   public Optional<TargetInvocation> getInvocation(TargetInstanceId id) {

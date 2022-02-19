@@ -10,14 +10,18 @@ import javax.inject.Inject;
 import java.util.concurrent.CompletableFuture;
 
 class TargetRunner {
-  private static final String ABORTED_STATUS = B4Cli.unhealthyHighlight("aborted");
-  private static final String FAILED_STATUS = B4Cli.unhealthyHighlight("FAILED!");
-  public static final String DONE_STATUS = B4Cli.healthyHighlight(" done  ");
+  private static final String ABORTED_STATUS = B4Console.unhealthyHighlight("aborted ");
+  private static final String FAILED_STATUS = B4Console.unhealthyHighlight("FAILED! ");
+  public static final String DONE_STATUS = B4Console.healthyHighlight("  done  ");
+  public static final String PENDING_STATUS = B4Console.noticeHighlight("running..");
+  private static final String SKIPPED_STATUS = B4Console.noticeLowlight("skipped ");
   private final B4TargetContext context;
   private final Object config;
   private final B4Function<Object> function;
   private final Promise<Nothing> cleanFuture = new Promise<>();
   private final Promise<Nothing> runFuture = new Promise<>();
+  private volatile boolean cleanStarted = false;
+  private volatile boolean runStarted = false;
 
   @SuppressWarnings("unchecked")
   @Inject
@@ -40,10 +44,12 @@ class TargetRunner {
   }
 
   CompletableFuture<?> clean(Object ignored) {
+    cleanStarted = true;
     return completePromise(cleanFuture, () -> function.clean(config, context));
   }
 
   CompletableFuture<?> run(Object ignored) {
+    runStarted = true;
     return completePromise(runFuture, () -> function.run(config, context))
             .thenRun(() -> context.say("DONE:", displayName()));
   }
@@ -79,14 +85,15 @@ class TargetRunner {
 
   @Override
   public String toString() {
-    String cleanStatus = describeStatus(context.activePhases().doClean, cleanFuture);
-    String runStatus = describeStatus(context.activePhases().doRun, runFuture);
-    return String.format("%s\nclean:%s \n  run:%s ", targetInstanceId(), cleanStatus, runStatus);
+    String cleanStatus = describeStatus(context.activePhases().doClean, cleanStarted, cleanFuture);
+    String runStatus = describeStatus(context.activePhases().doRun, runStarted, runFuture);
+    return String.format("%s\n cln:%s \n run:%s ", targetInstanceId(), cleanStatus, runStatus);
   }
 
-  private String describeStatus(boolean enabled, Promise<Nothing> future) {
-    return BooleanChoice.of(!enabled, " skipped ")
-            .or(!future.isDone(), "(pending)")
+  private String describeStatus(boolean enabled, boolean started, Promise<Nothing> future) {
+    return BooleanChoice.of(!enabled, SKIPPED_STATUS)
+            .or(!started, " (waiting)")
+            .or(!future.isDone(), PENDING_STATUS)
             .or(!future.isCompletedExceptionally(), DONE_STATUS)
             .or(future.isCancelled(), ABORTED_STATUS)
             .otherwise(FAILED_STATUS);
