@@ -1,9 +1,9 @@
 package upstart.b4;
 
 public interface B4Function<C> {
-  void clean(C config, B4TargetContext context) throws Exception;
+  void clean(C config, B4TaskContext context) throws Exception;
 
-  void run(C config, B4TargetContext context) throws Exception;
+  void run(C config, B4TaskContext context) throws Exception;
 
   void cancel();
 

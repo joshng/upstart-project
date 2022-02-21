@@ -6,7 +6,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Streams;
 import upstart.b4.B4Function;
-import upstart.b4.B4TargetContext;
+import upstart.b4.B4TaskContext;
 import upstart.commandExecutor.CommandPolicy;
 import upstart.commandExecutor.CommandResult;
 import upstart.util.exceptions.UncheckedIO;
@@ -49,12 +49,12 @@ public class KubeApplyFunction implements B4Function<KubeApplyFunction.KubeApply
   }
 
   @Override
-  public void clean(KubeApplyConfig config, B4TargetContext context) throws Exception {
+  public void clean(KubeApplyConfig config, B4TaskContext context) throws Exception {
     config.deleteResources(context);
   }
 
   @Override
-  public void run(KubeApplyConfig config, B4TargetContext context) throws Exception {
+  public void run(KubeApplyConfig config, B4TaskContext context) throws Exception {
     if (!context.activePhases().doClean) clean(config, context);
 
     abstract class ReadinessChecker implements BooleanSupplier {
@@ -161,8 +161,6 @@ public class KubeApplyFunction implements B4Function<KubeApplyFunction.KubeApply
       }
     }
 
-
-
     class JobReadiness extends ReadinessChecker {
       private final LabelSelector labelSelector;
       private final String name;
@@ -204,7 +202,7 @@ public class KubeApplyFunction implements B4Function<KubeApplyFunction.KubeApply
       }
     }
 
-    context.run(config.kubectlExecutable(), "apply", "--force", "-f", config.spec());
+    context.effectCommand(config.kubectlExecutable(), "apply", "--force", "-f", config.spec());
 
     List<BooleanSupplier> readinessTests = Streams.concat(
               Streams.stream(config.deployment().map(p -> new DeploymentReadiness(p))),
@@ -245,22 +243,25 @@ public class KubeApplyFunction implements B4Function<KubeApplyFunction.KubeApply
               Streams.stream(job().map(job -> "job/" + job.name()))
       );
     }
-    default void deleteResources(B4TargetContext context) {
+    default void deleteResources(B4TaskContext context) {
       allPodResources().forEach(pod -> deleteResource(pod, context));
     }
 
-    default void deleteResource(String resource, B4TargetContext context) {
-      CommandResult.Completed deletionResult = context.run(kubectlExecutable(),
-              cmd -> cmd.addArgs("-n", namespace(), "--force", "--grace-period=0", "delete", resource)
-                      .policy(CommandPolicy.RequireCompleted)
-      );
-      if (deletionResult.exitCode() != 0) {
-        if (context.requestedPhases().isPresent() && context.activePhases().doClean) {
-          context.sayFormatted("Warning: unable to delete %s\n%s", resource, deletionResult.description());
+    default void deleteResource(String resource, B4TaskContext context) {
+      context.effect("Delete resource", resource).run(() -> {
+        CommandResult.Completed deletionResult = context.alwaysRunCommand(kubectlExecutable(), cmd ->
+                cmd.addArgs("-n", namespace(), "--force", "--grace-period=0", "delete", resource)
+                        .policy(CommandPolicy.RequireCompleted)
+        );
+        if (deletionResult.exitCode() != 0) {
+          if (context.requestedPhases().isPresent() && context.activePhases().doClean) {
+            context.sayFormatted("Warning: unable to delete %s\n%s", resource, deletionResult.description());
+          }
+        } else {
+          context.say("DONE: deleted", resource);
         }
-      } else {
-        context.say("DONE: deleted", resource);
-      }
+      });
+
     }
 
     @Value.Immutable

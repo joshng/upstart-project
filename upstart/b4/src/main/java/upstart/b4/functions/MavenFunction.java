@@ -1,8 +1,7 @@
 package upstart.b4.functions;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import upstart.b4.B4Function;
-import upstart.b4.B4TargetContext;
+import upstart.b4.B4TaskContext;
 import upstart.b4.TargetInvocation;
 import org.immutables.value.Value;
 import upstart.config.annotations.DeserializedImmutable;
@@ -15,17 +14,17 @@ import java.util.Set;
 public class MavenFunction implements B4Function<MavenFunction.MavenBuildConfig> {
 
   @Override
-  public void clean(MavenBuildConfig config, B4TargetContext context) throws Exception {
+  public void clean(MavenBuildConfig config, B4TaskContext context) throws Exception {
     invoke(TargetInvocation.Phases.CleanOnly, config, context);
   }
 
   @Override
-  public void run(MavenBuildConfig config, B4TargetContext context) throws Exception {
+  public void run(MavenBuildConfig config, B4TaskContext context) throws Exception {
     invoke(TargetInvocation.Phases.DirtyRun, config, context);
   }
 
-  private void invoke(TargetInvocation.Phases phase, MavenBuildConfig config, B4TargetContext context) {
-    context.run(config.mavenExecutable(), builder -> builder.addAllArgs(config.fullMavenCommand(phase, config.projects())));
+  private void invoke(TargetInvocation.Phases phase, MavenBuildConfig config, B4TaskContext context) {
+    context.effectCommand(config.mavenExecutable(), builder -> builder.addAllArgs(config.fullMavenCommand(phase)));
   }
 
   @Override
@@ -45,7 +44,7 @@ public class MavenFunction implements B4Function<MavenFunction.MavenBuildConfig>
     double threadsPerCore();
 
     @Value.Default
-    default List<String> fullMavenCommand(TargetInvocation.Phases phases, Collection<String> selectedProjects) {
+    default List<String> fullMavenCommand(TargetInvocation.Phases phases) {
       List<String> args = new ArrayList<>();
       if (skipTests()) args.add("-DskipTests");
       if (phases.doClean) {
@@ -58,7 +57,7 @@ public class MavenFunction implements B4Function<MavenFunction.MavenBuildConfig>
           args.addAll(goals());
         }
       }
-      if (!buildAllProjects() && !selectedProjects.isEmpty()) {
+      if (!buildAllProjects() && !projects().isEmpty()) {
         args.add("-pl");
         args.add(String.join(",", projects()));
         args.add("-am");

@@ -9,12 +9,12 @@ public class NoopFunction implements UnconfiguredFunction {
   }
 
   @Override
-  public void clean(Nothing config, B4TargetContext context) throws Exception {
+  public void clean(Nothing config, B4TaskContext context) throws Exception {
 
   }
 
   @Override
-  public void run(B4TargetContext context) {
+  public void run(B4TaskContext context) {
   }
 
   @Override

@@ -3,7 +3,7 @@ package upstart.b4.config;
 import com.google.common.reflect.TypeToken;
 import com.google.inject.Module;
 import upstart.b4.B4Function;
-import upstart.b4.B4TargetContext;
+import upstart.b4.B4TaskContext;
 import upstart.b4.TargetName;
 import upstart.b4.TargetSpec;
 import upstart.util.Nothing;
@@ -41,7 +41,7 @@ public abstract class FunctionConfig {
 
   private static Type findConfigType() {
     try {
-      return B4Function.class.getDeclaredMethod("run", Object.class, B4TargetContext.class)
+      return B4Function.class.getDeclaredMethod("run", Object.class, B4TaskContext.class)
               .getGenericParameterTypes()[0];
     } catch (NoSuchMethodException e) {
       throw new AssertionError(e);

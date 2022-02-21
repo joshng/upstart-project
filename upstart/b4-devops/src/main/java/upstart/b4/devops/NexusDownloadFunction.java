@@ -5,7 +5,7 @@ import com.google.common.cache.CacheBuilder;
 import io.upstartproject.hojack.Size;
 import io.upstartproject.hojack.SizeUnit;
 import upstart.b4.B4Function;
-import upstart.b4.B4TargetContext;
+import upstart.b4.B4TaskContext;
 import upstart.b4.TargetName;
 import upstart.b4.functions.MavenConfig;
 import upstart.util.MoreStrings;
@@ -49,12 +49,12 @@ public class NexusDownloadFunction implements B4Function<NexusDownloadFunction.D
   }
 
   @Override
-  public void clean(DownloadConfig config, B4TargetContext context) throws Exception {
+  public void clean(DownloadConfig config, B4TaskContext context) throws Exception {
     Files.deleteIfExists(config.to());
   }
 
   @Override
-  public void run(DownloadConfig config, B4TargetContext context) throws Exception {
+  public void run(DownloadConfig config, B4TaskContext context) throws Exception {
     Files.createDirectories(config.to().normalize().getParent());
 
     NexusCredentialStore.Creds creds = config.credentials().orElseGet(() -> credentials.get(config.mavenRepoId()));
@@ -69,7 +69,7 @@ public class NexusDownloadFunction implements B4Function<NexusDownloadFunction.D
             .build();
 
     String description = config.to().toString() + "\n  from " + config.url();
-    context.announce("Downloading from nexus:", description).run(() -> {
+    context.effect("Downloading from nexus:", description).run(() -> {
       Request req = new Request.Builder()
               .get()
               .url(config.url())
@@ -110,19 +110,19 @@ public class NexusDownloadFunction implements B4Function<NexusDownloadFunction.D
   }
 
   static class NexusCredentialStore {
-    private static com.google.common.cache.Cache<String, Creds> creds = CacheBuilder.newBuilder().build();
+    private static final com.google.common.cache.Cache<String, Creds> CREDS = CacheBuilder.newBuilder().build();
     private final MavenConfig mavenConfig;
-    private final B4TargetContext context;
+    private final B4TaskContext context;
 
     @Inject
-    NexusCredentialStore(MavenConfig mavenConfig, B4TargetContext context) {
+    NexusCredentialStore(MavenConfig mavenConfig, B4TaskContext context) {
       this.mavenConfig = mavenConfig;
       this.context = context;
     }
 
     public Creds get(String repoId) {
       try {
-        return creds.get(repoId, () -> {
+        return CREDS.get(repoId, () -> {
           String args = String.format(
                   // this bizarre expression syntax, with the interior curly-braces, tricks the
                   // help:evaluate task into supporting multiple expressions in one invocation.
@@ -131,7 +131,7 @@ public class NexusDownloadFunction implements B4Function<NexusDownloadFunction.D
                   + "${settings.servers.%1$s.password -DforceStdout -q",
                   repoId
           );
-          String usernamePassword = context.getQuietly(() -> context.run(mavenConfig.mvnExecutable(), builder ->
+          String usernamePassword = context.getQuietly(() -> context.alwaysRunCommand(mavenConfig.mvnExecutable(), builder ->
                   builder.addSpaceSeparatedArgs(args)
                           .captureOutputString()
           ).outputString());

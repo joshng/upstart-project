@@ -8,6 +8,7 @@ import upstart.util.concurrent.Promise;
 
 import javax.inject.Inject;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 class TargetRunner {
   private static final String ABORTED_STATUS = B4Console.unhealthyHighlight("aborted ");
@@ -15,17 +16,17 @@ class TargetRunner {
   public static final String DONE_STATUS = B4Console.healthyHighlight("  done  ");
   public static final String PENDING_STATUS = B4Console.noticeHighlight("running..");
   private static final String SKIPPED_STATUS = B4Console.noticeLowlight("skipped ");
-  private final B4TargetContext context;
+  private final B4TaskContext context;
   private final Object config;
   private final B4Function<Object> function;
   private final Promise<Nothing> cleanFuture = new Promise<>();
   private final Promise<Nothing> runFuture = new Promise<>();
-  private volatile boolean cleanStarted = false;
-  private volatile boolean runStarted = false;
+  private final AtomicBoolean cleanStarted = new AtomicBoolean(false);
+  private final AtomicBoolean runStarted = new AtomicBoolean(false);
 
   @SuppressWarnings("unchecked")
   @Inject
-  TargetRunner(@PrivateBinding Object config, B4Function function, B4TargetContext context) {
+  TargetRunner(@PrivateBinding Object config, B4Function function, B4TaskContext context) {
     this.context = context;
     this.config = config;
     this.function = function;
@@ -44,14 +45,20 @@ class TargetRunner {
   }
 
   CompletableFuture<?> clean(Object ignored) {
-    cleanStarted = true;
-    return completePromise(cleanFuture, () -> function.clean(config, context));
+    if (!cleanStarted.getAndSet(true)) {
+      completePromise(cleanFuture, () -> function.clean(config, context));
+    }
+    return cleanFuture;
   }
 
   CompletableFuture<?> run(Object ignored) {
-    runStarted = true;
-    return completePromise(runFuture, () -> function.run(config, context))
-            .thenRun(() -> context.say("DONE:", displayName()));
+    if (!runStarted.getAndSet(true)) {
+      return completePromise(runFuture, () -> function.run(config, context))
+              .thenRun(() -> {
+                if (!context.isDryRun()) context.say("DONE:", displayName());
+              });
+    }
+    return runFuture;
   }
 
   private Promise<Nothing> completePromise(Promise<Nothing> promise, ThrowingRunnable completion) {
@@ -85,8 +92,8 @@ class TargetRunner {
 
   @Override
   public String toString() {
-    String cleanStatus = describeStatus(context.activePhases().doClean, cleanStarted, cleanFuture);
-    String runStatus = describeStatus(context.activePhases().doRun, runStarted, runFuture);
+    String cleanStatus = describeStatus(context.activePhases().doClean, cleanStarted.get(), cleanFuture);
+    String runStatus = describeStatus(context.activePhases().doRun, runStarted.get(), runFuture);
     return String.format("%s\n cln:%s \n run:%s ", targetInstanceId(), cleanStatus, runStatus);
   }
 

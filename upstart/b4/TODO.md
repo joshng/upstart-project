@@ -1,5 +1,4 @@
 - [ ] tasks should accept short-flags, which could be mapped in the TargetSpec
-- [ ] support flag for dry-run (show commands without running them)
 - [ ] docker tags shouldn't use `latest` (but what should they use?)
    - [ ] <sha>[-dirty]
 - [ ] output should be teed to a logfile
@@ -11,7 +10,8 @@
    - display plan details and prompt for confirmation
    - support editing a constructed graph/config interactively
 
-  
+
+- [x] support flag for dry-run (show commands without running them)
 - [x] deployments should support either prod-version (from helm-chart) or local build
 - [x] clean
 - [x] force (skip prereqs)

@@ -330,6 +330,11 @@ public class B4Application {
     }
 
     @Value.Default
+    default boolean dryRun() {
+      return false;
+    }
+
+    @Value.Default
     default Predicate<TargetInstanceId> targetConfigInclusion() {
       return targetInstanceId -> true;
     }

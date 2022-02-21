@@ -2,7 +2,7 @@ package upstart.b4.functions;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import upstart.b4.B4Function;
-import upstart.b4.B4TargetContext;
+import upstart.b4.B4TaskContext;
 import org.immutables.value.Value;
 
 import java.nio.file.Path;
@@ -14,12 +14,12 @@ import java.util.Optional;
 public class ProcessExecFunction implements B4Function<ProcessExecFunction.ProcessExecConfig> {
 
   @Override
-  public void clean(ProcessExecConfig config, B4TargetContext context) {
+  public void clean(ProcessExecConfig config, B4TaskContext context) {
     config.cleanCommand().ifPresent(cleanCommand -> cleanCommand.run(context));
   }
 
   @Override
-  public void run(ProcessExecConfig config, B4TargetContext context) {
+  public void run(ProcessExecConfig config, B4TaskContext context) {
     config.run(context);
   }
 
@@ -39,8 +39,8 @@ public class ProcessExecFunction implements B4Function<ProcessExecFunction.Proce
 
     Optional<ProcessExecConfig> cleanCommand();
 
-    default void run(B4TargetContext context) {
-      context.run(executable(), b -> {
+    default void run(B4TaskContext context) {
+      context.effectCommand(executable(), b -> {
         if (!environment().isEmpty()) {
           if (inheritParentEnvironment()) b.inheritParentEnvironment();
           b.putAllEnvironment(environment());

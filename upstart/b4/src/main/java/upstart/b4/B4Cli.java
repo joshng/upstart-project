@@ -268,6 +268,9 @@ public class B4Cli {
     @Option(names = {"-F", "--full-graph"}, description = "Retain no-op targets in execution graph (by default, symbolic targets will be pruned from the graph)", defaultValue = "false", negatable = true)
     boolean fullGraph = false;
 
+    @Option(names = {"-n", "--dry-run"}, description = "Dry run: announce steps that would be performed, but do nothing", defaultValue = "false", negatable = true)
+    boolean dryRun = false;
+
     @Option(names = { "-h", "--help" }, usageHelp = true, description = "Display this message, and describe all tasks and options related to the given @|yellow <commands>|@")
     boolean helpRequested = false;
 
@@ -289,6 +292,7 @@ public class B4Cli {
               .pruneTargetGraph(!fullGraph)
               .targetConfigInclusion(patternPredicate(skippedTargetPatterns, false))
               .targetExecutionInclusion(patternPredicate(includedTargetPatterns, true))
+              .dryRun(dryRun)
               .build();
     }
   }

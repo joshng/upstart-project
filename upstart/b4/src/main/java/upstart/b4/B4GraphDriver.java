@@ -108,6 +108,7 @@ public class B4GraphDriver extends ExecutionThreadService {
   }
 
   private void logStatus(String message, Stopwatch stopwatch) {
+    if (app.baseExecutionConfig().dryRun()) message += B4TaskContext.DRYRUN_LOG_MARKER;
     if (statusLogEnabled) B4.WARN_LOG.info(message + "{}\n(after {})", console.renderHighlightPlaceholders(renderStatusGraph()), stopwatch);
   }
 

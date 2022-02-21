@@ -50,7 +50,7 @@ public abstract class TargetInvocation implements TargetExecutionConfig {
 
   @Value.Check
   void checkConfigs() {
-    if (!spec().configType() .isPresent() && hasConfigFlags()) {
+    if (spec().configType().isEmpty() && hasConfigFlags()) {
       throw new ConfigMappingException(String.format("Target '%s' does not accept arguments:\n%s", id(), configString()));
     }
   }

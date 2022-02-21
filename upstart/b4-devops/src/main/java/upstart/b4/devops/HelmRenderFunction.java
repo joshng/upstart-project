@@ -2,7 +2,7 @@ package upstart.b4.devops;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import upstart.b4.B4Function;
-import upstart.b4.B4TargetContext;
+import upstart.b4.B4TaskContext;
 import upstart.util.PairStream;
 import org.immutables.value.Value;
 
@@ -25,35 +25,37 @@ public class HelmRenderFunction implements B4Function<HelmRenderFunction.HelmCon
   }
 
   @Override
-  public void clean(HelmConfig config, B4TargetContext context) throws Exception {
+  public void clean(HelmConfig config, B4TaskContext context) throws Exception {
     Files.deleteIfExists(config.outputSpec());
   }
 
   @Override
-  public void run(HelmConfig config, B4TargetContext context) throws Exception {
+  public void run(HelmConfig config, B4TaskContext context) throws Exception {
     Path parent = config.outputSpec().normalize().getParent();
     if (! parent.toFile().exists()) {
       Files.createDirectories(parent);
     }
 
-    String spec = context.run(config.helmExecutable(),
+    String spec = context.alwaysRunCommand(config.helmExecutable(),
             builder -> builder
                     .addArgs("template","--namespace", config.namespace())
                     .addArgs("--name-template", config.releaseName())
                     .addArg(config.chart())
                     .addArgs(PairStream.of(config.values()).flatMap(p -> setValue(config, p.getKey(), p.getValue())))
                     .captureOutputString()
-    ) .outputString();
+    ).outputString();
 
-    try (Writer out = Files.newBufferedWriter(
-            config.outputSpec(),
-            StandardCharsets.UTF_8,
-            StandardOpenOption.CREATE,
-            StandardOpenOption.WRITE,
-            StandardOpenOption.TRUNCATE_EXISTING
-    )) {
-      out.write(spec);
-    }
+    context.effect("Writing rendered helm-chart to", config.outputSpec().toString()).run(() -> {
+      try (Writer out = Files.newBufferedWriter(
+              config.outputSpec(),
+              StandardCharsets.UTF_8,
+              StandardOpenOption.CREATE,
+              StandardOpenOption.WRITE,
+              StandardOpenOption.TRUNCATE_EXISTING
+      )) {
+        out.write(spec);
+      }
+    });
   }
 
   @Override

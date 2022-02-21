@@ -30,26 +30,35 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
-public class B4TargetContext {
+public class B4TaskContext {
+  public static final String DRYRUN_LOG_MARKER = "[dryrun]";
   private static final AtomicInteger COMMAND_COUNTER = new AtomicInteger();
-  private static final String MULTILINE_LOG_PREFIX = "\n| ";
-  private static final String MULTILINE_LOG_BORDER = "\n-------------------------------------------------------------------------";
-  private final B4StateStore stateStore;
+  private static final String MULTILINE_LOG_PREFIX = System.lineSeparator() + "| ";
+  private static final String MULTILINE_LOG_BORDER = System.lineSeparator() + "-------------------------------------------------------------------------";
   private final Logger log;
   private final List<CommandSpec<?>> activeCommands = new ArrayList<>();
   private final TargetInvocation invocation;
   private final CommandExecutor commandExecutor;
   private final CountDownLatch cancelLatch = new CountDownLatch(1);
+  private final boolean isDryRun;
   private volatile boolean canceled = false;
   private volatile boolean logEnabled;
 
   @Inject
-  public B4TargetContext(TargetInvocation invocation, CommandExecutorSPI realCommandExecutor, B4StateStore stateStore) {
+  public B4TaskContext(B4Application application, TargetInvocation invocation, CommandExecutorSPI realCommandExecutor) {
     this.invocation = invocation;
     this.commandExecutor = new CommandExecutor(new WrappedCommandExecutor(realCommandExecutor));
-    this.stateStore = stateStore;
     this.log = LoggerFactory.getLogger(invocation.id().displayName());
     logEnabled = invocation.effectiveVerbosity().logCommands;
+    isDryRun = application.baseExecutionConfig().dryRun();
+  }
+
+  public String taskInstanceId() {
+    return invocation.id().instanceId();
+  }
+
+  public boolean isDryRun() {
+    return isDryRun;
   }
 
   public void yieldIfCanceled() {
@@ -94,11 +103,20 @@ public class B4TargetContext {
     return commandExecutor;
   }
 
-  public CommandResult.ZeroExitCode run(String executable, String... args) {
-    return run(executable, builder -> builder.addArgs(args));
+  public void effectCommand(String executable, String... args) {
+    effectCommand(executable, builder -> builder.addArgs(args));
   }
 
-  public <R extends CommandResult> R run(String executable, Function<CommandSpecBuilder<CommandResult.ZeroExitCode>, CommandSpecBuilder<R>> builder) {
+  public void effectCommand(String executable, Function<CommandSpecBuilder<CommandResult.ZeroExitCode>, CommandSpecBuilder<CommandResult.ZeroExitCode>> builder) {
+    if (!isDryRun) {
+      alwaysRunCommand(executable, builder);
+    } else {
+      say(DRYRUN_LOG_MARKER, builder.apply(CommandSpec.builder(executable)).build().commandLine());
+    }
+  }
+
+
+  public <R extends CommandResult> R alwaysRunCommand(String executable, Function<CommandSpecBuilder<CommandResult.ZeroExitCode>, CommandSpecBuilder<R>> builder) {
     return commandExecutor.run(executable, b -> {
       if (verbosity().logOutput) b.stdoutConsumer(new CommandOutputConsumer());
       return builder.apply(b);
@@ -141,10 +159,10 @@ public class B4TargetContext {
     say(String.join(" ", tokens));
   }
 
-  public B4TargetContext say(String message) {
+  public B4TaskContext say(String message) {
     if (isLogEnabled()) {
-      if (message.contains("\n")) {
-        message = MULTILINE_LOG_BORDER + MULTILINE_LOG_PREFIX +  message.replaceAll("\n", MULTILINE_LOG_PREFIX) +  MULTILINE_LOG_BORDER;
+      if (message.contains(System.lineSeparator())) {
+        message = MULTILINE_LOG_BORDER + MULTILINE_LOG_PREFIX + message.replaceAll(System.lineSeparator(), MULTILINE_LOG_PREFIX) + MULTILINE_LOG_BORDER;
       }
       log.info(message);
     }
@@ -177,30 +195,29 @@ public class B4TargetContext {
     return logEnabled && log.isInfoEnabled();
   }
 
-  public Announcer announce(String... tokens) {
-    return new Announcer(String.join(" ", tokens));
+  public Effect effect(String... tokens) {
+    return new RealEffect(String.join(" ", tokens));
   }
 
-  public class Announcer {
+  private class RealEffect implements Effect {
     private final String message;
 
-    public Announcer(String message) {
+    public RealEffect(String message) {
       this.message = message;
     }
 
-    public <E extends Exception> void run(Fallible<E> block) throws E {
-      get(() -> {
-        block.runOrThrow();
-        return null;
-      });
-    }
-
-    public <T, E extends Exception> T get(FallibleSupplier<T, E> block) throws E {
+    @Override
+    public <T, E extends Exception> T get(FallibleSupplier<T, E> block, T dryRunResult) throws E {
       yieldIfCanceled();
-      say(message);
-      T result = block.getOrThrow();
-      say("DONE:", message);
-      return result;
+      if (!isDryRun) {
+        say(message);
+        T result = block.getOrThrow();
+        say("DONE:", message);
+        return result;
+      } else {
+        say(DRYRUN_LOG_MARKER, message);
+        return dryRunResult;
+      }
     }
   }
 
@@ -221,5 +238,16 @@ public class B4TargetContext {
     public Void getResult() {
       return null;
     }
+  }
+
+  public interface Effect {
+    default <E extends Exception> void run(Fallible<E> block) throws E {
+      get(() -> {
+        block.runOrThrow();
+        return null;
+      }, null);
+    }
+
+    <T, E extends Exception> T get(FallibleSupplier<T, E> block, T dryRunResult) throws E;
   }
 }

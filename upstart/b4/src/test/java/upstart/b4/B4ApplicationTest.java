@@ -57,7 +57,7 @@ class B4ApplicationTest {
 
     application.startAsync().awaitTerminated();
 
-    verify(mock).run(configCaptor.capture(), Mockito.any(B4TargetContext.class));
+    verify(mock).run(configCaptor.capture(), Mockito.any(B4TaskContext.class));
 
     FakeFunction.FakeConfig config = configCaptor.getValue();
 
@@ -74,7 +74,7 @@ class B4ApplicationTest {
 
     application.startAsync().awaitTerminated();
 
-    verify(mock).run(configCaptor.capture(), Mockito.any(B4TargetContext.class));
+    verify(mock).run(configCaptor.capture(), Mockito.any(B4TaskContext.class));
 
     FakeFunction.FakeConfig config = configCaptor.getValue();
 
