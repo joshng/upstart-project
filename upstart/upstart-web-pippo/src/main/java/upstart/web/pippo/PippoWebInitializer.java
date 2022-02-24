@@ -2,7 +2,7 @@ package upstart.web.pippo;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
-import upstart.util.Tuple;
+import upstart.util.annotations.Tuple;
 import org.immutables.value.Value;
 import ro.pippo.core.Application;
 

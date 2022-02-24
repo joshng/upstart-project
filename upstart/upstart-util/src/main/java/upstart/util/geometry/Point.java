@@ -1,9 +1,9 @@
 package upstart.util.geometry;
 
-import upstart.util.Tuple;
 import org.immutables.value.Value;
+import upstart.util.annotations.Tuple;
 
-@Value.Immutable
+//@Value.Immutable
 @Tuple
 public interface Point extends Translatable<Point> {
   Point ORIGIN = Point.of(0, 0);

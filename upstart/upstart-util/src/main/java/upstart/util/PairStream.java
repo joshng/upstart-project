@@ -339,6 +339,10 @@ public class PairStream<K, V> implements Stream<Map.Entry<K, V>> {
     return stream.reduce(identity, accumulator, combiner);
   }
 
+  public <U> U reduce(U identity, TriFunction<? super U, ? super K, ? super V, ? extends U> accumulator) {
+    return stream.reduce(identity, (u, pair) -> accumulator.apply(u, pair.getKey(), pair.getValue()), (a, b) -> { throw new UnsupportedOperationException();});
+  }
+
   @Override
   public <R> R collect(Supplier<R> supplier, BiConsumer<R, ? super Map.Entry<K, V>> accumulator, BiConsumer<R, R> combiner) {
     return stream.collect(supplier, accumulator, combiner);

@@ -25,7 +25,7 @@ import upstart.util.Optionals;
 import upstart.util.PairStream;
 import upstart.util.Reflect;
 import upstart.util.exceptions.ThrowingFunction;
-import upstart.util.Tuple;
+import upstart.util.annotations.Tuple;
 import upstart.util.concurrent.CompletableFutures;
 import upstart.util.concurrent.Promise;
 import com.typesafe.config.Config;

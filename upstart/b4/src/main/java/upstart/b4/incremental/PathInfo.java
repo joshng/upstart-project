@@ -1,6 +1,6 @@
 package upstart.b4.incremental;
 
-import upstart.util.Tuple;
+import upstart.util.annotations.Tuple;
 import upstart.util.exceptions.UncheckedIO;
 import org.immutables.value.Value;
 

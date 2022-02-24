@@ -10,10 +10,10 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Streams;
 import com.google.common.util.concurrent.AbstractService;
 import io.upstartproject.avro.PackedRecord;
-import upstart.util.Identifier;
 import upstart.util.Optionals;
 import upstart.util.PairStream;
-import upstart.util.Tuple;
+import upstart.util.annotations.Identifier;
+import upstart.util.annotations.Tuple;
 import upstart.util.concurrent.CompletableFutures;
 import upstart.util.concurrent.Promise;
 import upstart.util.exceptions.UncheckedIO;
@@ -857,7 +857,6 @@ public class AvroCodec extends AbstractService {
     }
   }
 
-  @Value.Immutable(builder = false)
   @Identifier
   abstract static class SchemaDescriptorImpl implements SchemaDescriptor {
 

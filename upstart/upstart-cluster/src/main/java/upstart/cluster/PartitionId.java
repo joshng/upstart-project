@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonValue;
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
 import com.google.common.primitives.Ints;
-import upstart.util.Identifier;
+import upstart.util.annotations.Identifier;
 import org.immutables.value.Value;
 
 @Value.Immutable(intern = true)

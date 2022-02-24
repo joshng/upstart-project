@@ -1,7 +1,7 @@
 package upstart.cluster.zk;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import upstart.util.Identifier;
+import upstart.util.annotations.Identifier;
 import upstart.util.StringIdentifier;
 import org.immutables.value.Value;
 

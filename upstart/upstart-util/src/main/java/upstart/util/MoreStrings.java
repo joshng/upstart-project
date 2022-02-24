@@ -43,10 +43,10 @@ public class MoreStrings {
   }
 
   public static String interpolateTokens(String template, Pattern tokenPattern, Function<Matcher, String> tokenReplacement) {
-    return interpolateTokens(template, tokenPattern, new StringBuffer(template.length()), tokenReplacement).toString();
+    return interpolateTokens(template, tokenPattern, new StringBuilder(template.length()), tokenReplacement).toString();
   }
 
-  public static StringBuffer interpolateTokens(String template, Pattern tokenPattern, StringBuffer buffer, Function<Matcher, String> tokenReplacement) {
+  public static StringBuilder interpolateTokens(String template, Pattern tokenPattern, StringBuilder buffer, Function<Matcher, String> tokenReplacement) {
     Matcher matcher = tokenPattern.matcher(template);
     while (matcher.find()) {
       String replacement = tokenReplacement.apply(matcher);

@@ -1,6 +1,6 @@
 package upstart.util.geometry;
 
-import upstart.util.Tuple;
+import upstart.util.annotations.Tuple;
 import org.immutables.value.Value;
 
 import static com.google.common.base.Preconditions.checkArgument;

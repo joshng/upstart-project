@@ -2,7 +2,7 @@ package upstart.cluster;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
-import upstart.util.Tuple;
+import upstart.util.annotations.Tuple;
 import org.immutables.value.Value;
 
 @Value.Immutable

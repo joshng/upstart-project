@@ -9,7 +9,7 @@ import com.google.inject.multibindings.MapBinder;
 import com.google.inject.util.Types;
 import upstart.config.UpstartModule;
 import upstart.services.ComposableService;
-import upstart.util.ImmutableNumbered;
+import upstart.guice.ImmutableNumbered;
 
 import java.lang.reflect.ParameterizedType;
 

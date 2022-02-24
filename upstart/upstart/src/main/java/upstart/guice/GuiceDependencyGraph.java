@@ -182,8 +182,10 @@ public class GuiceDependencyGraph {
         ).flatMapValues((target, dd) -> dd.computeDependencies(target).map(resolver::resolve));
 
         resolvedBindings = PairStream.of(
-                Stream.concat(externalDependencies.stream().map(ed -> ed.resolve(resolver)),
-                        dynamicDeps)
+                Stream.concat(
+                        externalDependencies.stream().map(ed -> ed.resolve(resolver)),
+                        dynamicDeps
+                )
         ).toImmutableSetMultimap();
       }
     }

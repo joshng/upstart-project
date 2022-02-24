@@ -2,7 +2,7 @@ package upstart.config;
 
 import com.google.inject.TypeLiteral;
 import upstart.config.annotations.ConfigPath;
-import upstart.util.Tuple;
+import upstart.util.annotations.Tuple;
 import com.typesafe.config.ConfigUtil;
 import org.immutables.value.Value;
 

@@ -6,7 +6,7 @@ import upstart.b4.config.TargetConfigurator;
 import upstart.config.HojackConfigProvider;
 import upstart.util.Optionals;
 import upstart.util.StringIdentifier;
-import upstart.util.Tuple;
+import upstart.util.annotations.Tuple;
 import upstart.util.exceptions.UncheckedIO;
 import com.typesafe.config.Config;
 import org.immutables.value.Value;

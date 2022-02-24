@@ -85,7 +85,7 @@ public class Reflect {
   }
 
   public static boolean isPossiblyLambda(Class<? extends Serializable> cls) {
-    return cls.isSynthetic() && cls.getSimpleName().contains("$$Lambda$");
+    return cls.isSynthetic() && cls.getSimpleName().contains("$lambda");
   }
 
   public static <T extends AccessibleObject> T setAccessible(T accessible) {
@@ -136,9 +136,48 @@ public class Reflect {
     return collectInterfaces(type, new HashSet<>());
   }
 
-  public static <A extends Annotation> Stream<A> findMetaAnnotations(Class<A> annotationType, Class<?> target) {
+  public static <A extends Annotation> Stream<A> findSuperAnnotations(Class<A> annotationType, Class<?> target) {
     return allSupertypesAndInterfaces(target)
             .flatMap(type -> Stream.of(type.getAnnotationsByType(annotationType)));
+  }
+
+  public static <A extends Annotation> Stream<A> findMetaAnnotations(Class<A> annotationType, Class<?> target) {
+    return MoreStreams.filter(allReachableMetaAnnotations(target), annotationType);
+  }
+
+  public static Stream<Annotation> allReachableMetaAnnotations(Class<?> target) {
+    Set<Annotation> visited = new HashSet<>();
+    return allSupertypesAndInterfaces(target)
+            .flatMap(type -> allMetaAnnotations(type, visited));
+  }
+
+  public static <A extends Annotation> Stream<A> findMetaAnnotations(Class<A> annotationType, AnnotatedElement target) {
+    return MoreStreams.filter(allMetaAnnotations(target), annotationType);
+  }
+
+  public static Stream<Annotation> allMetaAnnotations(AnnotatedElement target) {
+    return allMetaAnnotations(target, new HashSet<>());
+  }
+
+  private static Stream<Annotation> allMetaAnnotations(AnnotatedElement target, Set<Annotation> visited) {
+    return Stream.of(target.getDeclaredAnnotations())
+            .filter(Reflect::notJavaLangAnnotation)
+            .flatMap(anno -> allMetaAnnotations(anno, visited));
+  }
+
+  private static Stream<Annotation> allMetaAnnotations(Annotation target, Set<Annotation> visited) {
+    if (visited.add(target)) {
+      return MoreStreams.prepend(target,
+                                 Stream.of(target.annotationType().getDeclaredAnnotations())
+                                         .flatMap(anno -> allMetaAnnotations(anno, visited))
+      );
+    } else {
+      return Stream.empty();
+    }
+  }
+
+  private static boolean notJavaLangAnnotation(Annotation annotation) {
+    return !annotation.annotationType().getName().startsWith("java.lang.annotation.");
   }
 
   private static Stream<Class<?>> collectInterfaces(Class<?> type, Set<Class<?>> visited) {

@@ -10,7 +10,6 @@ import javax.inject.Singleton;
 import java.util.Set;
 
 @Singleton
-@ServiceLifecycle(ServiceLifecycle.Phase.Infrastructure)
 public class JavalinWebServer extends IdleService {
   private final WebServerConfig serverConfig;
   private final Set<JavalinWebInitializer> plugins;
@@ -24,8 +23,11 @@ public class JavalinWebServer extends IdleService {
 
   @Override
   protected void startUp() throws Exception {
-    javalin = Javalin.create(config -> plugins.forEach(
-            plugin -> plugin.initializeWeb(config))
+    javalin = Javalin.create(
+            config -> {
+              config.contextPath = serverConfig.contextPath().toString();
+              plugins.forEach(plugin -> plugin.initializeWeb(config));
+            }
     ).start(serverConfig.host(), serverConfig.port());
   }
 

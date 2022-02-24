@@ -9,7 +9,7 @@ import upstart.b4.B4TaskContext;
 import upstart.b4.TargetName;
 import upstart.b4.functions.MavenConfig;
 import upstart.util.MoreStrings;
-import upstart.util.Tuple;
+import upstart.util.annotations.Tuple;
 import upstart.util.concurrent.Promise;
 import upstart.util.concurrent.Throttler;
 import okhttp3.Cache;

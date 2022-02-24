@@ -15,7 +15,6 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 /**
  * Declares the root-path for values to be populated from the {@link UpstartConfig} into the annotated structure.
  * @see {@link UpstartModule#bindConfig}
- * @see {@link UpstartModule#bindPackageConfigs}
  */
 @Target({TYPE, METHOD})
 @Retention(RUNTIME)

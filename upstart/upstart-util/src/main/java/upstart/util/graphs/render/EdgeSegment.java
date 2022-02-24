@@ -1,6 +1,6 @@
 package upstart.util.graphs.render;
 
-import upstart.util.Tuple;
+import upstart.util.annotations.Tuple;
 import upstart.util.geometry.Point;
 import upstart.util.geometry.Rectangle;
 import org.immutables.value.Value;

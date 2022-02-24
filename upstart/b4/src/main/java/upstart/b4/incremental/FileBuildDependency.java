@@ -1,6 +1,6 @@
 package upstart.b4.incremental;
 
-import upstart.util.Tuple;
+import upstart.util.annotations.Tuple;
 import org.immutables.value.Value;
 
 import java.nio.file.Path;

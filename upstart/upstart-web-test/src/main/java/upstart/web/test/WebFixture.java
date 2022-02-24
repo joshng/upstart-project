@@ -1,5 +1,6 @@
 package upstart.web.test;
 
+import io.restassured.RestAssured;
 import upstart.test.AvailablePortAllocator;
 import upstart.test.UpstartTestBuilder;
 import upstart.web.WebServerConfig;
@@ -12,6 +13,10 @@ import static io.restassured.RestAssured.given;
 public class WebFixture {
   private final RequestSpecification requestSpecification;
   private final int port;
+
+  static {
+    RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
+  }
 
   @Inject
   WebFixture(WebServerConfig config) {

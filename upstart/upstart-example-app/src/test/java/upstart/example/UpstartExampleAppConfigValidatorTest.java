@@ -6,7 +6,7 @@ import upstart.config.EnvironmentConfigValidatorTest;
 public class UpstartExampleAppConfigValidatorTest extends EnvironmentConfigValidatorTest {
   @Override
   protected void configure() {
-    install(CountReportingService.ReportingModule.class);
+    install(UpstartExampleApp.class);
   }
 
   @Override

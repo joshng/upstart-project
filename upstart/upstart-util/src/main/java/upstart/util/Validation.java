@@ -40,7 +40,7 @@ public abstract class Validation {
 
   public void throwIllegalArguments() {
     throwFailures(messages -> new IllegalArgumentException(messages.stream()
-            .collect(Collectors.joining("\n", "Validation failure(s):\n", null))));
+            .collect(Collectors.joining("\n", "Validation failure(s):\n", ""))));
   }
 
   public abstract Validation addError(String message);

@@ -1,7 +1,7 @@
 package upstart.guice;
 
 import com.google.inject.BindingAnnotation;
-import upstart.util.Tuple;
+import upstart.util.annotations.Tuple;
 import org.immutables.value.Value;
 
 import java.lang.annotation.ElementType;

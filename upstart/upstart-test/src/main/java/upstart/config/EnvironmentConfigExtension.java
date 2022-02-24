@@ -5,7 +5,7 @@ import io.upstartproject.hojack.HojackConfigMapper;
 import upstart.test.ExtensionContexts;
 import upstart.test.SingletonParameterResolver;
 import upstart.util.Reflect;
-import upstart.util.Tuple;
+import upstart.util.annotations.Tuple;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import org.immutables.value.Value;

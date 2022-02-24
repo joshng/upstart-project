@@ -1,5 +1,6 @@
 package upstart.util;
 
+import upstart.util.annotations.Tuple;
 import upstart.util.optics.Lens;
 import org.immutables.value.Value;
 

@@ -2,7 +2,7 @@ package upstart.aws;
 
 import com.google.inject.BindingAnnotation;
 import org.immutables.value.Value;
-import upstart.util.Tuple;
+import upstart.util.annotations.Tuple;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

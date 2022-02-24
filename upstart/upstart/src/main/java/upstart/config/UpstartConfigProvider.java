@@ -6,7 +6,7 @@ import com.google.common.cache.LoadingCache;
 import io.upstartproject.hojack.HojackConfigMapper;
 import upstart.services.UpstartService;
 import upstart.UpstartDeploymentStage;
-import upstart.util.Tuple;
+import upstart.util.annotations.Tuple;
 import com.typesafe.config.Config;
 import org.immutables.value.Value;
 

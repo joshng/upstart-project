@@ -1,7 +1,7 @@
 package upstart.aws.s3;
 
 import com.fasterxml.jackson.annotation.JsonValue;
-import upstart.util.Tuple;
+import upstart.util.annotations.Tuple;
 import org.immutables.value.Value;
 import software.amazon.awssdk.regions.Region;
 

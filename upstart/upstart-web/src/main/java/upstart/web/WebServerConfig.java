@@ -2,8 +2,13 @@ package upstart.web;
 
 import upstart.config.annotations.ConfigPath;
 
+import java.nio.file.Path;
+
 @ConfigPath("upstart.web.server")
-public record WebServerConfig(
-        String host,
-        int port
-) {}
+public interface WebServerConfig {
+  String host();
+
+  int port();
+
+  String contextPath();
+}

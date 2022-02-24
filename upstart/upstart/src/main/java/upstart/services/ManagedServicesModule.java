@@ -12,7 +12,7 @@ import com.google.inject.binder.LinkedBindingBuilder;
 import com.google.inject.multibindings.Multibinder;
 import upstart.config.UpstartModule;
 import upstart.guice.GuiceDependencyGraph;
-import upstart.util.Identifier;
+import upstart.util.annotations.Identifier;
 import org.immutables.value.Value;
 
 import javax.inject.Inject;
@@ -31,6 +31,7 @@ import static com.google.common.base.Preconditions.checkState;
 public class ManagedServicesModule extends UpstartModule {
   private static final ServiceLifecycle INFRA_LIFECYCLE = ServiceLifecycle.Phase.Infrastructure.annotation();
   public static final Key<ManagedServiceGraph> INFRASTRUCTURE_GRAPH_KEY = Key.get(ManagedServiceGraph.class, INFRA_LIFECYCLE);
+  public static final Key<ManagedServiceGraph> APP_GRAPH_KEY = Key.get(ManagedServiceGraph.class, ServiceLifecycle.Phase.Application.annotation());
   private static final ManagedServicesModule INFRA_MODULE = new ManagedServicesModule(INFRA_LIFECYCLE);
   private static final TypeLiteral<Set<KeyRef>> KEYREF_SET_TYPE = new TypeLiteral<Set<KeyRef>>() {};
   private static final TypeLiteral<Set<Service>> SERVICE_SET_TYPE = new TypeLiteral<Set<Service>>() {};

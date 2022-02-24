@@ -8,6 +8,7 @@ import upstart.web.WebServerConfig;
 class InternalJavalinWebServerModule extends UpstartModule {
   private static final InternalJavalinWebServerModule INSTANCE = new InternalJavalinWebServerModule();
 
+  // TODO: support multiple web-servers (on different ports), with customizable ServiceLifecycle
   static Multibinder<JavalinWebInitializer> webBinder(Binder binder) {
     binder.install(INSTANCE);
     return Multibinder.newSetBinder(binder, JavalinWebInitializer.class);

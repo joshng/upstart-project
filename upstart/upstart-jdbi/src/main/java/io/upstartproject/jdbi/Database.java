@@ -2,7 +2,7 @@ package io.upstartproject.jdbi;
 
 import com.google.inject.BindingAnnotation;
 import org.immutables.value.Value;
-import upstart.util.Identifier;
+import upstart.util.annotations.Identifier;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
