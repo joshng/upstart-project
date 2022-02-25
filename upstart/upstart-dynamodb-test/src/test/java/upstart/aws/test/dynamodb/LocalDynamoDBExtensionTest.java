@@ -31,6 +31,7 @@ class LocalDynamoDBExtensionTest extends UpstartModule {
   void putDynamoObj(DynamoDbClient client) {
     String tableName = "josh";
     String key = "key-1";
+    //noinspection unchecked
     client.createTable(b -> b
             .tableName(tableName)
             .keySchema(sb -> sb.attributeName("key").keyType(KeyType.HASH))

@@ -16,7 +16,7 @@
     <dependencies>
       <dependency>
         <groupId>io.upstartproject</groupId>
-        <artifactId>upstart-aws</artifactId>
+        <artifactId>upstart-aws-test</artifactId>
         <version>${project.version}</version>
         <type>pom</type>
         <scope>import</scope>
@@ -27,7 +27,7 @@
   <dependencies>
     <dependency>
       <groupId>io.upstartproject</groupId>
-      <artifactId>upstart-aws</artifactId>
+      <artifactId>upstart-aws-test</artifactId>
     </dependency>
     <dependency>
       <groupId>software.amazon.awssdk</groupId>

@@ -1,12 +1,16 @@
 package io.upstartproject.avrocodec.upstart;
 
 import com.google.common.util.concurrent.Service;
+import upstart.UpstartApplication;
 import upstart.services.ComposableService;
+import upstart.services.ManagedServicesModule;
+import upstart.services.UpstartService;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 
 import static com.google.common.base.Preconditions.checkState;
+import static com.google.common.base.Strings.lenientFormat;
 
 public class ServiceTransformer<S extends Service, T> implements Supplier<T> {
   private final S service;
@@ -20,7 +24,10 @@ public class ServiceTransformer<S extends Service, T> implements Supplier<T> {
 
   @Override
   public T get() {
-    checkState(service.isRunning(), "Service was not running: %s", service);
+    if (!service.isRunning()) {
+
+      throw new IllegalStateException(lenientFormat("Service was not running: %s", service, UpstartService.latestInjector().getInstance(ManagedServicesModule.INFRASTRUCTURE_GRAPH_KEY)));
+    }
     return transformedValue.join();
   }
 

@@ -2,6 +2,7 @@ package upstart.aws.test.dynamodb;
 
 import com.amazonaws.services.dynamodbv2.local.main.ServerRunner;
 import com.amazonaws.services.dynamodbv2.local.server.DynamoDBProxyServer;
+import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import upstart.config.UpstartEnvironment;
 import upstart.config.annotations.ConfigPath;
@@ -23,7 +24,11 @@ public class DynamoDbFixture extends IdleService {
   private String endpoint;
   private final LazyReference<DynamoDbClient> client = LazyReference.from(() -> {
     try {
-      return DynamoDbClient.builder().endpointOverride(new URI(endpoint)).build();
+      return DynamoDbClient.builder()
+              .endpointOverride(new URI(endpoint))
+              .region(Region.US_EAST_1)
+              .credentialsProvider(new FakeCredentialsProvider())
+              .build();
     } catch (URISyntaxException e) {
       throw new AssertionError(e);
     }
