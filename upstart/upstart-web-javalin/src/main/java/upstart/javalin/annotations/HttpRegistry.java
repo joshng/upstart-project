@@ -129,7 +129,7 @@ public class HttpRegistry<A extends Annotation> {
       Key<AnnotatedEndpointHandler<T>> handlerKey = Key.get(TypeLiterals.getParameterized(AnnotatedEndpointHandler.class, targetType));
       if (targetKey.getAnnotation() != null) handlerKey = handlerKey.withAnnotation(targetKey.getAnnotation());
       bind(handlerKey).toInstance(handler);
-      javalinWebBinder().addBinding().to(initializerType);
+      addJavalinWebBinding().to(initializerType);
     }
   }
 

@@ -7,6 +7,7 @@ import upstart.config.UpstartEnvironment;
 import upstart.config.annotations.ConfigPath;
 import upstart.services.IdleService;
 import upstart.test.AvailablePortAllocator;
+import upstart.test.systemStreams.SystemOutCaptor;
 import upstart.util.concurrent.LazyReference;
 import upstart.util.exceptions.MultiException;
 
@@ -39,9 +40,17 @@ public class DynamoDbFixture extends IdleService {
     }
 
     port = AvailablePortAllocator.allocatePort();
-    server = ServerRunner.createServerFromCommandLineArgs(
+
+    SystemOutCaptor outputCaptor = null;
+    try (SystemOutCaptor captor = new SystemOutCaptor().startCapture()) {
+      outputCaptor = captor;
+      server = ServerRunner.createServerFromCommandLineArgs(
             new String[]{"-inMemory", "-port", Integer.toString(port)});
-    server.start();
+      server.start();
+    } catch (Exception e) {
+      System.out.print(outputCaptor.getCapturedString());
+      throw e;
+    }
     endpoint = "http://localhost:" + port;
   }
 

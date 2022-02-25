@@ -183,8 +183,14 @@ public class AnnotatedEndpointHandler<T> {
       );
     }
 
-    private static String paramName(String annotatedName, Parameter param) {
-      return annotatedName.isEmpty() ? param.getName() : annotatedName;
+    private String paramName(String annotatedName, Parameter param) {
+      if (annotatedName.isEmpty()) {
+        String name = param.getName();
+        checkState(param.isNamePresent(), "Parameter-name unavailable for %s parameter %s (method %s)", param.getType().getSimpleName(), name, method);
+        return name;
+      } else {
+        return annotatedName;
+      }
     }
 
     private interface ParamResolver {

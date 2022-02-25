@@ -10,17 +10,22 @@ import static com.google.common.base.Preconditions.checkState;
 /**
  * @see CaptureSystemOut
  */
-public class SystemOutCaptor {
+public class SystemOutCaptor implements AutoCloseable {
   private final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
   private PrintStream realOut;
   private PrintStream outStream;
 
-  public synchronized void startCapture() {
+  public static SystemOutCaptor start() {
+    return new SystemOutCaptor().startCapture();
+  }
+
+  public synchronized SystemOutCaptor startCapture() {
     if (!isCapturing()) {
       realOut = System.out;
       outStream = new PrintStream(outputStream);
       System.setOut(outStream);
     }
+    return this;
   }
 
   public byte[] getCapturedBytes() {
@@ -49,5 +54,10 @@ public class SystemOutCaptor {
 
   public synchronized boolean isCapturing() {
     return realOut != null;
+  }
+
+  @Override
+  public void close() throws Exception {
+    endCapture();
   }
 }
