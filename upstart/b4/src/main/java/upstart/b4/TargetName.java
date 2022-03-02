@@ -136,11 +136,11 @@ public abstract class TargetName extends StringIdentifier {
         } else {
           builder.append("\n");
         }
-        Resources.readLines(url, StandardCharsets.UTF_8).forEach(line -> builder.append("| ").append(line).append("\n"));
+        Resources.readLines(url, StandardCharsets.UTF_8).forEach(line -> builder.append("? ").append(line).append("\n"));
       }
 
       if (builder.length() > 0) {
-        return builder.insert(0, "@|underline reference defaults & docs|@\n").toString();
+        return builder.insert(0, "@|underline defaults & docs|@\n").toString();
       } else {
         return "";
       }

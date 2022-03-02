@@ -288,7 +288,7 @@ public class B4Application {
                       .map(TargetInvocation::configString)
                       .sorted()
                       .collect(Collectors.joining("\n"));
-              if (!invocationConfigs.isEmpty()) targetHelp += "\n@|underline resolved task configs|@\n" + LINE_START.matcher(invocationConfigs).replaceAll("| ");
+              if (!invocationConfigs.isEmpty()) targetHelp += "\n@|underline resolved task configs|@\n" + LINE_START.matcher(invocationConfigs).replaceAll("! ");
               return targetHelp;
             });
 

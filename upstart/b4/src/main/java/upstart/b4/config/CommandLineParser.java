@@ -79,7 +79,7 @@ public class CommandLineParser {
             .collect(Collectors.joining("\n"));
 
     try {
-      return ConfigFactory.parseString(configStr, ConfigParseOptions.defaults().setOriginDescription(argSource));
+      return configStr.isEmpty() ? ConfigFactory.empty() : ConfigFactory.parseString(configStr, ConfigParseOptions.defaults().setOriginDescription(argSource));
     } catch (Exception e) {
       throw new ConfigMappingException("Unable to parse config: '" + configStr + "':\n  " + e.getMessage(), e);
     }

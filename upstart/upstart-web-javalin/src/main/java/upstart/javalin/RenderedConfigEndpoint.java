@@ -40,7 +40,7 @@ public class RenderedConfigEndpoint implements JavalinWebInitializer {
     config.registerPlugin(javalin -> javalin.get(endpointConfig.uri(), ctx -> {
       if (endpointConfig.renderOptions().json()) ctx.contentType("application/json");
       ctx.result(rendered);
-    }));
+    }, AdminRole.Instance));
   }
 
   public static class Module extends UpstartModule implements JavalinWebModule {

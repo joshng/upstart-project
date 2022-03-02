@@ -25,6 +25,7 @@ public interface PackableRecord<T extends GenericRecord> {
     return ImmutablePackableRecord.builder();
   }
 
+  @Value.Auxiliary
   RecordPackerApi<T> packer();
   T record();
 
