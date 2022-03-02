@@ -1,6 +1,7 @@
 package upstart.web.test;
 
 import io.restassured.RestAssured;
+import io.restassured.http.ContentType;
 import upstart.test.AvailablePortAllocator;
 import upstart.test.UpstartTestBuilder;
 import upstart.web.WebServerConfig;
@@ -34,6 +35,10 @@ public class WebFixture {
 
   public RequestSpecification request() {
     return given(requestSpecification);
+  }
+
+  public RequestSpecification requestJson() {
+    return given(requestSpecification).accept(ContentType.JSON);
   }
 
   public static void configureRandomPort(UpstartTestBuilder testBuilder) {

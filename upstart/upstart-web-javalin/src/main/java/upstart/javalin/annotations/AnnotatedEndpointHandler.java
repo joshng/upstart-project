@@ -95,7 +95,12 @@ public class AnnotatedEndpointHandler<T> {
     private boolean mappedBody = false;
 
     private Endpoint(Method method, HandlerType handlerType, String path, RouteRole[] requiredRoles) {
-      checkArgument(Modifiers.Public.matches(method), "@Http method %s.%s must be public", method.getDeclaringClass().getSimpleName(), method.getName());
+      checkArgument(
+              Modifiers.Public.matches(method),
+              "@Http method %s.%s must be public",
+              method.getDeclaringClass().getSimpleName(),
+              method.getName()
+      );
       this.method = method;
       paramResolvers = Arrays.stream(method.getParameters())
               .map(this::buildResolver)
