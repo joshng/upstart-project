@@ -6,6 +6,7 @@ import io.javalin.Javalin;
 import io.javalin.core.security.RouteRole;
 import io.javalin.http.Context;
 import io.javalin.http.HandlerType;
+import org.mockito.internal.util.Primitives;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import upstart.proxy.Proxies;
@@ -25,9 +26,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
 import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -38,9 +39,12 @@ public class AnnotatedEndpointHandler<T> {
   private final Map<Method, Endpoint> endpoints;
   private final Class<T> type;
   private final LazyReference<RouteProxyInterceptor> routeProxy = LazyReference.from(RouteProxyInterceptor::new);
+  private final RouteRole[] classRoles;
 
-  AnnotatedEndpointHandler(Class<T> type, HttpRegistry<?> registry) {
+  AnnotatedEndpointHandler(Class<T> type, HttpRegistry registry) {
     this.type = type;
+    classRoles = registry.getRequiredRoles(type);
+
     endpoints = PairStream.withMappedValues(
             Reflect.allAnnotatedMethods(
                     type,
@@ -52,10 +56,23 @@ public class AnnotatedEndpointHandler<T> {
                       method,
                       annotation.verb().handlerType,
                       annotation.path(),
-                      registry.getRequiredRoles(method)
+                      methodRoles(registry.getRequiredRoles(method))
               );
             }).toImmutableMap();
     checkArgument(!endpoints.isEmpty(), "No @Http endpoint-methods found in class: %s", type);
+  }
+
+  private RouteRole[] methodRoles(RouteRole[] declaredRoles) {
+    return classRoles.length == 0
+            ? declaredRoles
+            : declaredRoles.length == 0
+            ? classRoles
+            :
+            Stream.concat(
+                    Stream.of(declaredRoles),
+                    Stream.of(classRoles)
+            ).distinct()
+                    .toArray(RouteRole[]::new);
   }
 
   public void installHandlers(T target, Javalin javalin) {
@@ -136,25 +153,25 @@ public class AnnotatedEndpointHandler<T> {
     private ParamResolver buildResolver(Parameter parameter) {
       Class<?> paramType = parameter.getType();
       if (paramType == Context.class) {
-        return ParamResolver.outOfBand(ctx -> ctx);
+        return ParamResolver.nonUrlParam(parameter, ctx -> ctx);
       } else if (parameter.isAnnotationPresent(PathParam.class)) {
         return pathParamResolver(parameter);
       } else if (parameter.isAnnotationPresent(QueryParam.class)) {
         return queryParamResolver(parameter);
       } else if (parameter.isAnnotationPresent(Session.class)) {
         String name = paramName(parameter.getAnnotation(Session.class).value(), parameter);
-        return ParamResolver.outOfBand(ctx -> ctx.sessionAttribute(name));
+        return ParamResolver.nonUrlParam(parameter, ctx -> ctx.sessionAttribute(name));
       } else {
         checkArgument(!mappedBody, "Method has multiple unannotated parameters", method);
         mappedBody = true;
         if (paramType == String.class) {
-          return ParamResolver.outOfBand(Context::body);
+          return ParamResolver.nonUrlParam(parameter, Context::body);
         } else if (paramType == byte[].class) {
-          return ParamResolver.outOfBand(Context::bodyAsBytes);
+          return ParamResolver.nonUrlParam(parameter, Context::bodyAsBytes);
         } else if (paramType == InputStream.class) {
-          return ParamResolver.outOfBand(Context::bodyAsInputStream);
+          return ParamResolver.nonUrlParam(parameter, Context::bodyAsInputStream);
         } else {
-          return ParamResolver.outOfBand(ctx -> ctx.bodyAsClass(paramType));
+          return ParamResolver.nonUrlParam(parameter, ctx -> ctx.bodyAsClass(paramType));
         }
       }
     }
@@ -193,57 +210,53 @@ public class AnnotatedEndpointHandler<T> {
       }
     }
 
-    private interface ParamResolver {
-      static ParamResolver outOfBand(Function<Context, Object> resolver) {
-        return of(null, UrlParamType.None, resolver);
+    private static class ParamResolver {
+      private final String paramName;
+      private final UrlParamType paramType;
+      private final Function<Context, Object> resolver;
+
+      ParamResolver(
+              String paramName,
+              UrlParamType paramType,
+              Function<Context, Object> resolver
+      ) {
+        this.paramName = paramName;
+        this.paramType = paramType;
+        this.resolver = resolver;
       }
 
-      static ParamResolver of(String name, UrlParamType type, Function<Context, Object> resolver) {
-        BiFunction<UrlBuilder, Object, UrlBuilder> interpolator = type.urlInterpolator(name);
-        return new ParamResolver() {
-          @Override
-          public BiFunction<UrlBuilder, Object, UrlBuilder> urlInterpolator() {
-            return interpolator;
-          }
-
-          @Override
-          public Object resolve(Context ctx) {
-            return resolver.apply(ctx);
-          }
-        };
-      }
-      BiFunction<UrlBuilder, Object, UrlBuilder> urlInterpolator();
-
-      default UrlBuilder applyToUrl(UrlBuilder urlBuilder, Object value) {
-        return urlInterpolator().apply(urlBuilder, value);
+      public static ParamResolver nonUrlParam(Parameter parameter, Function<Context, Object> resolver) {
+        return of(parameter.getName(), UrlParamType.None, resolver);
       }
 
-      Object resolve(Context ctx);
+      public static ParamResolver of(String name, UrlParamType type, Function<Context, Object> resolver) {
+        return new ParamResolver(name, type, resolver);
+      }
 
-      enum UrlParamType {
-        Path {
-          @Override
-          public BiFunction<UrlBuilder, Object, UrlBuilder> urlInterpolator(String name) {
-            return (builder, value) -> builder.withPathParam(name, value);
-          }
-        },
-        Query {
-          @Override
-          public BiFunction<UrlBuilder, Object, UrlBuilder> urlInterpolator(String name) {
-            return (urlBuilder, value) -> urlBuilder.withQueryParam(name, value);
-          }
-        },
-        None {
-          @Override
-          public BiFunction<UrlBuilder, Object, UrlBuilder> urlInterpolator(String name) {
-            return (urlBuilder, o) -> {
-              checkArgument(o == null, "Non-null value passed to HttpRoutes proxy-method");
-              return urlBuilder;
-            };
-          }
-        };
+      public Object resolve(Context context) {
+        return resolver.apply(context);
+      }
 
-        public abstract BiFunction<UrlBuilder, Object, UrlBuilder> urlInterpolator(String name);
+      public void applyToUrl(UrlBuilder urlBuilder, Object value) {
+        paramType.applyToUrl(urlBuilder, paramName, value);
+      }
+
+      public enum UrlParamType {
+        Path,
+        Query,
+        None;
+
+        public void applyToUrl(UrlBuilder urlBuilder, String paramName, Object value) {
+          switch (this) {
+            case Path -> urlBuilder.withPathParam(paramName, value);
+            case Query -> urlBuilder.withQueryParam(paramName, value);
+            case None -> checkArgument(
+                    value == null || value.equals(Primitives.defaultValue(value.getClass())),
+                    "Non-null/default value passed to HttpRoutes proxy-method for parameter '%s'",
+                    paramName
+            );
+          }
+        }
       }
     }
   }

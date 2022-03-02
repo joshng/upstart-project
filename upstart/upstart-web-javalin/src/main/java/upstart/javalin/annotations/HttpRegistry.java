@@ -18,34 +18,32 @@ import upstart.util.Reflect;
 import upstart.util.Validation;
 
 import javax.inject.Inject;
-import java.io.Serializable;
 import java.lang.annotation.Annotation;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
-import java.lang.invoke.SerializedLambda;
-import java.lang.reflect.Method;
+import java.lang.reflect.AnnotatedElement;
 import java.util.Arrays;
-import java.util.Optional;
-import java.util.Set;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkState;
+import static com.google.common.base.Preconditions.checkNotNull;
 
-public class HttpRegistry<A extends Annotation> {
+public class HttpRegistry {
+  public static final HttpRegistry INSTANCE = new HttpRegistry();
+
   private final LoadingCache<Class<?>, AnnotatedEndpointHandler<?>> handlerCache = CacheBuilder.newBuilder()
           .build(new CacheLoader<>() {
-            @SuppressWarnings("unchecked")
             @Override
             public AnnotatedEndpointHandler<?> load(Class<?> key) throws Exception {
-              return new AnnotatedEndpointHandler<>((Class<Object>) key, HttpRegistry.this);
+              return new AnnotatedEndpointHandler<>(Reflect.blindCast(key), HttpRegistry.this);
             }
           });
 
-  private final Class<A> roleAnnotationClass;
-  private final Function<A, RouteRole[]> getRoles;
+  private final Map<Class<? extends Annotation>, Function<Annotation, RouteRole[]>> roleReaders = new HashMap<>();
 
-  public HttpRegistry(Class<A> roleAnnotationClass, Function<A, RouteRole[]> getRoles) {
+  public <A extends Annotation> void registerAccessControlAnnotation(Class<A> roleAnnotationClass, Function<A, RouteRole[]> getRoles) {
     Retention retention = roleAnnotationClass.getAnnotation(Retention.class);
     Validation.success()
             .confirm(retention != null && retention.value() == RetentionPolicy.RUNTIME,
@@ -62,32 +60,29 @@ public class HttpRegistry<A extends Annotation> {
                     ""
             ))));
 
-    this.roleAnnotationClass = roleAnnotationClass;
-    this.getRoles = getRoles;
+    roleReaders.put(roleAnnotationClass, Reflect.blindCast(getRoles));
   }
 
-  RouteRole[] getRequiredRoles(Method method) {
-    RouteRole[] required = Reflect.findMetaAnnotations(roleAnnotationClass, method)
-            .map(getRoles)
+  RouteRole[] getRequiredRoles(AnnotatedElement element) {
+    return Reflect.allMetaAnnotations(element)
+            .filter(anno -> anno.annotationType().isAnnotationPresent(Http.AccessControlAnnotation.class))
+            .map(anno -> roleReader(element, anno).apply(anno))
             .flatMap(Arrays::stream)
             .distinct()
             .toArray(RouteRole[]::new);
-    if (required.length == 0) {
-      Set<Annotation> otherAccessControl = Reflect.allMetaAnnotations(method)
-              .filter(anno -> anno.annotationType().getAnnotation(Http.AccessControlAnnotation.class) != null)
-              .collect(Collectors.toSet());
-      checkState(
-              otherAccessControl.isEmpty(),
-              "Found mismatched access-control annotation(s) %s on method: %s",
-              otherAccessControl,
-              method
-      );
-    }
-    return required;
+  }
+
+  private Function<Annotation, RouteRole[]> roleReader(AnnotatedElement element, Annotation anno) {
+    return checkNotNull(
+            roleReaders.get(anno.annotationType()),
+            "Http.AccessControlAnnotation must be registered with HttpRegistry.registerAccessControlAnnotation: @%s %s",
+            anno,
+            element
+    );
   }
 
   public <T> HttpRoutes<T> getRoutes(HttpUrl rootPath, Class<T> controllerClass) {
-    return new HttpRoutes<T>(rootPath, handlerFor(controllerClass));
+    return new HttpRoutes<>(rootPath, handlerFor(controllerClass));
   }
 
   @SuppressWarnings("unchecked")

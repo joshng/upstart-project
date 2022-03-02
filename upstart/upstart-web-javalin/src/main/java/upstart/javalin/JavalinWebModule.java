@@ -21,15 +21,15 @@ public interface JavalinWebModule extends UpstartModuleExtension {
     return javalinWebBinder().addBinding();
   }
 
-  default void serveHttp(HttpRegistry<?> registry, Class<?> endpointPojoType) {
-    serveHttp(registry, Key.get(endpointPojoType));
+  default void serveHttp(Class<?> endpointPojoType) {
+    serveHttp(Key.get(endpointPojoType));
   }
 
-  default void serveHttp(HttpRegistry<?> registry, TypeLiteral<?> endpointPojoType) {
-    serveHttp(registry, Key.get(endpointPojoType));
+  default void serveHttp(TypeLiteral<?> endpointPojoType) {
+    serveHttp(Key.get(endpointPojoType));
   }
 
-  default void serveHttp(HttpRegistry<?> registry, Key<?> endpointPojoKey) {
-    binder().install(registry.webEndpointModule(endpointPojoKey));
+  default void serveHttp(Key<?> endpointPojoKey) {
+    binder().install(HttpRegistry.INSTANCE.webEndpointModule(endpointPojoKey));
   }
 }
