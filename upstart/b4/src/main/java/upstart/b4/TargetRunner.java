@@ -53,8 +53,12 @@ class TargetRunner {
 
   CompletableFuture<?> run(Object ignored) {
     if (!runStarted.getAndSet(true)) {
-      return completePromise(runFuture, () -> function.run(config, context))
-              .thenRun(() -> {
+      return completePromise(runFuture, () -> {
+        if (function.alwaysCleanBeforeRun() && !context.activePhases().doClean) {
+          function.clean(config, context);
+        }
+        function.run(config, context);
+      }).thenRun(() -> {
                 if (!context.isDryRun()) context.say("DONE:", displayName());
               });
     }

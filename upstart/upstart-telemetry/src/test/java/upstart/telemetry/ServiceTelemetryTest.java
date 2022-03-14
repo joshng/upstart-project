@@ -26,10 +26,12 @@ import upstart.services.ManagedServiceGraph;
 import upstart.services.NotifyingService;
 import upstart.services.ServiceDependencyChecker;
 import upstart.services.ServiceLifecycle;
+import upstart.test.CompletableFutureSubject;
 import upstart.test.StacklessTestException;
 import upstart.test.UpstartTest;
 import upstart.util.LogLevel;
 import upstart.util.concurrent.CompletableFutures;
+import upstart.util.concurrent.Deadline;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -46,6 +48,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static upstart.test.CompletableFutureSubject.assertThat;
 
 //@ShowServiceGraph
 @SuppressLogs({LifecycleCoordinator.class, TaggedMetricRegistry.class})
@@ -85,7 +88,7 @@ public class ServiceTelemetryTest extends UpstartModule {
   }
 
   @Test
-  void checkFailureEvent() {
+  void checkFailureEvent() throws InterruptedException {
     dependencyChecker.assertThat(FailingService.class).dependsUpon(ServiceTelemetry.class);
     dependencyChecker.assertThat(ServiceTelemetry.class).dependsUpon(AvroModule.AvroCodecService.class);
 
@@ -96,9 +99,8 @@ public class ServiceTelemetryTest extends UpstartModule {
     failureException = new StacklessTestException(ERROR_MESSAGE);
     failingService.fail(failureException);
 
-    ExecutionException executionException = assertThrows(ExecutionException.class,
-            () -> infrastructureServiceGraph.getStoppedFuture().get(5000, TimeUnit.SECONDS));
-    assertThat(executionException).hasCauseThat().isSameInstanceAs(failureException);
+    assertThat(infrastructureServiceGraph.getStoppedFuture()).doneWithin(Deadline.withinSeconds(5))
+            .completedWithExceptionThat().isSameInstanceAs(failureException);
 
     List<UnpackableMessageEnvelope> envelopes = capturePublishedEvents(2);
 
@@ -107,7 +109,7 @@ public class ServiceTelemetryTest extends UpstartModule {
             .getConfigEntries()).containsEntry("upstart.context.environment", new ConfigValueRecord("TEST", "UPSTART_ENVIRONMENT"));
 
     UnpackableMessageEnvelope exceptionEnvelope = envelopes.get(1);
-    assertThat(unpack(exceptionEnvelope, ExceptionEvent.class).getException().getCause().getMessage())
+    assertThat(unpack(exceptionEnvelope, ExceptionEvent.class).getException().getMessage())
             .isEqualTo(ERROR_MESSAGE);
   }
 

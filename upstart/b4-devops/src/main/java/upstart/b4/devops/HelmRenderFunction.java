@@ -26,16 +26,12 @@ public class HelmRenderFunction implements B4Function<HelmRenderFunction.HelmCon
 
   @Override
   public void clean(HelmConfig config, B4TaskContext context) throws Exception {
-    Files.deleteIfExists(config.outputSpec());
+    context.effect("Deleting existing files")
+            .run(() -> Files.deleteIfExists(config.outputSpec()));
   }
 
   @Override
   public void run(HelmConfig config, B4TaskContext context) throws Exception {
-    Path parent = config.outputSpec().normalize().getParent();
-    if (! parent.toFile().exists()) {
-      Files.createDirectories(parent);
-    }
-
     String spec = context.alwaysRunCommand(config.helmExecutable(),
             builder -> builder
                     .addArgs("template","--namespace", config.namespace())
@@ -46,6 +42,7 @@ public class HelmRenderFunction implements B4Function<HelmRenderFunction.HelmCon
     ).outputString();
 
     context.effect("Writing rendered helm-chart to", config.outputSpec().toString()).run(() -> {
+      Files.createDirectories(config.outputSpec().normalize().getParent());
       try (Writer out = Files.newBufferedWriter(
               config.outputSpec(),
               StandardCharsets.UTF_8,

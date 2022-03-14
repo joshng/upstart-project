@@ -30,13 +30,11 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 
 import static com.google.common.truth.Truth.assertThat;
-import static io.upstartproject.avrocodec.CompletableFutureAssertions.assertCompleted;
-import static io.upstartproject.avrocodec.CompletableFutureAssertions.assertFailedWith;
-import static io.upstartproject.avrocodec.CompletableFutureAssertions.assertPending;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static upstart.test.CompletableFutureSubject.assertThat;
 import static upstart.util.concurrent.CompletableFutures.nullFuture;
 
 
@@ -117,7 +115,7 @@ class AvroCodecTest {
       when(mockRepo.delete(any())).thenReturn(nullFuture());
       Schema proposedConflictingSchema = loadSchema("IncompatibleTestRecord1.avsc");
       CompletableFuture<Void> racingFuture = codec.ensureRegistered(Stream.of(proposedConflictingSchema));
-      assertPending(racingFuture);
+      assertThat(racingFuture).isNotDone();
 
       // arrange for a conflicting schema to arrive in the repo first
       schemaListener.onSchemaAdded(testRecordSchemaDescriptor);
@@ -129,13 +127,15 @@ class AvroCodecTest {
       // confirm the repo is cleaned up by the offending party (non-critical, but good hygiene)
       verify(mockRepo).delete(rejectedDescriptor);
 
-      assertFailedWith(AvroCodec.SchemaConflictException.class, codec.findRegisteredPacker(rejectedDescriptor.fingerprint()));
+      assertThat(codec.findRegisteredPacker(rejectedDescriptor.fingerprint()))
+              .failedWith(AvroCodec.SchemaConflictException.class);
 
       schemaListener.onSchemaRemoved(rejectedDescriptor.fingerprint());
 
-      assertFailedWith(AvroCodec.SchemaConflictException.class, codec.findRegisteredPacker(rejectedDescriptor.fingerprint()));
+      assertThat(codec.findRegisteredPacker(rejectedDescriptor.fingerprint()))
+              .failedWith(AvroCodec.SchemaConflictException.class);
 
-      assertFailedWith(AvroCodec.SchemaConflictException.class, racingFuture);
+      assertThat(racingFuture).failedWith(AvroCodec.SchemaConflictException.class);
 
       assertThrows(AvroCodec.SchemaConflictException.class, () -> codec.getPreRegisteredPacker(proposedConflictingSchema));
     }
@@ -156,14 +156,14 @@ class AvroCodecTest {
 
       // finally, ask our test-codec to unpack the record; this must wait until its SchemaRepo adds the schema
       CompletableFuture<UnpackableRecord> futureUnpackable = codec.toUnpackable(packedRecord);
-      assertPending(futureUnpackable); // schema is unresolved, so future should still be pending
+      assertThat(futureUnpackable).isNotDone(); // schema is unresolved, so future should still be pending
 
       schemaListener.onSchemaAdded(testRecordSchemaDescriptor);
 
-      // now the future is completed, and we can unpack the record
-      GenericRecord unpacked = assertCompleted(futureUnpackable).unpackGeneric();
+      assertThat(futureUnpackable).isDone();
 
-      assertThat(unpacked.get("conflictingField")).isEqualTo(77);
+      // now the future is completed, and we can unpack the record
+      assertThat(futureUnpackable.join().unpackGeneric().get("conflictingField")).isEqualTo(77);
     }
   }
 

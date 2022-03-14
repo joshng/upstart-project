@@ -25,7 +25,8 @@ public class FileCopyFunction implements B4Function<FileCopyFunction.CopyConfig>
 
   @Override
   public void clean(CopyConfig config, B4TaskContext context) throws Exception {
-    Files.deleteIfExists(config.to());
+    context.effect("Deleting copied file", config.to().toString())
+            .run(() -> Files.deleteIfExists(config.to()));
   }
 
   @Override

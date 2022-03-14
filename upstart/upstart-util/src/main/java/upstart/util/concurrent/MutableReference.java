@@ -24,7 +24,7 @@ public interface MutableReference<T> extends Supplier<T>, Callable<T> {
   }
 
   default Optional<T> getOptional() {
-    return Optional.of(get());
+    return Optional.ofNullable(get());
   }
 
   default T computeIfAbsent(Supplier<? extends T> defaultComputer) {

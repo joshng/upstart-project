@@ -1,44 +1,46 @@
 package upstart.services;
 
-import com.google.common.base.Joiner;
-import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.common.util.concurrent.Service;
-import upstart.util.concurrent.CompletableFutures;
+import com.google.common.util.concurrent.ServiceManager;
+import upstart.util.MoreStreams;
 import upstart.util.exceptions.MultiException;
-
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-
-import static com.google.common.base.Preconditions.checkState;
 
 public abstract class AggregateService extends NotifyingService {
 
-  private volatile List<? extends ComposableService> componentServices;
+  private ServiceManager serviceManager;
 
   protected abstract Iterable<? extends ComposableService> getComponentServices();
 
-  protected AggregateService() {
-    addListener(new Listener() {
+  @Override
+  protected void doStart() {
+    serviceManager = new ServiceManager(getComponentServices());
+    serviceManager.addListener(new ServiceManager.Listener() {
       @Override
-      public void failed(State from, Throwable failure) {
-        // really shouldn't get here until all services have already stopped, but stop everything just in case
-        componentServices.forEach(ComposableService::stop);
+      public void healthy() {
+        notifyStarted();
+      }
+
+      @Override
+      public void stopped() {
+        MoreStreams.foldLeft(
+                        MultiException.Empty,
+                        serviceManager.servicesByState().get(State.FAILED).stream()
+                                .map(Service::failureCause), MultiException::with
+                ).getCombinedThrowable()
+                .ifPresentOrElse(
+                                AggregateService.this::notifyFailed,
+                                AggregateService.this::notifyStopped
+                        );
+      }
+
+      @Override
+      public void failure(Service service) {
+        stop();
       }
     }, MoreExecutors.directExecutor());
-  }
 
-  @Override
-  protected final void doStart() {
-    componentServices = ImmutableList.copyOf(getComponentServices());
-    ComponentServiceListener listener = new ComponentServiceListener();
-    for (Service service : componentServices) {
-      service.addListener(listener, MoreExecutors.directExecutor());
-      // important: if any service is already started, then we've missed important transitions
-      checkState(service.state() == State.NEW, "Service was already started", service);
-    }
-
-    startWith(perform(ComposableService::start));
+    serviceManager.startAsync();
   }
 
   @Override
@@ -47,59 +49,12 @@ public abstract class AggregateService extends NotifyingService {
   }
 
   @Override
-  protected final void doStop() {
-    stopWith(perform(STOP));
-  }
-
-  private CompletableFuture<Void> perform(AsyncF<ComposableService, State> action) {
-    return CompletableFutures.allOf(componentServices.stream().map(action))
-            .whenComplete((__, t) -> checkHealthy(t));
-  }
-
-  private void checkHealthy(Throwable invocationException) {
-    MultiException e = MultiException.Empty;
-    if (invocationException != null) e = e.with(invocationException);
-    for (Service service : componentServices) {
-      if (service.state() == State.FAILED) {
-        Throwable cause = service.failureCause();
-        if (cause != invocationException) {
-          e = e.with(cause);
-        }
-      }
-    }
-
-    e.throwRuntimeIfAny();
+  protected void doStop() {
+    if (serviceManager != null) serviceManager.stopAsync();
   }
 
   @Override
   public String toString() {
-    if (componentServices != null && !componentServices.isEmpty()) {
-      return Joiner.on("\n--")
-              .appendTo(new StringBuilder(super.toString()).append("\n--"), componentServices)
-              .toString();
-    } else {
-      return super.toString();
-    }
-  }
-
-  private class ComponentServiceListener extends Listener {
-    @Override
-    public void stopping(State from) {
-      triggerStop();
-    }
-
-    @Override
-    public void terminated(State from) {
-      triggerStop();
-    }
-
-    @Override
-    public void failed(State from, Throwable failure) {
-      triggerStop();
-    }
-
-    private void triggerStop() {
-      if (isStoppable()) stop();
-    }
+    return super.toString() + "\n--" + serviceManager;
   }
 }

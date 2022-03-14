@@ -17,6 +17,8 @@
     <avro.sourceDirectory>${project.basedir}/src/main/avro</avro.sourceDirectory>
     <jackson.version>2.12.3</jackson.version>
     <maven-compiler-plugin.version>3.8.0</maven-compiler-plugin.version>
+    <avro.codegen.phase>${codegen.phase}</avro.codegen.phase>
+    <avro.test-codegen.phase>${test-codegen.phase}</avro.test-codegen.phase>
   </properties>
 
   <dependencies>
@@ -39,7 +41,8 @@
           <version>${avro.version}</version>
           <executions>
             <execution>
-              <phase>generate-sources</phase>
+              <id>generate-avro-sources</id>
+              <phase>${avro.codegen.phase}</phase>
               <goals>
                 <goal>schema</goal>
               </goals>

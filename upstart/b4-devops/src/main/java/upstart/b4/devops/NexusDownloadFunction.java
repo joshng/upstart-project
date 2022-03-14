@@ -39,7 +39,6 @@ import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 import static java.nio.file.StandardOpenOption.WRITE;
 
 public class NexusDownloadFunction implements B4Function<NexusDownloadFunction.DownloadConfig> {
-  public static final TargetName TARGET = TargetName.of("nexus/download");
   private final NexusCredentialStore credentials;
   private final Promise<Call> callPromise = new Promise<>();
 
@@ -50,7 +49,8 @@ public class NexusDownloadFunction implements B4Function<NexusDownloadFunction.D
 
   @Override
   public void clean(DownloadConfig config, B4TaskContext context) throws Exception {
-    Files.deleteIfExists(config.to());
+    context.effect("Clean: deleting", config.to().toString())
+            .run(() -> Files.deleteIfExists(config.to()));
   }
 
   @Override

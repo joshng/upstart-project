@@ -60,6 +60,10 @@
       <name>DynamoDB Local Release Repository</name>
       <url>https://s3-us-west-2.amazonaws.com/dynamodb-local/release</url>
     </repository>
+    <repository>
+      <id>central</id>
+      <url>https://repo1.maven.org/maven2/</url>
+    </repository>
   </repositories>
 
   <build>
@@ -78,8 +82,7 @@
                   <configuration>
                     <includeScope>test</includeScope>
                     <includeTypes>so,dll,dylib</includeTypes>
-<!--                    <outputDirectory>${project.basedir}/native-libs</outputDirectory>-->
-                    <outputDirectory>/usr/local/lib/sqlite4java/native-libs</outputDirectory>
+                    <outputDirectory>/tmp/sqlite4java/native-libs</outputDirectory>
                   </configuration>
                 </execution>
               </executions>

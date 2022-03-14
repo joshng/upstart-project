@@ -3,9 +3,13 @@ package upstart.test;
 import com.google.common.truth.Fact;
 import com.google.common.truth.FailureMetadata;
 import com.google.common.truth.Subject;
+import com.google.common.truth.ThrowableSubject;
 import com.google.common.truth.Truth;
-import org.checkerframework.checker.nullness.qual.Nullable;
+import upstart.util.concurrent.CompletableFutures;
+import upstart.util.concurrent.Deadline;
 
+import java.time.Duration;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 public class CompletableFutureSubject<T> extends Subject {
@@ -20,22 +24,58 @@ public class CompletableFutureSubject<T> extends Subject {
     return (CompletableFutureSubject<T>) Truth.assertAbout(completableFutures()).that((CompletableFuture<Object>) path);
   }
 
-  protected CompletableFutureSubject(FailureMetadata metadata, @Nullable CompletableFuture<T> actual) {
+  protected CompletableFutureSubject(FailureMetadata metadata, CompletableFuture<T> actual) {
     super(metadata, actual);
     this.actual = actual;
   }
 
   public void isDone() {
-    check(actual.isDone(), "expected to be done");
+    check("isDone()").that(actual.isDone()).isTrue();
   }
 
-  public <S extends Subject, F extends Factory<S, T>> S hasResultThat(F factory) {
+  public void isNotDone() {
+    check("isDone()").that(actual.isDone()).isFalse();
+  }
+
+  public CompletableFutureSubject<T> doneWithin(Deadline deadline) throws InterruptedException {
+    Duration remaining = deadline.remaining();
+    if (!deadline.awaitDone(actual)) {
+      failWithoutActual(Fact.fact("completableFuture", "expected to be done within " + remaining));
+    }
+    return this;
+  }
+
+  public T completedNormally() {
     isDone();
-    return Truth.assertAbout(factory).that(actual.join());
+    check("exceptionalCompletion").that(CompletableFutures.getException(actual).orElse(null)).isNull();
+    return actual.join();
   }
 
-  private void check(boolean condition, String failureMessage) {
-    if (!condition) failWithoutActual(Fact.fact("CompletableFuture", failureMessage));
+  public Subject completedWithResultThat() {
+    isDone();
+    return check("join()").that(actual.join());
+  }
+
+  public <S extends Subject, F extends Factory<S, T>> S completedWithResultThat(F factory) {
+    isDone();
+    return check("join()").about(factory).that(actual.join());
+  }
+
+  public ThrowableSubject completedWithExceptionThat() {
+    return Truth.assertThat(failedWith(Throwable.class));
+  }
+
+  public <E extends Throwable> E completedExceptionallyWith(Class<E> exceptionType) {
+    isDone();
+    Optional<Throwable> thrown = CompletableFutures.getException(actual);
+    check("isCompletedExceptionally()").that(thrown.isPresent()).isTrue();
+    Throwable exception = thrown.get();
+    check("exceptionalCompletion").that(exception).isInstanceOf(exceptionType);
+    return exceptionType.cast(exception);
+  }
+
+  public <E extends Throwable> E failedWith(Class<E> exceptionType) {
+    return completedExceptionallyWith(exceptionType);
   }
 
 }

@@ -74,6 +74,7 @@ public class LifecycleCoordinator extends NotifyingService {
 
   @Override
   protected void onStartupCanceled() {
+    logger.warn("startup canceled");
     notifyStarted();
   }
 

@@ -10,7 +10,6 @@ import java.time.Duration;
 public class Threads {
   public static void sleep(Duration duration) {
     try {
-      Thread.sleep(duration.toMillis(), duration.toNanosPart());
       Thread.sleep(duration.toMillis());
     } catch (InterruptedException e) {
       throw UncheckedInterruptedException.propagate(e);

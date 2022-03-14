@@ -3,6 +3,7 @@ package upstart.services;
 
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.common.util.concurrent.Service;
+import upstart.util.MoreStrings;
 import upstart.util.Reflect;
 
 import java.util.concurrent.CompletableFuture;

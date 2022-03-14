@@ -7,6 +7,7 @@ import org.immutables.value.Value;
 
 import java.nio.file.Path;
 import java.util.Map;
+import java.util.Optional;
 
 public class DockerBuildFunction implements B4Function<DockerBuildFunction.DockerConfig> {
   @Override
@@ -30,16 +31,20 @@ public class DockerBuildFunction implements B4Function<DockerBuildFunction.Docke
     String name();
     String tag();
     Path dockerAssemblyDir();
+
+    Optional<Path> dockerFile();
     String dockerExecutable();
     Map<String,String> dockerBuildArgs();
 
     default void runCommand(B4TaskContext context) {
       context.effectCommand(dockerExecutable(), builder -> {
         builder.workDir(dockerAssemblyDir())
-          .addArgs("build", "-t", fullName(), ".");
-        dockerBuildArgs().forEach((k, v) ->
-          builder.addArgs("--build-arg", k + "=" + v));
-	return builder;
+                .addArgs("build", "-t", fullName());
+        dockerFile().ifPresent(file -> builder.addArgs("-f", file.toString()));
+        dockerBuildArgs().forEach((k, v) -> builder.addArgs("--build-arg", k + "=" + v));
+        builder.addArgs(".");
+
+        return builder;
       });
     }
 

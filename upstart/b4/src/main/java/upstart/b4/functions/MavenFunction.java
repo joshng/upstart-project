@@ -1,14 +1,16 @@
 package upstart.b4.functions;
 
+import org.immutables.value.Value;
 import upstart.b4.B4Function;
 import upstart.b4.B4TaskContext;
 import upstart.b4.TargetInvocation;
-import org.immutables.value.Value;
 import upstart.config.annotations.DeserializedImmutable;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collection;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 public class MavenFunction implements B4Function<MavenFunction.MavenBuildConfig> {
@@ -35,6 +37,7 @@ public class MavenFunction implements B4Function<MavenFunction.MavenBuildConfig>
   interface MavenBuildConfig {
     String DEFAULT_GOAL = "package";
 
+    Optional<Path> pomFile();
     boolean skipTests();
     String mavenExecutable();
     Set<String> goals();
@@ -50,6 +53,8 @@ public class MavenFunction implements B4Function<MavenFunction.MavenBuildConfig>
       if (phases.doClean) {
         args.add("clean");
       }
+      pomFile().ifPresent(pomFile -> args.addAll(Arrays.asList("--file", pomFile.toString())));
+
       if (phases.doRun) {
         if (goals().isEmpty()) {
           args.add(DEFAULT_GOAL);

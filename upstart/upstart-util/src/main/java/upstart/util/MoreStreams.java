@@ -97,6 +97,10 @@ public class MoreStreams {
     );
   }
 
+  public static <T> Iterable<T> iterable(Stream<T> stream) {
+    return stream::iterator;
+  }
+
   public abstract static class RecursiveIterator<T> implements Iterator<T> {
     private T next;
 

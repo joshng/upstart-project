@@ -12,9 +12,8 @@ B4_PROJECT="$1"
 shift
 
 PROGRAM_DIR="$B4_PROJECT"
-PROGRAM="$(basename "$B4_PROJECT")"
-DEFAULT_B4_CONFIG=B4.conf
-: "${B4_CONFIG:="${DEFAULT_B4_CONFIG}"}"
+PROGRAM=${B4_NAME:-"$(basename "$B4_PROJECT")"}
+: "${B4_CONFIG:=B4.conf}"
 
 find_b4_home() {
   (
@@ -60,7 +59,7 @@ B4_HOME="${B4_HOME:-"$(find_b4_home)"}"
 cd "$B4_HOME"
 
 #TODO: could alter this to support multiple task-definition jars, by running b4.jar with extension-jars on the classpath
-PROGRAM_JAR="${PROGRAM_JAR:-"$PROGRAM_DIR/target/package/${PROGRAM}.jar"}"
+PROGRAM_JAR="${PROGRAM_JAR:-"$PROGRAM_DIR/target/package/${B4_PROJECT}.jar"}"
 
 if [ ! -f "$PROGRAM_JAR" ]; then
   REBUILD=true

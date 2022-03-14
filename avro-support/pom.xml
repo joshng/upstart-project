@@ -19,11 +19,6 @@
     <module>s3-schema-repo</module>
   </modules>
 
-  <properties>
-    <java.version>17</java.version>
-    <upstart.version>${project.version}</upstart.version>
-  </properties>
-
   <dependencyManagement>
     <dependencies>
       <dependency>
@@ -52,45 +47,4 @@
     </dependency>
   </dependencies>
 
-  <build>
-    <plugins>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.8.0</version>
-        <configuration>
-          <!-- Incremental compilation is unreliable with annotation-preprocessor-generated sources. -->
-          <!--<useIncrementalCompilation>false</useIncrementalCompilation>-->
-          <source>${java.version}</source>
-          <target>${java.version}</target>
-        </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-source-plugin</artifactId>
-        <version>3.0.1</version>
-        <executions>
-          <execution>
-            <id>attach-sources</id>
-            <goals>
-              <goal>jar</goal>
-            </goals>
-          </execution>
-          <execution>
-            <id>attach-test-sources</id>
-            <goals>
-              <goal>test-jar</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
-        <artifactId>maven-surefire-plugin</artifactId>
-        <version>${surefire.version}</version>
-        <configuration>
-          <trimStackTrace>false</trimStackTrace>
-        </configuration>
-      </plugin>
-    </plugins>
-  </build>
 </project>

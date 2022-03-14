@@ -49,13 +49,17 @@ public class KubeApplyFunction implements B4Function<KubeApplyFunction.KubeApply
   }
 
   @Override
+  public boolean alwaysCleanBeforeRun() {
+    return true;
+  }
+
+  @Override
   public void clean(KubeApplyConfig config, B4TaskContext context) throws Exception {
     config.deleteResources(context);
   }
 
   @Override
   public void run(KubeApplyConfig config, B4TaskContext context) throws Exception {
-    if (!context.activePhases().doClean) clean(config, context);
 
     abstract class ReadinessChecker implements BooleanSupplier {
       private final Throttler statusThrottler = new Throttler(READINESS_REPORT_INTERVAL.toMillis(), TimeUnit.MILLISECONDS);

@@ -1,5 +1,8 @@
 package upstart.util;
 
+import com.google.common.base.Functions;
+
+import java.util.Map;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -40,6 +43,10 @@ public class MoreStrings {
 
   public static String truncate(String str, int maxLen, String ellipsis) {
     return str.length() <= maxLen ? str : str.substring(0, maxLen - ellipsis.length()) + ellipsis;
+  }
+
+  public static String interpolateTokens(String template, Pattern tokenPattern, Map<String, String> tokenReplacement) {
+    return interpolateTokens(template, tokenPattern, Functions.forMap(tokenReplacement).compose(matcher -> matcher.group(1)));
   }
 
   public static String interpolateTokens(String template, Pattern tokenPattern, Function<Matcher, String> tokenReplacement) {

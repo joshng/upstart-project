@@ -6,20 +6,22 @@ import com.google.inject.Injector;
 import com.google.inject.Provides;
 import org.junit.jupiter.api.Test;
 import upstart.config.UpstartModule;
+import upstart.test.StacklessTestException;
 import upstart.test.UpstartExtension;
 import upstart.test.systemStreams.CaptureSystemOut;
+import upstart.util.concurrent.Deadline;
 
 import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.inject.Singleton;
-import java.time.Duration;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import static com.google.common.truth.Truth.assertThat;
 import static com.google.common.truth.Truth.assertWithMessage;
 import static org.awaitility.Awaitility.await;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static upstart.test.CompletableFutureSubject.assertThat;
 
 class ManagedServiceGraphTest {
   @Test
@@ -101,7 +103,7 @@ class ManagedServiceGraphTest {
 
   @CaptureSystemOut // stifle noisy error-logs... we can't use @SuppressLogs here because of circular dependency
   @Test
-  void idleServiceFailureCallsShutdown() {
+  void idleServiceFailureCallsShutdown() throws ExecutionException, InterruptedException, TimeoutException {
     UpstartExtension.ensureInitialized();
     UpstartService app = UpstartService.builder().installModule(new UpstartModule() {
       @Override
@@ -114,19 +116,17 @@ class ManagedServiceGraphTest {
 
     app.start().join();
     FailingIdleService failingService = app.getInstance(FailingIdleService.class);
-    RuntimeException failureException = new RuntimeException("Test exception") {
-      @Override
-      public Throwable fillInStackTrace() {
-        return this;
-      }
-    };
+    var failureException = new StacklessTestException();
+    var deadline = Deadline.withinSeconds(10);
     failingService.fail(failureException);
-    await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> assertWithMessage("Expected shutdown to be called").that(
-            failingService.didShutDown).isTrue());
-    ExecutionException exception = assertThrows(ExecutionException.class, () -> app.getStoppedFuture()
-            .get(2, TimeUnit.SECONDS));
-    assertThat(exception).hasCauseThat().isSameInstanceAs(failureException);
+    await().atMost(deadline.remaining()).untilAsserted(() -> assertWithMessage("Expected shutdown to be called")
+            .that(failingService.didShutDown).isTrue());
+    assertThat(app.getStoppedFuture()).doneWithin(deadline)
+            .completedWithExceptionThat().isSameInstanceAs(failureException);
+    assertThat(failingService.getTerminationFuture()).doneWithin(deadline)
+            .completedWithResultThat().isEqualTo(Service.State.FAILED);
     assertThat(app.state()).isEqualTo(Service.State.FAILED);
+    assertThat(app.getInstance(ProviderService.class).state()).isEqualTo(Service.State.TERMINATED);
   }
 
   static class DelayedStartupService extends NotifyingService {

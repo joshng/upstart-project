@@ -141,7 +141,7 @@ public abstract class ServiceSupervisor {
                   Threads.formatThreadDump());
         }
       } catch (Throwable e) {
-        logger().error("Unexpected exception during shutdown, halting forcibly!", e);
+        logger().error("Unexpected exception during shutdown, halting!\n{}", supervisedService, e);
       } finally {
         if (halt) Runtime.getRuntime().halt(1);
       }
@@ -170,12 +170,12 @@ public abstract class ServiceSupervisor {
 
   private boolean awaitOperation(String desc, Function<Instant, Duration> waitTime, Supplier<CompletableFuture<?>> operation) throws InterruptedException, ExecutionException {
     Stopwatch stopwatch = Stopwatch.createStarted();
-    CompletableFuture<?> startedFuture = operation.get();
+    CompletableFuture<?> future = operation.get();
 
     Duration sleep;
     while (!(sleep = waitTime.apply(Instant.now())).isNegative()) {
       try {
-        startedFuture.get(Math.min(sleep.toMillis(), pendingTransitionLogInterval().toMillis()), TimeUnit.MILLISECONDS);
+        future.get(Math.min(sleep.toMillis(), pendingTransitionLogInterval().toMillis()), TimeUnit.MILLISECONDS);
         logger().info("({} took {})", desc, stopwatch);
         return true;
       } catch (TimeoutException e) {

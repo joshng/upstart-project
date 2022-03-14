@@ -11,6 +11,7 @@ import com.google.common.graph.GraphBuilder;
 import com.google.common.graph.Graphs;
 import com.google.common.graph.ImmutableGraph;
 import com.google.common.graph.MutableGraph;
+import com.google.common.util.concurrent.AbstractService;
 import com.google.common.util.concurrent.Service;
 import upstart.util.MoreStreams;
 import upstart.util.Pair;
@@ -125,7 +126,7 @@ public class ManagedServiceGraph extends AggregateService {
   }
 
   public String renderGraph(Function<? super Service, String> serviceRenderer) {
-    return graphRenderer.get().render(serviceRenderer);
+    return graph.nodes().isEmpty() ? "[no services]" : graphRenderer.get().render(serviceRenderer);
   }
 
   private static Graph<Service> buildGraph(Collection<LifecycleCoordinator> services) {
@@ -138,6 +139,25 @@ public class ManagedServiceGraph extends AggregateService {
       }
     }
 
+    // empty graphs are problematic, so include a dummy service
+    if (graph.nodes().isEmpty()) graph.addNode(new NoOpService());
     return graph;
+  }
+
+  private static class NoOpService extends AbstractService {
+    @Override
+    protected void doStart() {
+      notifyStarted();
+    }
+
+    @Override
+    protected void doStop() {
+      notifyStopped();
+    }
+
+    @Override
+    public String toString() {
+      return "[no services]";
+    }
   }
 }

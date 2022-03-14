@@ -2,6 +2,7 @@ package upstart.services;
 
 import com.google.common.util.concurrent.AbstractService;
 import com.google.common.util.concurrent.MoreExecutors;
+import upstart.util.concurrent.AtomicMutableReference;
 import upstart.util.exceptions.ThrowingRunnable;
 
 import java.util.Set;
@@ -11,7 +12,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public abstract class IdleService extends BaseComposableService<IdleService.DelegateService> {
   private static final int MAX_RECORDED_FAILURES = 10;
-  private final AtomicReference<Throwable> pendingFailure = new AtomicReference<>();
+  private final AtomicMutableReference<Throwable> pendingFailure = new AtomicMutableReference<>();
   private final Set<Throwable> failures = ConcurrentHashMap.newKeySet(MAX_RECORDED_FAILURES);
 
   protected IdleService() {
@@ -23,6 +24,7 @@ public abstract class IdleService extends BaseComposableService<IdleService.Dele
    * Start the service.
    */
   protected abstract void startUp() throws Exception;
+
   /**
    * Stop the service.
    */
@@ -55,60 +57,60 @@ public abstract class IdleService extends BaseComposableService<IdleService.Dele
   }
 
   static class DelegateService extends AbstractService {
-      private IdleService wrapper;
+    private IdleService wrapper;
 
-      @Override
-      protected final void doStart() {
-          stateTransition(State.STARTING, () -> {
-              wrapper.startUp();
-              notifyStarted();
-          });
-      }
+    @Override
+    protected final void doStart() {
+      stateTransition(State.STARTING, () -> {
+        notifyFailure(wrapper::startUp);
+        notifyStarted(); // if startup failed, this will transition directly to STOPPING
+      });
+    }
 
-      @Override
-      protected final void doStop() {
-          stateTransition(State.STOPPING, () -> {
-            try {
-              wrapper.shutDown();
-            } catch (Throwable e) {
-              wrapper.notifyFailed(e);
-            }
-            Throwable failure = wrapper.pendingFailure.get();
-            if (failure != null) {
-              notifyFailed(failure);
-            } else {
-              notifyStopped();
-            }
-          });
-      }
+    @Override
+    protected final void doStop() {
+      stateTransition(State.STOPPING, () -> {
+        notifyFailure(wrapper::shutDown);
+        wrapper.pendingFailure.getOptional()
+                .ifPresentOrElse(
+                        this::notifyFailed,
+                        this::notifyStopped
+                );
+      });
+    }
 
-      private void stateTransition(State state, ThrowingRunnable transition) {
-        executor(state).execute(() -> {
-              Thread currentThread = Thread.currentThread();
-              String prevName = currentThread.getName();
-              try {
-                  currentThread.setName(wrapper.serviceStateString(state));
-                  transition.runOrThrow();
-              } catch (Throwable t) {
-                  wrapper.notifyFailed(t);
-                  if (state == State.STARTING) notifyStarted(); // proceed to STOPPING, to execute shutdown prior to failing
-              } finally {
-                  currentThread.setName(prevName);
-              }
-          });
+    private void notifyFailure(ThrowingRunnable transition) {
+      try {
+        transition.runOrThrow();
+      } catch (Throwable e) {
+        wrapper.notifyFailed(e);
       }
+    }
 
-      private Executor executor(State state) {
-          if ((state == State.STARTING && wrapper.startUpOnSeparateThread()) || wrapper.shutDownOnSeparateThread()) {
-              return task -> new Thread(task).start();
-          } else {
-              return MoreExecutors.directExecutor();
-          }
-      }
+    private void stateTransition(State state, Runnable transition) {
+      executor(state).execute(() -> {
+        Thread currentThread = Thread.currentThread();
+        String prevName = currentThread.getName();
+        try {
+          currentThread.setName(wrapper.serviceStateString(state));
+          transition.run();
+        } finally {
+          currentThread.setName(prevName);
+        }
+      });
+    }
 
-      @Override
-      public String toString() {
-        return wrapper.toString();
+    private Executor executor(State state) {
+      if ((state == State.STARTING && wrapper.startUpOnSeparateThread()) || wrapper.shutDownOnSeparateThread()) {
+        return task -> new Thread(task).start();
+      } else {
+        return MoreExecutors.directExecutor();
       }
+    }
+
+    @Override
+    public String toString() {
+      return wrapper.toString();
+    }
   }
 }

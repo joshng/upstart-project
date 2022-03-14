@@ -32,7 +32,12 @@ public abstract class TemplateConfig {
             .mapKeys(TargetName::of);
   }
 
-  Config templatizeInstance(TemplateId templateId, String instanceName, Map<String, String> values, Map<TemplateId, TemplateConfig> templates) {
+  Config templatizeInstance(
+          TemplateId templateId,
+          String instanceName,
+          Map<String, String> values,
+          Map<TemplateId, TemplateConfig> templates
+  ) {
     String configStr = MoreStrings.interpolateTokens(template(), TOKEN_PATTERN, matcher -> {
       String key = matcher.group(1);
       return key.equals(NAME_TOKEN)

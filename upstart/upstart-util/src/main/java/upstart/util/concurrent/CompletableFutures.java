@@ -111,6 +111,19 @@ public class CompletableFutures {
     return future.isDone() && !future.isCompletedExceptionally();
   }
 
+  public static Optional<Throwable> getException(CompletableFuture<?> future) {
+    if (future.isCompletedExceptionally()) {
+      try {
+        future.join();
+      } catch (CompletionException e) {
+        return Optional.of(e.getCause());
+      } catch (Exception e) {
+        return Optional.of(e);
+      }
+    }
+    return Optional.empty();
+  }
+
   public static CompletableFuture<Void> allOf(Stream<? extends CompletableFuture<?>> stream) {
     return CompletableFuture.allOf(toArray(stream));
   }

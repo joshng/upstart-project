@@ -7,6 +7,10 @@ public interface B4Function<C> {
 
   void cancel();
 
+  default boolean alwaysCleanBeforeRun() {
+    return false;
+  }
+
   default boolean runOnSeparateThread() {
     return true;
   }

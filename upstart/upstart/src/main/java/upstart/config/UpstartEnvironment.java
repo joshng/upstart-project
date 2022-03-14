@@ -26,7 +26,7 @@ import java.util.Optional;
  * <ol>
  *   <li>contents of UPSTART_OVERRIDES</li>
  *   <li>System environment-variables</li>
- *   <li>dev-configs/${USERNAME}.conf (only if UpstartDeploymentStage=Development)</li>
+ *   <li>dev-configs/${USERNAME}.conf (only if UpstartDeploymentStage=dev)</li>
  *   <li>upstart-environments/${UPSTART_ENVIRONMENT}.conf</li>
  *   <li>System properties</li>
  *   <li>upstart-application.conf</li>

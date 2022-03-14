@@ -62,7 +62,7 @@ public abstract class TargetSpec {
             .dependencies(mergeConfigurators(dependencies(), other.dependencies()))
             .tasks(mergeConfigurators(tasks(), other.tasks()))
             .impl(mergedImpl)
-            .module(module().map(m1 -> other.module().map(m2 -> Optional.of(Modules.combine(m1, m2))).orElse(module())).orElse(other.module()))
+            .module(module().map(m1 -> other.module().map(m2 -> Modules.combine(m1, m2)).or(this::module)).orElse(other.module()))
             .build();
   }
 
