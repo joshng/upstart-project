@@ -1,5 +1,6 @@
 package upstart.services;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.common.util.concurrent.Service;
 import com.google.common.util.concurrent.ServiceManager;
@@ -14,7 +15,12 @@ public abstract class AggregateService extends NotifyingService {
 
   @Override
   protected void doStart() {
-    serviceManager = new ServiceManager(getComponentServices());
+    Listener stoppingListener = new StoppingListener();
+    ImmutableList<? extends ComposableService> services = ImmutableList.copyOf(getComponentServices());
+    for (ComposableService service : services) {
+      service.addListener(stoppingListener, MoreExecutors.directExecutor());
+    }
+    serviceManager = new ServiceManager(services);
     serviceManager.addListener(new ServiceManager.Listener() {
       @Override
       public void healthy() {
@@ -56,5 +62,12 @@ public abstract class AggregateService extends NotifyingService {
   @Override
   public String toString() {
     return super.toString() + "\n--" + serviceManager;
+  }
+
+  private class StoppingListener extends Listener {
+    @Override
+    public void stopping(State from) {
+      stop();
+    }
   }
 }
