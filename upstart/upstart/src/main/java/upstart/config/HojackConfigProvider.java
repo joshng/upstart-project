@@ -8,7 +8,7 @@ import com.google.common.collect.ImmutableList;
 import io.upstartproject.hojack.ConfigMapper;
 import io.upstartproject.hojack.HojackConfigMapper;
 import upstart.UpstartDeploymentStage;
-import upstart.util.Optionals;
+import upstart.util.collect.Optionals;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigValue;

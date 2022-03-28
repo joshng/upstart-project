@@ -21,7 +21,7 @@ import upstart.services.InitializingService;
 import upstart.services.ManagedServicesModule;
 import upstart.services.NotifyingService;
 import upstart.services.ScheduledService;
-import upstart.util.Reflect;
+import upstart.util.reflect.Reflect;
 import org.aopalliance.intercept.MethodInterceptor;
 
 import javax.inject.Inject;

@@ -30,8 +30,8 @@ import com.google.inject.spi.ProviderKeyBinding;
 import com.google.inject.spi.ProvidesMethodBinding;
 import com.google.inject.spi.ProvidesMethodTargetVisitor;
 import com.google.inject.spi.UntargettedBinding;
-import upstart.util.Optionals;
-import upstart.util.PersistentList;
+import upstart.util.collect.Optionals;
+import upstart.util.collect.PersistentList;
 
 import javax.inject.Inject;
 import javax.inject.Provider;

@@ -3,7 +3,7 @@ package upstart.b4.devops;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import upstart.b4.B4Function;
 import upstart.b4.B4TaskContext;
-import upstart.util.PairStream;
+import upstart.util.collect.PairStream;
 import org.immutables.value.Value;
 
 import java.io.Writer;

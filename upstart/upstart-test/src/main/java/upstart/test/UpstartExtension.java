@@ -7,16 +7,15 @@ import upstart.InternalTestBuilder;
 import upstart.UpstartStaticInitializer;
 import upstart.config.EnvironmentConfigExtension;
 import upstart.config.UpstartEnvironment;
-import upstart.util.MoreStreams;
-import upstart.util.MultiMethodInvoker;
-import upstart.util.Reflect;
+import upstart.util.collect.MoreStreams;
+import upstart.util.reflect.MultiMethodInvoker;
+import upstart.util.reflect.Reflect;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeTestExecutionCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.mockito.Mockito;
 
 import java.util.Optional;
-import java.util.function.Predicate;
 
 import static java.util.function.Predicate.*;
 

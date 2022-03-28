@@ -2,7 +2,7 @@ package upstart.b4.config;
 
 import upstart.b4.TargetExecutionConfig;
 import upstart.b4.TargetInstanceId;
-import upstart.util.Optionals;
+import upstart.util.collect.Optionals;
 import com.typesafe.config.Config;
 import org.immutables.value.Value;
 

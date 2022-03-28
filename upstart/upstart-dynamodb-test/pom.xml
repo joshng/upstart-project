@@ -11,6 +11,9 @@
   </parent>
 
   <artifactId>upstart-dynamodb-test</artifactId>
+<!--  <properties>-->
+<!--    <testcontainers.version>1.16.3</testcontainers.version>-->
+<!--  </properties>-->
 
   <dependencyManagement>
     <dependencies>
@@ -21,6 +24,21 @@
         <type>pom</type>
         <scope>import</scope>
       </dependency>
+<!--      <dependency>-->
+<!--        <groupId>org.testcontainers</groupId>-->
+<!--        <artifactId>testcontainers</artifactId>-->
+<!--        <version>${testcontainers.version}</version>-->
+<!--      </dependency>-->
+<!--      <dependency>-->
+<!--        <groupId>org.testcontainers</groupId>-->
+<!--        <artifactId>localstack</artifactId>-->
+<!--        <version>${testcontainers.version}</version>-->
+<!--      </dependency>-->
+<!--      <dependency>-->
+<!--        <groupId>org.testcontainers</groupId>-->
+<!--        <artifactId>junit-jupiter</artifactId>-->
+<!--        <version>${testcontainers.version}</version>-->
+<!--      </dependency>-->
     </dependencies>
   </dependencyManagement>
 
@@ -33,6 +51,18 @@
       <groupId>software.amazon.awssdk</groupId>
       <artifactId>dynamodb</artifactId>
     </dependency>
+<!--    <dependency>-->
+<!--      <groupId>org.testcontainers</groupId>-->
+<!--      <artifactId>testcontainers</artifactId>-->
+<!--    </dependency>-->
+<!--    <dependency>-->
+<!--      <groupId>org.testcontainers</groupId>-->
+<!--      <artifactId>junit-jupiter</artifactId>-->
+<!--    </dependency>-->
+<!--    <dependency>-->
+<!--      <groupId>org.testcontainers</groupId>-->
+<!--      <artifactId>localstack</artifactId>-->
+<!--    </dependency>-->
 
     <dependency>
       <groupId>${project.groupId}</groupId>

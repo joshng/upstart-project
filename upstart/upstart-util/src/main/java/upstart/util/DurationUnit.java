@@ -1,9 +1,23 @@
 package upstart.util;
 
 import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.OffsetTime;
+import java.time.ZonedDateTime;
 import java.time.temporal.Temporal;
 import java.time.temporal.TemporalUnit;
 
+/**
+ * A customizable {@link TemporalUnit}, useful for truncating points-in-time to the most recent interval-boundary (eg,
+ * to a 5-minute granularity):
+ * <code>Instant.now().truncateTo(DurationUnit.ofMinutes(5))</code><p/>
+ *
+ * Applicable to {@link Instant}, {@link LocalDateTime}, {@link OffsetDateTime},
+ * {@link ZonedDateTime}, {@link LocalTime}, and {@link OffsetTime}.
+ */
 // thank you stackoverflow
 public final class DurationUnit implements TemporalUnit {
 

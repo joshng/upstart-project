@@ -1,7 +1,7 @@
 package upstart.b4;
 
 import picocli.CommandLine;
-import upstart.util.MoreStrings;
+import upstart.util.strings.MoreStrings;
 
 import java.io.PrintStream;
 import java.util.regex.Pattern;

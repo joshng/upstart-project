@@ -1,7 +1,7 @@
 package upstart.commandExecutor;
 
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
-import upstart.util.MoreStrings;
+import upstart.util.strings.MoreStrings;
 import org.immutables.value.Value;
 
 import java.io.IOException;

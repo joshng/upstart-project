@@ -1,4 +1,4 @@
-package upstart.util;
+package upstart.util.functions;
 
 @FunctionalInterface
 public interface TriFunction<A, B, C, O> {

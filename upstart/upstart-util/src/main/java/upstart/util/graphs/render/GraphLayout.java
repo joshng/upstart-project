@@ -1,6 +1,6 @@
 package upstart.util.graphs.render;
 
-import upstart.util.PairStream;
+import upstart.util.collect.PairStream;
 import upstart.util.geometry.Dimension;
 import org.immutables.value.Value;
 

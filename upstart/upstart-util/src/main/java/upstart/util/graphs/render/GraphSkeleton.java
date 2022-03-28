@@ -1,7 +1,7 @@
 package upstart.util.graphs.render;
 
 import com.google.common.graph.Graph;
-import upstart.util.Optionals;
+import upstart.util.collect.Optionals;
 import org.immutables.value.Value;
 
 import java.util.List;

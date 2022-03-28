@@ -1,4 +1,4 @@
-package upstart.util;
+package upstart.util.reflect;
 
 import java.lang.reflect.Member;
 import java.lang.reflect.Modifier;

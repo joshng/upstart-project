@@ -1,6 +1,7 @@
-package upstart.util;
+package upstart.util.strings;
 
 import com.google.common.base.Functions;
+import upstart.util.collect.Pair;
 
 import java.util.Map;
 import java.util.function.Function;

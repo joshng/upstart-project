@@ -42,6 +42,6 @@ public interface Appendee {
   }
 
   private static <T> T throwParallelUnsupported(Object a, Object b) {
-    throw new UnsupportedOperationException("appendingTo does not support parallel streams");
+    throw new UnsupportedOperationException("parallel streams unsupported");
   }
 }

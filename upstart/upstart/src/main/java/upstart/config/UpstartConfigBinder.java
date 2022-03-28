@@ -5,7 +5,7 @@ import com.google.inject.Key;
 import upstart.services.UpstartService;
 import upstart.UpstartModuleExtension;
 import upstart.config.annotations.ConfigPath;
-import upstart.util.MoreStreams;
+import upstart.util.collect.MoreStreams;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import upstart.util.concurrent.ThreadLocalReference;

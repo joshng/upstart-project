@@ -2,7 +2,7 @@ package upstart.log;
 
 import upstart.UpstartStaticInitializer;
 import upstart.config.UpstartEnvironment;
-import upstart.util.Optionals;
+import upstart.util.collect.Optionals;
 import org.kohsuke.MetaInfServices;
 
 @MetaInfServices(UpstartStaticInitializer.class)

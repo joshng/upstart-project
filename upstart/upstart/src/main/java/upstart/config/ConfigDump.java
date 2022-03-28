@@ -1,8 +1,8 @@
 package upstart.config;
 
 import com.google.common.base.Joiner;
-import upstart.util.MoreStrings;
-import upstart.util.PairStream;
+import upstart.util.strings.MoreStrings;
+import upstart.util.collect.PairStream;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigValue;
 import com.typesafe.config.ConfigValueType;

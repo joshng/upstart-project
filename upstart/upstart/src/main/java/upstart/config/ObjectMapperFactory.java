@@ -8,11 +8,10 @@ import com.fasterxml.jackson.databind.deser.ValueInstantiator;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import com.google.common.collect.ImmutableList;
 import io.upstartproject.hojack.HojackConfigMapper;
 import upstart.config.annotations.DeserializedImmutable;
 import upstart.util.Ambiance;
-import upstart.util.Reflect;
+import upstart.util.reflect.Reflect;
 
 import java.io.IOException;
 import java.util.Optional;

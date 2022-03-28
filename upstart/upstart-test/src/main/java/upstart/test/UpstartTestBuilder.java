@@ -4,10 +4,9 @@ import com.google.common.util.concurrent.Service;
 import com.google.inject.Injector;
 import com.google.inject.Key;
 import com.google.inject.Module;
-import upstart.UpstartApplication;
 import upstart.UpstartApplicationBuilder;
 import upstart.config.TestConfigBuilder;
-import upstart.util.Reflect;
+import upstart.util.reflect.Reflect;
 import upstart.util.exceptions.ThrowingConsumer;
 import org.mockito.Mockito;
 

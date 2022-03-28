@@ -2,7 +2,7 @@ package upstart.log4j.test;
 
 import upstart.test.ExtensionContexts;
 import upstart.test.SingletonParameterResolver;
-import upstart.util.Reflect;
+import upstart.util.reflect.Reflect;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;

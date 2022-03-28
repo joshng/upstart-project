@@ -10,8 +10,8 @@ import upstart.commandExecutor.CommandSpecBuilder;
 import upstart.commandExecutor.InternalCommandResult;
 import upstart.util.exceptions.Fallible;
 import upstart.util.exceptions.FallibleSupplier;
-import upstart.util.MoreStrings;
-import upstart.util.Optionals;
+import upstart.util.strings.MoreStrings;
+import upstart.util.collect.Optionals;
 import upstart.util.exceptions.UncheckedInterruptedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,14 +42,14 @@ public class B4TaskContext {
   private final CountDownLatch cancelLatch = new CountDownLatch(1);
   private final boolean isDryRun;
   private volatile boolean canceled = false;
-  private volatile boolean logEnabled;
+  private volatile B4Function.Verbosity currentVerbosity;
 
   @Inject
   public B4TaskContext(B4Application application, TargetInvocation invocation, CommandExecutorSPI realCommandExecutor) {
     this.invocation = invocation;
     this.commandExecutor = new CommandExecutor(new WrappedCommandExecutor(realCommandExecutor));
     this.log = LoggerFactory.getLogger(invocation.id().displayName());
-    logEnabled = invocation.effectiveVerbosity().logCommands;
+    currentVerbosity = invocation.effectiveVerbosity();
     isDryRun = application.baseExecutionConfig().dryRun();
   }
 
@@ -151,16 +151,24 @@ public class B4TaskContext {
   }
 
   public void sayFormatted(String format, Object... args) {
-    if (!isLogEnabled()) return;
+    if (!isCommandLogEnabled()) return;
     say(String.format(format, args));
   }
 
   public void say(String... tokens) {
-    say(String.join(" ", tokens));
+    say(B4Function.Verbosity.Info, tokens);
+  }
+
+  public void say(B4Function.Verbosity verbosity, String... tokens) {
+    say(verbosity, String.join(" ", tokens));
   }
 
   public B4TaskContext say(String message) {
-    if (isLogEnabled()) {
+    return say(B4Function.Verbosity.Info, message);
+  }
+
+  public B4TaskContext say(B4Function.Verbosity verbosity, String message) {
+    if (currentVerbosity.isEnabled(verbosity) && log.isInfoEnabled()) {
       if (message.contains(System.lineSeparator())) {
         message = MULTILINE_LOG_BORDER + MULTILINE_LOG_PREFIX + message.replaceAll(System.lineSeparator(), MULTILINE_LOG_PREFIX) + MULTILINE_LOG_BORDER;
       }
@@ -178,31 +186,37 @@ public class B4TaskContext {
 
   public <T, E extends Exception> T getQuietly(FallibleSupplier<T, E> block) throws E {
     yieldIfCanceled();
-    boolean wasEnabled = logEnabled;
-    setLogEnabled(false);
+    B4Function.Verbosity prev = currentVerbosity;
+    setVerbosity(B4Function.Verbosity.Quiet);
     try {
       return block.getOrThrow();
     } finally {
-      setLogEnabled(wasEnabled);
+      setVerbosity(prev);
     }
   }
 
-  public void setLogEnabled(boolean enabled) {
-    logEnabled = enabled;
+  public void setVerbosity(B4Function.Verbosity verbosity) {
+    currentVerbosity = verbosity;
   }
 
-  public boolean isLogEnabled() {
-    return logEnabled && log.isInfoEnabled();
+  public boolean isCommandLogEnabled() {
+    return currentVerbosity.logCommands && log.isInfoEnabled();
   }
 
   public Effect effect(String... tokens) {
-    return new RealEffect(String.join(" ", tokens));
+    return effect(invocation.effectiveVerbosity(), tokens);
+  }
+
+  public Effect effect(B4Function.Verbosity verbosity, String... tokens) {
+    return new RealEffect(verbosity, String.join(" ", tokens));
   }
 
   private class RealEffect implements Effect {
+    private final B4Function.Verbosity verbosity;
     private final String message;
 
-    public RealEffect(String message) {
+    public RealEffect(B4Function.Verbosity verbosity, String message) {
+      this.verbosity = verbosity;
       this.message = message;
     }
 
@@ -210,7 +224,7 @@ public class B4TaskContext {
     public <T, E extends Exception> T get(FallibleSupplier<T, E> block, T dryRunResult) throws E {
       yieldIfCanceled();
       if (!isDryRun) {
-        say(message);
+        say(verbosity, message);
         T result = block.getOrThrow();
         say("DONE:", message);
         return result;

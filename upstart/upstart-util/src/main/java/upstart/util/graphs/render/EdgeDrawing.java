@@ -1,7 +1,7 @@
 package upstart.util.graphs.render;
 
-import upstart.util.Optionals;
-import upstart.util.PairStream;
+import upstart.util.collect.Optionals;
+import upstart.util.collect.PairStream;
 import upstart.util.geometry.Point;
 
 import java.util.List;

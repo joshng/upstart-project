@@ -6,8 +6,8 @@ import org.immutables.value.Value;
 import upstart.b4.B4Function;
 import upstart.b4.B4TaskContext;
 import upstart.config.annotations.DeserializedImmutable;
-import upstart.util.MoreFunctions;
-import upstart.util.Patterns;
+import upstart.util.functions.MoreFunctions;
+import upstart.util.strings.Patterns;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -72,13 +72,10 @@ public class ProjectSkeletonFunction implements B4Function<ProjectSkeletonFuncti
     }
     default void copy(Path projectPath, B4TaskContext context) throws IOException {
       Path skeletonFile = skeletonDir().resolve(sourceDir().relativize(projectPath));
-      Path target = skeletonFile.getParent().relativize(projectPath);
-      context.effect("Linking to project skeleton:", projectPath.toString())
+      context.effect(Verbosity.Verbose, "Linking to project skeleton:", projectPath.toString())
               .run(() -> {
                 Files.createDirectories(skeletonFile.getParent());
                 Files.createLink(skeletonFile, projectPath);
-//                Files.createSymbolicLink(skeletonFile, target);
-//                Files.copy(projectPath, skeletonFile);
               });
     }
   }

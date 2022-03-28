@@ -1,7 +1,7 @@
 package io.upstartproject.avrocodec.s3;
 
-import upstart.util.PairStream;
-import upstart.util.PersistentList;
+import upstart.util.collect.PairStream;
+import upstart.util.collect.PersistentList;
 import upstart.util.concurrent.CompletableFutures;
 import upstart.util.concurrent.FutureCell;
 import io.upstartproject.avrocodec.BaseSchemaRepo;

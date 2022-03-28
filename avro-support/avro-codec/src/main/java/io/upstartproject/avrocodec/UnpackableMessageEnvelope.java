@@ -1,7 +1,7 @@
 package io.upstartproject.avrocodec;
 
 import io.upstartproject.avro.MessageEnvelope;
-import upstart.util.MoreStreams;
+import upstart.util.collect.MoreStreams;
 import org.apache.avro.specific.SpecificRecordBase;
 import org.immutables.value.Value;
 

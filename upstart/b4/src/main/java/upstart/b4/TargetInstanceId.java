@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import upstart.b4.config.TargetConfig;
 import upstart.b4.config.TargetConfigurator;
-import upstart.util.MoreStrings;
+import upstart.util.strings.MoreStrings;
 import com.typesafe.config.Config;
 import org.immutables.value.Value;
 

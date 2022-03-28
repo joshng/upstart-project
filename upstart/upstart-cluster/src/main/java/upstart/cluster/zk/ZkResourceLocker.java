@@ -7,7 +7,7 @@ import com.google.common.collect.Multimaps;
 import upstart.cluster.ClusterNodeId;
 import upstart.cluster.DistributedResourceLocker;
 import upstart.cluster.FenceToken;
-import upstart.util.Pair;
+import upstart.util.collect.Pair;
 import upstart.util.concurrent.CompletableFutures;
 import org.apache.curator.utils.ZKPaths;
 import org.apache.curator.x.async.AsyncStage;

@@ -8,8 +8,8 @@ import com.google.inject.matcher.Matchers;
 import upstart.config.UpstartModule;
 import upstart.guice.BindingResolver;
 import upstart.guice.GuiceDependencyGraph;
-import upstart.util.Modifiers;
-import upstart.util.Reflect;
+import upstart.util.reflect.Modifiers;
+import upstart.util.reflect.Reflect;
 import org.aopalliance.intercept.MethodInterceptor;
 import org.aopalliance.intercept.MethodInvocation;
 

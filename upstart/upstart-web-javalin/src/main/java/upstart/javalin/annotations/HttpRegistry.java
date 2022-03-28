@@ -14,7 +14,7 @@ import upstart.guice.PrivateBinding;
 import upstart.guice.TypeLiterals;
 import upstart.javalin.JavalinWebInitializer;
 import upstart.javalin.JavalinWebModule;
-import upstart.util.Reflect;
+import upstart.util.reflect.Reflect;
 import upstart.util.Validation;
 
 import javax.inject.Inject;

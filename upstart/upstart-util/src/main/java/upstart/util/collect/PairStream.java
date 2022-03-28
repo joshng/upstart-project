@@ -1,4 +1,4 @@
-package upstart.util;
+package upstart.util.collect;
 
 import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.ImmutableMap;
@@ -9,6 +9,8 @@ import com.google.common.collect.MultimapBuilder;
 import com.google.common.collect.Multimaps;
 import com.google.common.collect.SetMultimap;
 import com.google.common.collect.Streams;
+import upstart.util.reflect.Reflect;
+import upstart.util.functions.TriFunction;
 
 import java.util.Comparator;
 import java.util.Iterator;

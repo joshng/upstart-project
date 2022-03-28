@@ -6,9 +6,8 @@ import io.upstartproject.hojack.Size;
 import io.upstartproject.hojack.SizeUnit;
 import upstart.b4.B4Function;
 import upstart.b4.B4TaskContext;
-import upstart.b4.TargetName;
 import upstart.b4.functions.MavenConfig;
-import upstart.util.MoreStrings;
+import upstart.util.strings.MoreStrings;
 import upstart.util.annotations.Tuple;
 import upstart.util.concurrent.Promise;
 import upstart.util.concurrent.Throttler;
@@ -55,7 +54,6 @@ public class NexusDownloadFunction implements B4Function<NexusDownloadFunction.D
 
   @Override
   public void run(DownloadConfig config, B4TaskContext context) throws Exception {
-    Files.createDirectories(config.to().normalize().getParent());
 
     NexusCredentialStore.Creds creds = config.credentials().orElseGet(() -> credentials.get(config.mavenRepoId()));
     String credential = Credentials.basic(creds.username(), creds.password());
@@ -70,6 +68,7 @@ public class NexusDownloadFunction implements B4Function<NexusDownloadFunction.D
 
     String description = config.to().toString() + "\n  from " + config.url();
     context.effect("Downloading from nexus:", description).run(() -> {
+      Files.createDirectories(config.to().normalize().getParent());
       Request req = new Request.Builder()
               .get()
               .url(config.url())

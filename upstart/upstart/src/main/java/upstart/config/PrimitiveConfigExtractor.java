@@ -1,7 +1,7 @@
 package upstart.config;
 
 import com.google.common.collect.ImmutableMap;
-import upstart.util.Optionals;
+import upstart.util.collect.Optionals;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigList;
 import com.typesafe.config.ConfigMemorySize;

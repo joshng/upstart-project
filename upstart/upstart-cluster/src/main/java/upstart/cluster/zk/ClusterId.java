@@ -2,7 +2,7 @@ package upstart.cluster.zk;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import upstart.util.annotations.Identifier;
-import upstart.util.StringIdentifier;
+import upstart.util.strings.StringIdentifier;
 import org.immutables.value.Value;
 
 import java.util.regex.Pattern;

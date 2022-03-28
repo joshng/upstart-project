@@ -1,4 +1,4 @@
-package upstart.util;
+package upstart.util.strings;
 
 import java.util.Collection;
 import java.util.regex.Pattern;

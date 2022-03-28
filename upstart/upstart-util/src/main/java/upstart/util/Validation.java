@@ -2,6 +2,7 @@ package upstart.util;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
+import upstart.util.collect.MoreStreams;
 
 import java.util.ArrayList;
 import java.util.Arrays;

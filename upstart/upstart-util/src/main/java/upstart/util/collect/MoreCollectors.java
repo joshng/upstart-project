@@ -1,4 +1,4 @@
-package upstart.util;
+package upstart.util.collect;
 
 import com.google.common.collect.ImmutableMap;
 

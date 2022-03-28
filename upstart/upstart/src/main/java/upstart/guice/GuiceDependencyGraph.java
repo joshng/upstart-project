@@ -12,8 +12,8 @@ import com.google.inject.binder.LinkedBindingBuilder;
 import com.google.inject.multibindings.Multibinder;
 import upstart.UpstartModuleExtension;
 import upstart.config.UpstartModule;
-import upstart.util.Pair;
-import upstart.util.PairStream;
+import upstart.util.collect.Pair;
+import upstart.util.collect.PairStream;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;

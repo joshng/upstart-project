@@ -4,8 +4,8 @@ import com.google.common.collect.ImmutableMap;
 import upstart.metrics.TaggedMetricName;
 import upstart.config.UpstartApplicationConfig;
 import upstart.config.UpstartConfigProvider;
-import upstart.util.MoreStrings;
-import upstart.util.Reflect;
+import upstart.util.strings.MoreStrings;
+import upstart.util.reflect.Reflect;
 
 import javax.inject.Inject;
 import java.lang.annotation.Annotation;

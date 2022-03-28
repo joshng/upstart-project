@@ -1,4 +1,4 @@
-package upstart.util.optics;
+package upstart.util.functions.optics;
 
 public class FluentEditor<T> {
   private final T result;

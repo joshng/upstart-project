@@ -1,12 +1,10 @@
-package upstart.util;
+package upstart.util.collect;
 
 import com.google.common.truth.Truth;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.google.common.truth.Truth8.assertThat;

@@ -12,7 +12,7 @@ import com.google.inject.TypeLiteral;
 import upstart.config.UpstartModule;
 import upstart.guice.GuiceDependencyGraph;
 import upstart.guice.TypeLiterals;
-import upstart.util.Reflect;
+import upstart.util.reflect.Reflect;
 
 import javax.inject.Inject;
 import javax.inject.Provider;

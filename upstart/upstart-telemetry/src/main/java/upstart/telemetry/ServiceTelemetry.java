@@ -17,7 +17,7 @@ import upstart.services.IdleService;
 import upstart.services.ManagedServicesModule;
 import upstart.services.ServiceLifecycle;
 import upstart.util.LogLevel;
-import upstart.util.PairStream;
+import upstart.util.collect.PairStream;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;

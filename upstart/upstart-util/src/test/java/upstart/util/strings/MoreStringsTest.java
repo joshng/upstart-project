@@ -1,4 +1,4 @@
-package upstart.util;
+package upstart.util.strings;
 
 import org.junit.jupiter.api.Test;
 

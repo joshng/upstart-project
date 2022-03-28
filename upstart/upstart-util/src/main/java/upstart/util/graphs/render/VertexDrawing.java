@@ -2,7 +2,7 @@ package upstart.util.graphs.render;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.Streams;
-import upstart.util.PairStream;
+import upstart.util.collect.PairStream;
 import upstart.util.geometry.Dimension;
 import upstart.util.geometry.Point;
 import upstart.util.geometry.Rectangle;

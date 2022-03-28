@@ -1,7 +1,7 @@
 package upstart.b4.config;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import upstart.util.StringIdentifier;
+import upstart.util.strings.StringIdentifier;
 import upstart.util.annotations.Tuple;
 import com.typesafe.config.ConfigParseOptions;
 import org.immutables.value.Value;

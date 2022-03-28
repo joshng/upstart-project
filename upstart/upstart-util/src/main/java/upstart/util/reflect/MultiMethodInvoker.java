@@ -1,4 +1,4 @@
-package upstart.util;
+package upstart.util.reflect;
 
 import com.google.common.collect.ImmutableList;
 import upstart.util.exceptions.Exceptions;

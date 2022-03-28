@@ -5,8 +5,8 @@ import com.google.common.collect.Streams;
 import com.google.inject.Module;
 import com.google.inject.util.Modules;
 import upstart.b4.config.TargetConfigurator;
-import upstart.util.Optionals;
-import upstart.util.Reflect;
+import upstart.util.collect.Optionals;
+import upstart.util.reflect.Reflect;
 import org.immutables.value.Value;
 
 import java.lang.reflect.Type;

@@ -1,7 +1,7 @@
 package upstart.services;
 
 import com.google.common.util.concurrent.Service;
-import upstart.util.Optionals;
+import upstart.util.collect.Optionals;
 
 import java.util.concurrent.CompletableFuture;
 

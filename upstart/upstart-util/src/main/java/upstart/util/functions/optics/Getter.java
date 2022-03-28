@@ -1,4 +1,4 @@
-package upstart.util.optics;
+package upstart.util.functions.optics;
 
 public interface Getter<T, V> {
   V get(T instance);

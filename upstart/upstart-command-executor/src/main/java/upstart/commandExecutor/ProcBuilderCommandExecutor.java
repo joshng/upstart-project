@@ -1,7 +1,7 @@
 package upstart.commandExecutor;
 
 import upstart.config.UpstartModule;
-import upstart.util.Optionals;
+import upstart.util.collect.Optionals;
 import org.buildobjects.process.ProcBuilder;
 import org.buildobjects.process.ProcResult;
 import org.buildobjects.process.StartupException;

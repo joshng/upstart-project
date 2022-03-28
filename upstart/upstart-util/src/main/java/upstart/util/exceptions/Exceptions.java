@@ -2,8 +2,8 @@ package upstart.util.exceptions;
 
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
-import upstart.util.MoreStreams;
-import upstart.util.Optionals;
+import upstart.util.collect.MoreStreams;
+import upstart.util.collect.Optionals;
 
 import java.util.List;
 import java.util.Optional;

@@ -1,7 +1,7 @@
-package upstart.util;
+package upstart.util.collect;
 
 import upstart.util.annotations.Tuple;
-import upstart.util.optics.Lens;
+import upstart.util.functions.optics.Lens;
 import org.immutables.value.Value;
 
 import java.util.Map;

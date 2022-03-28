@@ -1,9 +1,11 @@
 package upstart.b4.functions;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.google.common.io.MoreFiles;
 import upstart.b4.B4Function;
 import upstart.b4.B4TaskContext;
 import org.immutables.value.Value;
+import upstart.util.MorePaths;
 
 import java.nio.file.Files;
 import java.nio.file.Path;

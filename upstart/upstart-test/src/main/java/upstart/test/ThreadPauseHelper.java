@@ -1,6 +1,6 @@
 package upstart.test;
 
-import upstart.util.MoreStreams;
+import upstart.util.collect.MoreStreams;
 import upstart.util.concurrent.Promise;
 
 import java.time.Duration;

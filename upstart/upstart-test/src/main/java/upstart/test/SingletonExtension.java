@@ -5,7 +5,7 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.reflect.TypeToken;
-import upstart.util.Reflect;
+import upstart.util.reflect.Reflect;
 import upstart.util.exceptions.Exceptions;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.ExtensionContext;

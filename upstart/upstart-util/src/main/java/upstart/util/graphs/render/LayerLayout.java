@@ -4,7 +4,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.graph.EndpointPair;
 import com.google.common.graph.Graph;
-import upstart.util.PairStream;
+import upstart.util.collect.PairStream;
 import upstart.util.geometry.Point;
 import upstart.util.geometry.Rectangle;
 

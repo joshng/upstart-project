@@ -1,7 +1,7 @@
 package upstart.b4;
 
 import upstart.config.ConfigMappingException;
-import upstart.util.Optionals;
+import upstart.util.collect.Optionals;
 
 public class InvalidB4TargetException extends ConfigMappingException {
   public InvalidB4TargetException(TargetName targetName) {

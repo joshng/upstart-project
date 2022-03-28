@@ -13,9 +13,9 @@ import com.google.common.graph.ImmutableGraph;
 import com.google.common.graph.MutableGraph;
 import com.google.common.util.concurrent.AbstractService;
 import com.google.common.util.concurrent.Service;
-import upstart.util.MoreStreams;
-import upstart.util.Pair;
-import upstart.util.PersistentList;
+import upstart.util.collect.MoreStreams;
+import upstart.util.collect.Pair;
+import upstart.util.collect.PersistentList;
 import upstart.util.concurrent.LazyReference;
 import upstart.util.graphs.render.GraphRenderer;
 

@@ -1,4 +1,4 @@
-package upstart.util.optics;
+package upstart.util.functions.optics;
 
 import java.util.function.Function;
 import java.util.function.UnaryOperator;

@@ -38,7 +38,7 @@ public class FreemarkerTemplateFunction implements B4Function<FreemarkerTemplate
       OpenOption[] openOption = config.replaceExisting()
               ? new OpenOption[]{StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE}
               : new OpenOption[]{StandardOpenOption.CREATE_NEW};
-      try (var out = Files.newBufferedWriter(config.to())) {
+      try (var out = Files.newBufferedWriter(config.to(), openOption)) {
         template.process(config.args(), out);
       }
     });

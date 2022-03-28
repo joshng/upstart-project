@@ -10,9 +10,9 @@ import org.mockito.internal.util.Primitives;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import upstart.proxy.Proxies;
-import upstart.util.Modifiers;
-import upstart.util.PairStream;
-import upstart.util.Reflect;
+import upstart.util.reflect.Modifiers;
+import upstart.util.collect.PairStream;
+import upstart.util.reflect.Reflect;
 import upstart.util.concurrent.LazyReference;
 import upstart.util.concurrent.ThreadLocalReference;
 

@@ -8,7 +8,7 @@ import com.google.inject.name.Names;
 import upstart.config.UpstartModule;
 import upstart.guice.PrivateBinding;
 import upstart.util.Nothing;
-import upstart.util.Optionals;
+import upstart.util.collect.Optionals;
 
 public class B4TargetModule extends UpstartModule {
   private final TargetSpec spec;

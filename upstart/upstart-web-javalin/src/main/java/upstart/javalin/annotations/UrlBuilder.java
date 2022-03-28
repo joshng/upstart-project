@@ -2,8 +2,8 @@ package upstart.javalin.annotations;
 
 import com.google.common.base.Functions;
 import com.google.common.base.Joiner;
-import upstart.util.MoreStrings;
-import upstart.util.StringIdentifier;
+import upstart.util.strings.MoreStrings;
+import upstart.util.strings.StringIdentifier;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;

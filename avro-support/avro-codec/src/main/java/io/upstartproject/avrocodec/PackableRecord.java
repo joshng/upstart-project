@@ -1,8 +1,8 @@
 package io.upstartproject.avrocodec;
 
 import io.upstartproject.avro.PackedRecord;
-import upstart.util.Optionals;
-import upstart.util.Reflect;
+import upstart.util.collect.Optionals;
+import upstart.util.reflect.Reflect;
 import org.apache.avro.generic.GenericRecord;
 import org.immutables.value.Value;
 

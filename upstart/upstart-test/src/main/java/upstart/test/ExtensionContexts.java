@@ -1,7 +1,7 @@
 package upstart.test;
 
 import com.google.common.collect.Lists;
-import upstart.util.Reflect;
+import upstart.util.reflect.Reflect;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.extension.Extension;
 import org.junit.jupiter.api.extension.ExtensionContext;

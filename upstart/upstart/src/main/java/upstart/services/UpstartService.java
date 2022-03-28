@@ -1,7 +1,6 @@
 package upstart.services;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.Service;
 import com.google.inject.AbstractModule;
@@ -29,9 +28,9 @@ import upstart.log.UpstartLogConfig;
 import upstart.log.UpstartLogProvider;
 import upstart.services.ManagedServicesModule.ServiceManager;
 import upstart.util.LocalHost;
-import upstart.util.Optionals;
-import upstart.util.PairStream;
-import upstart.util.Reflect;
+import upstart.util.collect.Optionals;
+import upstart.util.collect.PairStream;
+import upstart.util.reflect.Reflect;
 import upstart.util.exceptions.Exceptions;
 import com.typesafe.config.ConfigException;
 import org.slf4j.Logger;
@@ -46,7 +45,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 

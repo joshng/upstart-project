@@ -1,4 +1,4 @@
-package upstart.util;
+package upstart.util.strings;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonValue;

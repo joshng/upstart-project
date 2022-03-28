@@ -20,7 +20,7 @@ import upstart.services.UpstartService;
 import upstart.test.UpstartExtension;
 import upstart.test.UpstartTestBuilder;
 import upstart.test.SingletonExtension;
-import upstart.util.Reflect;
+import upstart.util.reflect.Reflect;
 import upstart.util.exceptions.ThrowingConsumer;
 import upstart.util.concurrent.FutureSuccessTracker;
 import upstart.util.concurrent.Promise;
@@ -29,7 +29,7 @@ import com.typesafe.config.Config;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import upstart.util.Optionals;
+import upstart.util.collect.Optionals;
 
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;

@@ -1,6 +1,6 @@
 package upstart.b4.incremental;
 
-import upstart.util.PairStream;
+import upstart.util.collect.PairStream;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;

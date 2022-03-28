@@ -1,4 +1,4 @@
-package upstart.util;
+package upstart.util.collect;
 
 import java.util.Map;
 import java.util.function.BiConsumer;

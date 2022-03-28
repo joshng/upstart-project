@@ -15,9 +15,4 @@ public class MorePaths {
     checkState(Files.isWritable(path), "Cannot write to directory %s", path);
     return path;
   }
-
-  public static <T> T checkThat(T value, Predicate<? super T> condition, String message, Object... args) {
-    Preconditions.checkState(condition.test(value), message, args);
-    return value;
-  }
 }

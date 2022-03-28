@@ -1,4 +1,7 @@
-package upstart.util;
+package upstart.util.reflect;
+
+import upstart.util.collect.MoreStreams;
+import upstart.util.collect.Optionals;
 
 import java.io.Serializable;
 import java.lang.annotation.Annotation;

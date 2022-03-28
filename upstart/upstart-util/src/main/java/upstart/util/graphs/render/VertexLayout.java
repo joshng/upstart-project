@@ -1,7 +1,7 @@
 package upstart.util.graphs.render;
 
 import com.google.common.graph.EndpointPair;
-import upstart.util.PairStream;
+import upstart.util.collect.PairStream;
 import upstart.util.annotations.Tuple;
 import upstart.util.geometry.Point;
 import upstart.util.geometry.Rectangle;

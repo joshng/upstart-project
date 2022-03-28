@@ -4,7 +4,7 @@ package upstart.test.kafka;
 import upstart.cluster.test.ZookeeperFixture;
 import upstart.test.ExtensionContexts;
 import upstart.test.SingletonParameterResolver;
-import upstart.util.Reflect;
+import upstart.util.reflect.Reflect;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;

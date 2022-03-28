@@ -4,7 +4,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.common.util.concurrent.Service;
 import com.google.common.util.concurrent.ServiceManager;
-import upstart.util.MoreStreams;
+import upstart.util.collect.MoreStreams;
 import upstart.util.exceptions.MultiException;
 
 public abstract class AggregateService extends NotifyingService {
