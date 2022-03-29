@@ -13,6 +13,7 @@
   <artifactId>upstart-example-app</artifactId>
   <properties>
     <upstart.main.class>upstart.example.UpstartExampleApp</upstart.main.class>
+    <docker.base.image>eclipse-temurin:17.0.2_8-jre-alpine</docker.base.image>
   </properties>
 
   <dependencies>
