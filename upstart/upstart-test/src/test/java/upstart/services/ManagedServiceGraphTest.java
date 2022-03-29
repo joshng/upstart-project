@@ -1,9 +1,12 @@
 package upstart.services;
 
 import com.google.common.util.concurrent.Service;
+import com.google.common.util.concurrent.ServiceManager;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Provides;
+import org.apache.log4j.Level;
+import org.apache.log4j.LogManager;
 import org.junit.jupiter.api.Test;
 import upstart.config.UpstartModule;
 import upstart.test.StacklessTestException;
@@ -24,6 +27,12 @@ import static org.awaitility.Awaitility.await;
 import static upstart.test.CompletableFutureSubject.assertThat;
 
 class ManagedServiceGraphTest {
+  static {
+    LogManager.getLogger(ServiceManager.class).setLevel(Level.OFF);
+    LogManager.getLogger(LifecycleCoordinator.class.getName() + "." + DelayedStartupService.class.getSimpleName())
+            .setLevel(Level.OFF);
+  }
+
   @Test
   void testStartupCancellation() throws Exception {
     DelayedStartupService dependent = new DelayedStartupService();
