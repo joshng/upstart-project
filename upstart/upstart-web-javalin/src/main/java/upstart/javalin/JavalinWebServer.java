@@ -25,7 +25,7 @@ public class JavalinWebServer extends IdleService {
   protected void startUp() throws Exception {
     javalin = Javalin.create(
             config -> {
-              config.contextPath = serverConfig.contextPath().toString();
+              config.contextPath = serverConfig.contextPath();
               plugins.forEach(plugin -> plugin.initializeWeb(config));
             }
     ).start(serverConfig.host(), serverConfig.port());

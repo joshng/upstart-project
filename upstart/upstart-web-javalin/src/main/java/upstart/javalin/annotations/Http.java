@@ -15,6 +15,8 @@ public @interface Http {
   /** The route-pattern to associate with the annotated method, as understood by {@link io.javalin.Javalin} */
   String path();
 
+  int successStatusCode() default 200;
+
   enum Verb {
     GET(HandlerType.GET),
     POST(HandlerType.POST),

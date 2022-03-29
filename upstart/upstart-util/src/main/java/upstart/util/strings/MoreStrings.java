@@ -66,6 +66,14 @@ public class MoreStrings {
 
   private static final Pattern EMBEDDED_UPPERCASE = Pattern.compile("(?<=[a-z])(?=[A-Z])");
   public static String toUpperSnakeCase(String camelCase) {
-    return EMBEDDED_UPPERCASE.matcher(camelCase).replaceAll("_").toUpperCase();
+    return snakify(camelCase).toUpperCase();
+  }
+
+  public static String toLowerSnakeCase(String camelCase) {
+    return snakify(camelCase).toLowerCase();
+  }
+
+  private static String snakify(String camelCase) {
+    return EMBEDDED_UPPERCASE.matcher(camelCase).replaceAll("_");
   }
 }

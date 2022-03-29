@@ -9,6 +9,7 @@ import com.google.inject.PrivateModule;
 import com.google.inject.TypeLiteral;
 import io.javalin.core.JavalinConfig;
 import io.javalin.core.security.RouteRole;
+import io.javalin.plugin.openapi.dsl.OpenApiBuilder;
 import upstart.config.UpstartModule;
 import upstart.guice.PrivateBinding;
 import upstart.guice.TypeLiterals;

@@ -4,8 +4,15 @@ import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import io.javalin.Javalin;
 import io.javalin.core.security.RouteRole;
+import io.javalin.http.ContentType;
 import io.javalin.http.Context;
+import io.javalin.http.Handler;
 import io.javalin.http.HandlerType;
+import io.javalin.plugin.openapi.annotations.AnnotationApiMappingKt;
+import io.javalin.plugin.openapi.annotations.OpenApi;
+import io.javalin.plugin.openapi.dsl.OpenApiBuilder;
+import io.javalin.plugin.openapi.dsl.OpenApiDocumentation;
+import io.javalin.plugin.openapi.dsl.OpenApiUpdater;
 import org.mockito.internal.util.Primitives;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,6 +22,7 @@ import upstart.util.collect.PairStream;
 import upstart.util.reflect.Reflect;
 import upstart.util.concurrent.LazyReference;
 import upstart.util.concurrent.ThreadLocalReference;
+import upstart.util.strings.MoreStrings;
 
 import java.io.InputStream;
 import java.lang.reflect.InvocationHandler;
@@ -24,6 +32,7 @@ import java.lang.reflect.Parameter;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -56,6 +65,7 @@ public class AnnotatedEndpointHandler<T> {
                       method,
                       annotation.verb().handlerType,
                       annotation.path(),
+                      annotation.successStatusCode(),
                       methodRoles(registry.getRequiredRoles(method))
               );
             }).toImmutableMap();
@@ -86,15 +96,23 @@ public class AnnotatedEndpointHandler<T> {
   }
 
   private static class Endpoint {
+    private static final String OK_STATUS = "200";
     private final Method method;
     private final HandlerType handlerType;
     private final String path;
     private final RouteRole[] requiredRoles;
     private final List<ParamResolver> paramResolvers;
     private final BiConsumer<Context, Object> resultDispatcher;
+    private final OpenApiDocumentation documentation;
     private boolean mappedBody = false;
 
-    private Endpoint(Method method, HandlerType handlerType, String path, RouteRole[] requiredRoles) {
+    private Endpoint(
+            Method method,
+            HandlerType handlerType,
+            String path,
+            int successStatusCode,
+            RouteRole[] requiredRoles
+    ) {
       checkArgument(
               Modifiers.Public.matches(method),
               "@Http method %s.%s must be public",
@@ -108,15 +126,23 @@ public class AnnotatedEndpointHandler<T> {
       this.handlerType = handlerType;
       this.path = path;
       this.requiredRoles = requiredRoles;
+      documentation = buildDocumentation();
+      String successStatus = Integer.toString(successStatusCode);
       BiConsumer<Context, ?> responder;
       Class<?> returnType = method.getReturnType();
       if (returnType == void.class) {
         responder = ((c, o) -> { });
       } else if (InputStream.class.isAssignableFrom(returnType)) {
+        // TODO: is this correct?
+        documentation.result(successStatus, byte[].class, ContentType.OCTET_STREAM);
         responder = (BiConsumer<Context, InputStream>) Context::result;
       } else if (CompletionStage.class.isAssignableFrom(returnType)) {
+        // TODO: deal with further generics, arrays, etc
+        Class<?> futureType = Reflect.getFirstGenericType(method.getGenericReturnType());
+        documentation.result(successStatus, futureType, ContentType.JSON);
         responder = (Context context, CompletionStage<?> o) -> context.future(o.toCompletableFuture());
       } else {
+        documentation.result(successStatus, returnType, ContentType.JSON);
         responder = Context::json;
       }
 
@@ -124,19 +150,22 @@ public class AnnotatedEndpointHandler<T> {
       resultDispatcher = (BiConsumer<Context, Object>) responder;
     }
 
+    private OpenApiDocumentation buildDocumentation() {
+      OpenApiDocumentation documentation = Optional.ofNullable(method.getAnnotation(OpenApi.class))
+              .map(AnnotationApiMappingKt::asOpenApiDocumentation)
+              .orElseGet(OpenApiBuilder::document);
+
+      for (ParamResolver resolver : paramResolvers) {
+        resolver.applyUpdates(documentation);
+      }
+
+      return documentation;
+    }
 
     public void register(Javalin javalin, Object target) {
       LOG.info("Registered route {}[{}] => {}.{}(...)", handlerType, path, method.getDeclaringClass().getSimpleName(), method.getName());
-      javalin.addHandler(handlerType, path, ctx -> invoke(target, ctx), requiredRoles);
-    }
-
-    public HttpUrl buildUrl(Object... args) {
-      assert args.length == paramResolvers.size();
-      var builder = new UrlBuilder(path);
-      for (int i = 0; i < args.length; i++) {
-        paramResolvers.get(i).applyToUrl(builder, args[i]);
-      }
-      return builder.build();
+      Handler handler = OpenApiBuilder.documented(documentation, (Handler) ctx -> invoke(target, ctx));
+      javalin.addHandler(handlerType, path, handler, requiredRoles);
     }
 
     void invoke(Object target, Context ctx) throws Exception {
@@ -155,28 +184,37 @@ public class AnnotatedEndpointHandler<T> {
       }
     }
 
+    public HttpUrl buildUrl(Object... args) {
+      assert args.length == paramResolvers.size();
+      var builder = new UrlBuilder(path);
+      for (int i = 0; i < args.length; i++) {
+        paramResolvers.get(i).applyToUrl(builder, args[i]);
+      }
+      return builder.build();
+    }
+
     private ParamResolver buildResolver(Parameter parameter) {
       Class<?> paramType = parameter.getType();
       if (paramType == Context.class) {
-        return ParamResolver.nonUrlParam(parameter, ctx -> ctx);
+        return ParamResolver.nonUrlParam(parameter, Optional.empty(), ctx -> ctx);
       } else if (parameter.isAnnotationPresent(PathParam.class)) {
         return pathParamResolver(parameter);
       } else if (parameter.isAnnotationPresent(QueryParam.class)) {
         return queryParamResolver(parameter);
       } else if (parameter.isAnnotationPresent(Session.class)) {
         String name = paramName(parameter.getAnnotation(Session.class).value(), parameter);
-        return ParamResolver.nonUrlParam(parameter, ctx -> ctx.sessionAttribute(name));
+        return ParamResolver.nonUrlParam(parameter, Optional.empty(), ctx -> ctx.sessionAttribute(name));
       } else {
         checkArgument(!mappedBody, "Method has multiple unannotated parameters", method);
         mappedBody = true;
         if (paramType == String.class) {
-          return ParamResolver.nonUrlParam(parameter, Context::body);
+          return ParamResolver.nonUrlParam(parameter, Optional.of(paramType), Context::body);
         } else if (paramType == byte[].class) {
-          return ParamResolver.nonUrlParam(parameter, Context::bodyAsBytes);
+          return ParamResolver.nonUrlParam(parameter, Optional.of(paramType), Context::bodyAsBytes);
         } else if (paramType == InputStream.class) {
-          return ParamResolver.nonUrlParam(parameter, Context::bodyAsInputStream);
+          return ParamResolver.nonUrlParam(parameter, Optional.of(byte[].class), Context::bodyAsInputStream);
         } else {
-          return ParamResolver.nonUrlParam(parameter, ctx -> ctx.bodyAsClass(paramType));
+          return ParamResolver.nonUrlParam(parameter, Optional.of(paramType), ctx -> ctx.bodyAsClass(paramType));
         }
       }
     }
@@ -187,6 +225,7 @@ public class AnnotatedEndpointHandler<T> {
       return ParamResolver.of(
               name,
               ParamResolver.UrlParamType.Path,
+              Optional.of(paramType),
               paramType == String.class
                       ? ctx -> ctx.pathParam(name)
                       : ctx -> ctx.pathParamAsClass(name, paramType).get()
@@ -199,6 +238,7 @@ public class AnnotatedEndpointHandler<T> {
       return ParamResolver.of(
               name,
               ParamResolver.UrlParamType.Query,
+              Optional.of(paramType),
               paramType == String.class
                       ? ctx -> ctx.queryParam(name)
                       : ctx -> ctx.queryParamAsClass(name, paramType).get()
@@ -209,33 +249,42 @@ public class AnnotatedEndpointHandler<T> {
       if (annotatedName.isEmpty()) {
         String name = param.getName();
         checkState(param.isNamePresent(), "Parameter-name unavailable for %s parameter %s (method %s)", param.getType().getSimpleName(), name, method);
-        return name;
+        return MoreStrings.toLowerSnakeCase(name);
       } else {
         return annotatedName;
       }
     }
 
-    private static class ParamResolver {
+    private static class ParamResolver implements OpenApiUpdater<OpenApiDocumentation> {
+      private static final OpenApiUpdater<OpenApiDocumentation> NO_DOCUMENTATION = ignored -> {};
+
       private final String paramName;
       private final UrlParamType paramType;
+      private final OpenApiUpdater<OpenApiDocumentation> documentation;
       private final Function<Context, Object> resolver;
 
       ParamResolver(
               String paramName,
               UrlParamType paramType,
+              Optional<Class<?>> documentedType,
               Function<Context, Object> resolver
       ) {
         this.paramName = paramName;
         this.paramType = paramType;
+        this.documentation = documentedType
+                .<OpenApiUpdater<OpenApiDocumentation>>map(type -> paramType == UrlParamType.None
+                        ? (doc -> doc.body(type))
+                        : NO_DOCUMENTATION)
+                .orElse(NO_DOCUMENTATION);
         this.resolver = resolver;
       }
 
-      public static ParamResolver nonUrlParam(Parameter parameter, Function<Context, Object> resolver) {
-        return of(parameter.getName(), UrlParamType.None, resolver);
+      public static ParamResolver nonUrlParam(Parameter parameter, Optional<Class<?>> documentedType, Function<Context, Object> resolver) {
+        return of(parameter.getName(), UrlParamType.None, documentedType, resolver);
       }
 
-      public static ParamResolver of(String name, UrlParamType type, Function<Context, Object> resolver) {
-        return new ParamResolver(name, type, resolver);
+      public static ParamResolver of(String name, UrlParamType type, Optional<Class<?>> documentedType, Function<Context, Object> resolver) {
+        return new ParamResolver(name, type, documentedType, resolver);
       }
 
       public Object resolve(Context context) {
@@ -244,6 +293,11 @@ public class AnnotatedEndpointHandler<T> {
 
       public void applyToUrl(UrlBuilder urlBuilder, Object value) {
         paramType.applyToUrl(urlBuilder, paramName, value);
+      }
+
+      @Override
+      public void applyUpdates(OpenApiDocumentation documentation) {
+        this.documentation.applyUpdates(documentation);
       }
 
       public enum UrlParamType {
