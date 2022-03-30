@@ -30,7 +30,7 @@ class HttpRoutesTest {
   }
 
   static class TestEndpoints {
-    @Http(verb = Http.Verb.POST, path = "/things/{thingId}")
+    @Http(verb = Http.Verb.POST, path = "/things/{thing_id}")
     @Require(TestRole.User)
     public void getThing(@PathParam String thingId, List<String> vegetables, Context ctx) {
 
