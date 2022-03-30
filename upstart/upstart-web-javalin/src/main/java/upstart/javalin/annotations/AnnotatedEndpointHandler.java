@@ -2,6 +2,7 @@ package upstart.javalin.annotations;
 
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ObjectArrays;
 import io.javalin.Javalin;
 import io.javalin.core.security.RouteRole;
 import io.javalin.http.ContentType;
@@ -10,9 +11,12 @@ import io.javalin.http.Handler;
 import io.javalin.http.HandlerType;
 import io.javalin.plugin.openapi.annotations.AnnotationApiMappingKt;
 import io.javalin.plugin.openapi.annotations.OpenApi;
+import io.javalin.plugin.openapi.annotations.OpenApiContent;
+import io.javalin.plugin.openapi.annotations.OpenApiResponse;
 import io.javalin.plugin.openapi.dsl.OpenApiBuilder;
 import io.javalin.plugin.openapi.dsl.OpenApiDocumentation;
 import io.javalin.plugin.openapi.dsl.OpenApiUpdater;
+import io.javalin.plugin.openapi.dsl.OpenApiUpdaterKt;
 import org.mockito.internal.util.Primitives;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,7 +69,7 @@ public class AnnotatedEndpointHandler<T> {
                       method,
                       annotation.verb().handlerType,
                       annotation.path(),
-                      annotation.successStatusCode(),
+                      annotation.responseDoc(),
                       methodRoles(registry.getRequiredRoles(method))
               );
             }).toImmutableMap();
@@ -96,7 +100,6 @@ public class AnnotatedEndpointHandler<T> {
   }
 
   private static class Endpoint {
-    private static final String OK_STATUS = "200";
     private final Method method;
     private final HandlerType handlerType;
     private final String path;
@@ -110,7 +113,7 @@ public class AnnotatedEndpointHandler<T> {
             Method method,
             HandlerType handlerType,
             String path,
-            int successStatusCode,
+            OpenApiResponse openApiResponse,
             RouteRole[] requiredRoles
     ) {
       checkArgument(
@@ -126,38 +129,50 @@ public class AnnotatedEndpointHandler<T> {
       this.handlerType = handlerType;
       this.path = path;
       this.requiredRoles = requiredRoles;
-      documentation = buildDocumentation();
-      String successStatus = Integer.toString(successStatusCode);
+      ImmutableOpenApiResponse.Builder apiResponse = OpenApiAnnotations.responseBuilder().from(openApiResponse);
       BiConsumer<Context, ?> responder;
       Class<?> returnType = method.getReturnType();
+      OpenApiContent[] openApiContent;
       if (returnType == void.class) {
+        openApiContent = openApiResponse.content();
         responder = ((c, o) -> { });
       } else if (InputStream.class.isAssignableFrom(returnType)) {
         // TODO: is this correct?
-        documentation.result(successStatus, byte[].class, ContentType.OCTET_STREAM);
+        openApiContent = openApiContent(byte[].class, ContentType.OCTET_STREAM, openApiResponse);
         responder = (BiConsumer<Context, InputStream>) Context::result;
       } else if (CompletionStage.class.isAssignableFrom(returnType)) {
         // TODO: deal with further generics, arrays, etc
         Class<?> futureType = Reflect.getFirstGenericType(method.getGenericReturnType());
-        documentation.result(successStatus, futureType, ContentType.JSON);
+        openApiContent = openApiContent(futureType, ContentType.JSON, openApiResponse);
         responder = (Context context, CompletionStage<?> o) -> context.future(o.toCompletableFuture());
       } else {
-        documentation.result(successStatus, returnType, ContentType.JSON);
+        openApiContent = openApiContent(returnType, ContentType.JSON, openApiResponse);
         responder = Context::json;
       }
 
+      documentation = buildDocumentation(apiResponse.content(openApiContent).build());
       //noinspection unchecked
       resultDispatcher = (BiConsumer<Context, Object>) responder;
     }
 
-    private OpenApiDocumentation buildDocumentation() {
-      OpenApiDocumentation documentation = Optional.ofNullable(method.getAnnotation(OpenApi.class))
-              .map(AnnotationApiMappingKt::asOpenApiDocumentation)
-              .orElseGet(OpenApiBuilder::document);
+    private static OpenApiContent[] openApiContent(
+            Class<?> from,
+            String contentType,
+            OpenApiResponse providedResponse
+    ) {
+      ImmutableOpenApiContent addedContent = OpenApiAnnotations.contentBuilder().from(from).type(contentType).build();
+      return ObjectArrays.concat(addedContent, providedResponse.content());
+    }
 
-      for (ParamResolver resolver : paramResolvers) {
-        resolver.applyUpdates(documentation);
-      }
+    private OpenApiDocumentation buildDocumentation(OpenApiResponse openApiResponse) {
+      OpenApi compositeOpenApi = OpenApiAnnotations.openApi(
+              Optional.ofNullable(method.getAnnotation(OpenApi.class)),
+              openApiResponse
+      );
+
+      OpenApiDocumentation documentation = AnnotationApiMappingKt.asOpenApiDocumentation(compositeOpenApi);
+
+      OpenApiUpdaterKt.applyAllUpdates(paramResolvers, documentation);
 
       return documentation;
     }
@@ -272,9 +287,11 @@ public class AnnotatedEndpointHandler<T> {
         this.paramName = paramName;
         this.paramType = paramType;
         this.documentation = documentedType
-                .<OpenApiUpdater<OpenApiDocumentation>>map(type -> paramType == UrlParamType.None
-                        ? (doc -> doc.body(type))
-                        : NO_DOCUMENTATION)
+                .<OpenApiUpdater<OpenApiDocumentation>>map(type -> switch (paramType) {
+                  case None -> doc -> doc.body(type);
+                  case Query -> doc -> doc.queryParam(paramName, documentedType.orElse(String.class));
+                  default -> NO_DOCUMENTATION;
+                })
                 .orElse(NO_DOCUMENTATION);
         this.resolver = resolver;
       }

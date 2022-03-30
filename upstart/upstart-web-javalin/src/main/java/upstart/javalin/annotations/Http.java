@@ -1,7 +1,7 @@
 package upstart.javalin.annotations;
 
-import io.javalin.core.security.RouteRole;
 import io.javalin.http.HandlerType;
+import io.javalin.plugin.openapi.annotations.OpenApiResponse;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -15,7 +15,7 @@ public @interface Http {
   /** The route-pattern to associate with the annotated method, as understood by {@link io.javalin.Javalin} */
   String path();
 
-  int successStatusCode() default 200;
+  OpenApiResponse responseDoc() default @OpenApiResponse(status = OpenApiAnnotations.DEFAULT_STATUS);
 
   enum Verb {
     GET(HandlerType.GET),
