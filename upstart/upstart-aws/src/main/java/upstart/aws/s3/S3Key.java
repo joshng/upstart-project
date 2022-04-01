@@ -1,5 +1,6 @@
 package upstart.aws.s3;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import upstart.util.annotations.Tuple;
 import org.immutables.value.Value;
@@ -21,10 +22,11 @@ public abstract class S3Key {
     return ImmutableS3Key.of(scheme, bucket, key);
   }
 
-  public static S3Key ofUri(Region region, String uri) {
+  @JsonCreator
+  public static S3Key ofUri(String uri) {
     Matcher matcher = S3_URI_PATTERN.matcher(uri);
     checkArgument(matcher.matches(), "Invalid s3:// uri", uri);
-    return of(Scheme.valueOf(matcher.group(1)), S3Bucket.of(region, matcher.group(2)), matcher.group(3));
+    return of(Scheme.valueOf(matcher.group(1)), S3Bucket.of(matcher.group(2)), matcher.group(3));
   }
 
   public abstract Scheme scheme();
@@ -42,10 +44,6 @@ public abstract class S3Key {
   public abstract S3Key withScheme(Scheme scheme);
 
   public abstract S3Key withKey(String key);
-
-  public Region region() {
-    return bucket().region();
-  }
 
   public S3Key resolve(String relativePath) {
     StringBuilder keyBuilder = new StringBuilder(key());

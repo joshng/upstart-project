@@ -26,6 +26,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -238,7 +239,15 @@ public class CompletableFutures {
   }
 
   public static <T, E extends Throwable> CompletableFuture<T> recover(CompletionStage<T> future, Class<E> recoverableType, Function<? super E, ? extends T> recovery) {
-    return future.exceptionally(e -> recovery.apply(asRecoverable(e, recoverableType))).toCompletableFuture();
+    return recover(future, recoverableType, e -> true, recovery);
+  }
+
+  public static <T, E extends Throwable> CompletableFuture<T> recover(CompletionStage<T> future, Class<E> recoverableType, Predicate<? super E> exceptionChecker, Function<? super E, ? extends T> recovery) {
+    return future.exceptionally(e -> {
+      var asRecoverable = asRecoverable(e, recoverableType);
+      if (!exceptionChecker.test(asRecoverable)) throw new CompletionException(asRecoverable);
+      return recovery.apply(asRecoverable);
+    }).toCompletableFuture();
   }
 
   public static <T, E extends Throwable> CompletableFuture<Optional<T>> optionalForException(CompletionStage<T> future, Class<E> recoverableType) {

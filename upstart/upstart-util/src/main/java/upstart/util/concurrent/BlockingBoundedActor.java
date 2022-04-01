@@ -22,7 +22,7 @@ public class BlockingBoundedActor {
     this.semaphore = semaphore;
   }
 
-  public <T> CompletableFuture<T> request(Callable<T> request, Executor executor) throws UncheckedInterruptedException {
+  public <T> Promise<T> request(Callable<T> request, Executor executor) throws UncheckedInterruptedException {
     try {
       semaphore.acquire();
     } catch (InterruptedException e) {
@@ -32,7 +32,7 @@ public class BlockingBoundedActor {
             .uponCompletion(semaphore::release);
   }
 
-  public <T> CompletableFuture<T> requestAsync(Callable<? extends CompletionStage<T>> request, Executor executor) throws UncheckedInterruptedException {
+  public <T> Promise<T> requestAsync(Callable<? extends CompletionStage<T>> request, Executor executor) throws UncheckedInterruptedException {
     try {
       semaphore.acquire();
     } catch (InterruptedException e) {
@@ -42,7 +42,7 @@ public class BlockingBoundedActor {
             .uponCompletion(semaphore::release);
   }
 
-  public CompletableFuture<Void> send(ThrowingRunnable runnable, Executor executor) throws UncheckedInterruptedException {
+  public Promise<Void> send(ThrowingRunnable runnable, Executor executor) throws UncheckedInterruptedException {
     try {
       semaphore.acquire();
     } catch (InterruptedException e) {
