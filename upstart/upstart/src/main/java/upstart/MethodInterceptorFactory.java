@@ -136,9 +136,9 @@ public interface MethodInterceptorFactory {
     }
 
     private static boolean checkValidInterception(Method method) {
-      if (Modifiers.Private.matches(method) || Modifiers.Final.matches(method)) {
+      if (!(Modifiers.Protected.matches(method) || Modifiers.Public.matches(method)) || Modifiers.Final.matches(method)) {
         String description = describeMethod(method);
-        throw new IllegalStateException("Interceptors cannot be supported on private or final methods: " + description);
+        throw new IllegalStateException("Interceptors cannot be supported on private, package-private or final methods: " + description);
       }
       return true;
     }

@@ -2,18 +2,14 @@ package upstart.services;
 
 import com.google.common.util.concurrent.AbstractService;
 import com.google.common.util.concurrent.MoreExecutors;
-import upstart.util.concurrent.AtomicMutableReference;
+import upstart.util.concurrent.FailureAccumulator;
 import upstart.util.exceptions.ThrowingRunnable;
 
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
-import java.util.concurrent.atomic.AtomicReference;
 
 public abstract class IdleService extends BaseComposableService<IdleService.DelegateService> {
   private static final int MAX_RECORDED_FAILURES = 10;
-  private final AtomicMutableReference<Throwable> pendingFailure = new AtomicMutableReference<>();
-  private final Set<Throwable> failures = ConcurrentHashMap.newKeySet(MAX_RECORDED_FAILURES);
+  private final FailureAccumulator failureAccumulator = new FailureAccumulator(MAX_RECORDED_FAILURES);
 
   protected IdleService() {
     super(new DelegateService());
@@ -35,16 +31,7 @@ public abstract class IdleService extends BaseComposableService<IdleService.Dele
    * transitions the service to the {@link State#FAILED FAILED} state.
    */
   protected void notifyFailed(Throwable cause) {
-    if (failures.size() >= MAX_RECORDED_FAILURES || !failures.add(cause)) return;
-    while (true) {
-      Throwable prev = pendingFailure.get();
-      if (prev != null) {
-        if (prev != cause) prev.addSuppressed(cause);
-        break;
-      } else if (pendingFailure.compareAndSet(null, cause)) {
-        break;
-      }
-    }
+    failureAccumulator.accumulate(cause);
     stop();
   }
 
@@ -71,7 +58,7 @@ public abstract class IdleService extends BaseComposableService<IdleService.Dele
     protected final void doStop() {
       stateTransition(State.STOPPING, () -> {
         notifyFailure(wrapper::shutDown);
-        wrapper.pendingFailure.getOptional()
+        wrapper.failureAccumulator.accumulatedFailure()
                 .ifPresentOrElse(
                         this::notifyFailed,
                         this::notifyStopped

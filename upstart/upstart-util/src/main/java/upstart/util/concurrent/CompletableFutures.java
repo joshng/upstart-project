@@ -269,7 +269,7 @@ public class CompletableFutures {
     return cause instanceof CompletionException || cause instanceof ExecutionException;
   }
 
-  public static <T, E extends Throwable> CompletableFuture<T> recoverCompose(CompletionStage<? extends T> future, Class<E> recoveryType, Function<? super E, ? extends CompletionStage<? extends T>> recovery) {
+  public static <T, E extends Throwable> Promise<T> recoverCompose(CompletionStage<? extends T> future, Class<E> recoveryType, Function<? super E, ? extends CompletionStage<? extends T>> recovery) {
     CompletableFuture<CompletionStage<? extends T>> recovered = future.handle((v, e) -> e == null
             ? future.toCompletableFuture()
             : recovery.apply(asRecoverable(e, recoveryType))
@@ -278,8 +278,8 @@ public class CompletableFutures {
   }
 
   @SuppressWarnings("unchecked")
-  public static <T> CompletableFuture<T> sequence(CompletableFuture<? extends CompletionStage<? extends T>> nested) {
-    return nested.thenCompose(f -> (CompletionStage<T>) f);
+  public static <T> Promise<T> sequence(CompletionStage<? extends CompletionStage<? extends T>> nested) {
+    return Promise.of(nested).thenCompose(f -> (CompletionStage<T>) f);
   }
 
   @SuppressWarnings("unchecked")

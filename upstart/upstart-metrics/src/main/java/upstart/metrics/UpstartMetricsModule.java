@@ -18,6 +18,5 @@ public class UpstartMetricsModule extends UpstartModule {
     UpstartMetricsModule.reporterBinder(binder()); // initialize multibinder in case no real reporters are registered
     bind(MetricRegistry.class).to(TaggedMetricRegistry.class);
     bind(TaggedMetricRegistry.class).asEagerSingleton();
-    install(InstrumentedSystemSchedulerModule.class);
   }
 }

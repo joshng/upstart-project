@@ -25,7 +25,7 @@ public abstract class AbstractCompletionTracker<I, O> {
    * @return A {@link CompletableFuture} that completes when all {@link #track tracked} jobs are completed, and the
    * resulting final {@link #computeResult computation} is done.
    */
-  public CompletableFuture<O> completionFuture() {
+  public Promise<O> completionFuture() {
     return completionPromise;
   }
 

@@ -1,6 +1,7 @@
 package upstart.services;
 
 import upstart.util.concurrent.CompletableFutures;
+import upstart.util.concurrent.Promise;
 import upstart.util.exceptions.Exceptions;
 import upstart.util.exceptions.Fallible;
 import org.slf4j.LoggerFactory;
@@ -54,7 +55,7 @@ public abstract class ThreadPoolService extends IdleService implements Executor 
     return CompletableFuture.runAsync(runnable, executorService);
   }
 
-  protected <T> CompletableFuture<T> composeAsync(Callable<? extends CompletableFuture<T>> asyncSupplier) {
+  protected <T> Promise<T> composeAsync(Callable<? extends CompletableFuture<T>> asyncSupplier) {
     return CompletableFutures.sequence(callAsync(asyncSupplier));
   }
 
