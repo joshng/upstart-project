@@ -72,7 +72,7 @@ public class ServiceTelemetry extends IdleService {
   }
 
   @Metered
-  synchronized void failed(Throwable failure) {
+  synchronized protected void failed(Throwable failure) {
     failureDetected = true;
     ExceptionEvent exceptionEvent = exceptionRecordBuilder.toExceptionEvent(failure);
     errorEventLogger.publish(LogLevel.Info, exceptionEvent);
