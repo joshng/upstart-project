@@ -3,6 +3,7 @@ package upstart.aws.s3.test;
 import akka.actor.ActorSystem;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import upstart.aws.Aws;
+import upstart.aws.s3.S3Key;
 import upstart.test.UpstartTestBuilder;
 import upstart.util.collect.MoreStreams;
 import upstart.util.collect.Optionals;
@@ -111,6 +112,10 @@ public class MockS3 {
     ObjectMetadata metadata = new ObjectMetadata();
     metadata.setContentType(contentType.toString());
     putObject(bucket, key, data, metadata);
+  }
+
+  public void putObject(S3Key key, byte[] data, ContentType contentType) {
+    putObject(key.bucket().value(), key.key(), data, contentType);
   }
 
   public GetObjectData getObject(String bucket, String key) {

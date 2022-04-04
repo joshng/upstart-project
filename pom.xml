@@ -180,6 +180,11 @@
       </dependency>
       <dependency>
         <groupId>io.upstartproject</groupId>
+        <artifactId>upstart-dynamodb</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.upstartproject</groupId>
         <artifactId>upstart-dynamodb-test</artifactId>
         <version>${project.version}</version>
       </dependency>

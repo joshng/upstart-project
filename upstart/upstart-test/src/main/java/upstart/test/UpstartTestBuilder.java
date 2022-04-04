@@ -1,15 +1,18 @@
 package upstart.test;
 
+import com.google.common.truth.ThrowableSubject;
 import com.google.common.util.concurrent.Service;
 import com.google.inject.Injector;
 import com.google.inject.Key;
 import com.google.inject.Module;
+import upstart.InternalTestBuilder;
 import upstart.UpstartApplicationBuilder;
 import upstart.config.TestConfigBuilder;
 import upstart.util.reflect.Reflect;
 import upstart.util.exceptions.ThrowingConsumer;
 import org.mockito.Mockito;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 public interface UpstartTestBuilder extends UpstartApplicationBuilder<UpstartTestBuilder>, TestConfigBuilder<UpstartTestBuilder> {
@@ -66,6 +69,12 @@ public interface UpstartTestBuilder extends UpstartApplicationBuilder<UpstartTes
     block.accept(this);
     return this;
   }
+
+  InternalTestBuilder expectShutdownException(Class<? extends Throwable> exceptionType);
+
+  InternalTestBuilder assertShutdownException(ThrowingConsumer<ThrowableSubject> assertion);
+
+  InternalTestBuilder whenShutDown(ThrowingConsumer<? super CompletableFuture<Service.State>> visitor);
 
   UpstartTestBuilder withInjector(ThrowingConsumer<? super Injector> callback);
 

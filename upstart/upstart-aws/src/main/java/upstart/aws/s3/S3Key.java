@@ -18,6 +18,10 @@ public abstract class S3Key {
   // TODO: this is a placeholder structure, may change when we implement real s3 integration
   public static final Pattern S3_URI_PATTERN = Pattern.compile("^(s3a?)://([^/]+)/(.*)$");
 
+  public static S3Key of(S3Bucket bucket, String key) {
+    return of(Scheme.s3, bucket, key);
+  }
+
   public static S3Key of(Scheme scheme, S3Bucket bucket, String key) {
     return ImmutableS3Key.of(scheme, bucket, key);
   }

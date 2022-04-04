@@ -22,6 +22,10 @@ public class Deadline {
     return within(duration, InstantSource.system());
   }
 
+  public static Deadline within(long duration, TimeUnit unit) {
+    return within(Duration.ofNanos(unit.toNanos(duration)));
+  }
+
   public static Deadline within(Duration duration, InstantSource clock) {
     return from(clock.instant(), duration, clock);
   }

@@ -15,13 +15,12 @@ import java.util.concurrent.CompletableFuture;
 public class CompletableFutureSubject<T> extends Subject {
   private final CompletableFuture<T> actual;
 
-  public static Factory<CompletableFutureSubject<Object>, CompletableFuture<Object>> completableFutures() {
+  public static <T> Factory<CompletableFutureSubject<T>, CompletableFuture<T>> completableFutures() {
     return CompletableFutureSubject::new;
   }
 
-  @SuppressWarnings("unchecked")
   public static <T> CompletableFutureSubject<T> assertThat(CompletableFuture<T> path) {
-    return (CompletableFutureSubject<T>) Truth.assertAbout(completableFutures()).that((CompletableFuture<Object>) path);
+    return Truth.assertAbout(CompletableFutureSubject.<T>completableFutures()).that(path);
   }
 
   protected CompletableFutureSubject(FailureMetadata metadata, CompletableFuture<T> actual) {

@@ -14,6 +14,10 @@ public abstract class S3Bucket extends StringIdentifier {
     return ImmutableS3Bucket.of(bucket);
   }
 
+  public S3Key key(String key) {
+    return key(S3Key.Scheme.s3, key);
+  }
+
   public S3Key key(S3Key.Scheme scheme, String key) {
     return S3Key.of(scheme, this, key);
   }

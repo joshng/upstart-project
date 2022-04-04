@@ -1,5 +1,6 @@
 package upstart;
 
+import com.google.common.truth.ThrowableSubject;
 import com.google.common.util.concurrent.Service;
 import com.google.inject.Injector;
 import com.google.inject.Key;
@@ -17,6 +18,7 @@ import upstart.config.UpstartConfigProvider;
 import upstart.config.UpstartEnvironment;
 import upstart.services.ManagedServicesModule;
 import upstart.services.UpstartService;
+import upstart.test.CompletableFutureSubject;
 import upstart.test.UpstartExtension;
 import upstart.test.UpstartTestBuilder;
 import upstart.test.SingletonExtension;
@@ -41,8 +43,11 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
+import java.util.function.Consumer;
 
+import static com.google.common.truth.Truth.assertWithMessage;
 import static upstart.services.ManagedServicesModule.KeyRef;
+import static upstart.test.CompletableFutureSubject.assertThat;
 
 public class InternalTestBuilder implements UpstartTestBuilder {
   private static final Logger LOG = LoggerFactory.getLogger(InternalTestBuilder.class);
@@ -66,6 +71,7 @@ public class InternalTestBuilder implements UpstartTestBuilder {
   private final FutureSuccessTracker callbackSuccessTracker = new FutureSuccessTracker();
   private final EnvironmentConfigBuilder configBuilder;
   private final FutureTask<Injector> injectorBuilderTask;
+  private Optional<Consumer<? super CompletableFuture<Service.State>>> shutdownVisitor = Optional.empty();
 
   public InternalTestBuilder(EnvironmentConfigBuilder configBuilder) {
     this.configBuilder = configBuilder;
@@ -76,7 +82,7 @@ public class InternalTestBuilder implements UpstartTestBuilder {
               .withOverrideConfig(configBuilder.getOverrideConfig());
       installModule(new UpstartService.Builder.UpstartCoreModule());
       for (String testModule : configProvider.getStringList("upstart.test.installModules")) {
-        overrideBindings(Reflect.classForName(testModule, Module.class).newInstance());
+        overrideBindings(Reflect.newInstance(testModule, Module.class));
       }
       UpstartService.Builder realBuilder = BUILDER_CONSTRUCTOR.newInstance(configProvider);
       realBuilder.installModule(buildEffectiveModule(configProvider, installedModules));
@@ -101,8 +107,8 @@ public class InternalTestBuilder implements UpstartTestBuilder {
     return Elements.getModule(originalElements.stream().filter(this::unsuppressedServiceBinding)::iterator);
   }
 
-  public static UpstartTestBuilder getInstance(ExtensionContext context) {
-    return SingletonExtension.getOrCreateContextFrom(UpstartExtension.class, context);
+  public static InternalTestBuilder getInstance(ExtensionContext context) {
+    return (InternalTestBuilder) SingletonExtension.getOrCreateContextFrom(UpstartExtension.class, context);
   }
 
   public <T> T getInstance(Key<T> key) {
@@ -147,8 +153,33 @@ public class InternalTestBuilder implements UpstartTestBuilder {
     return ensuringUnfrozen(() -> suppressedServiceKeys.add(serviceKey));
   }
 
+  @Override
+  public InternalTestBuilder expectShutdownException(Class<? extends Throwable> exceptionType) {
+    return assertShutdownException(exceptionSubject -> exceptionSubject.isInstanceOf(exceptionType));
+  }
+
+  @Override
+  public InternalTestBuilder assertShutdownException(ThrowingConsumer<ThrowableSubject> assertion) {
+    return whenShutDown(future -> assertion.acceptOrThrow(
+            assertWithMessage("Shutdown exception")
+                    .about(CompletableFutureSubject.<Service.State>completableFutures())
+                    .that(future)
+                    .completedWithExceptionThat()));
+  }
+
+  @Override
+  public InternalTestBuilder whenShutDown(ThrowingConsumer<? super CompletableFuture<Service.State>> visitor) {
+    shutdownVisitor = Optional.of(visitor);
+    return this;
+  }
+
+  public Optional<Consumer<? super CompletableFuture<Service.State>>> shutdownVisitor() {
+    return shutdownVisitor;
+  }
+
+  @Override
   public synchronized InternalTestBuilder withInjector(ThrowingConsumer<? super Injector> callback) {
-    CompletableFuture<Void> result = afterInjectionPromise.thenAccept(callback);
+    Promise<Void> result = afterInjectionPromise.thenAccept(callback);
     if (result.isDone()) {
       result.join();
     } else {

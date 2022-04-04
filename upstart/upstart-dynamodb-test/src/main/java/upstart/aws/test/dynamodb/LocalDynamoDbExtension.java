@@ -1,14 +1,22 @@
 package upstart.aws.test.dynamodb;
 
+import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBTable;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.jupiter.api.extension.ParameterResolver;
+import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import upstart.dynamodb.DynamoTableInitializer;
 import upstart.test.SingletonExtension;
 import upstart.test.UpstartExtension;
+import upstart.util.reflect.Reflect;
+
+import javax.inject.Named;
+import java.lang.reflect.Type;
+import java.util.Optional;
 
 public class LocalDynamoDbExtension extends SingletonExtension<DynamoDbFixture> implements BeforeEachCallback, AfterEachCallback, ParameterResolver {
   public LocalDynamoDbExtension() {
@@ -38,13 +46,22 @@ public class LocalDynamoDbExtension extends SingletonExtension<DynamoDbFixture> 
   public boolean supportsParameter(
           ParameterContext parameterContext, ExtensionContext extensionContext
   ) throws ParameterResolutionException {
-    return parameterContext.getParameter().getType() == DynamoDbClient.class;
+    Class<?> type = parameterContext.getParameter().getType();
+    return type == DynamoDbClient.class || type == DynamoDbTable.class;
   }
 
   @Override
   public Object resolveParameter(
           ParameterContext parameterContext, ExtensionContext extensionContext
   ) throws ParameterResolutionException {
-    return getOrCreateContext(extensionContext).client();
+    var fixture = getOrCreateContext(extensionContext);
+    if (parameterContext.getParameter().getType() == DynamoDbTable.class) {
+      return Optional.ofNullable(parameterContext.getParameter().getAnnotation(Named.class))
+              .map(named -> {
+                var beanType = (Class<?>) Reflect.getFirstGenericType(parameterContext.getParameter().getParameterizedType());
+                return fixture.enhancedClient().table(named.value(), DynamoTableInitializer.getTableSchema(beanType));
+              }).orElseThrow(() -> new IllegalArgumentException("DynamoDbTable<> parameter is missing @Named annotation: " + parameterContext.getParameter().getName()));
+    }
+    return fixture.client();
   }
 }

@@ -2,6 +2,7 @@ package upstart.aws.test.dynamodb;
 
 import com.amazonaws.services.dynamodbv2.local.main.ServerRunner;
 import com.amazonaws.services.dynamodbv2.local.server.DynamoDBProxyServer;
+import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import upstart.config.UpstartEnvironment;
@@ -12,6 +13,7 @@ import upstart.test.systemStreams.SystemOutCaptor;
 import upstart.util.concurrent.LazyReference;
 import upstart.util.exceptions.MultiException;
 
+import javax.annotation.Nonnull;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.stream.Stream;
@@ -33,6 +35,14 @@ public class DynamoDbFixture extends IdleService {
       throw new AssertionError(e);
     }
   });
+
+  private final LazyReference<DynamoDbEnhancedClient> enhancedClient = new LazyReference<>() {
+    @Nonnull
+    @Override
+    protected DynamoDbEnhancedClient supplyValue() {
+      return DynamoDbEnhancedClient.builder().dynamoDbClient(client()).build();
+    }
+  };
 
   @Override
   protected void startUp() throws Exception {
@@ -61,6 +71,10 @@ public class DynamoDbFixture extends IdleService {
 
   public DynamoDbClient client() {
     return client.get();
+  }
+
+  public DynamoDbEnhancedClient enhancedClient() {
+    return enhancedClient.get();
   }
 
   public String endpoint() {
