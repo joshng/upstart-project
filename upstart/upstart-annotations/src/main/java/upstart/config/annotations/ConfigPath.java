@@ -19,6 +19,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @Target({TYPE, METHOD})
 @Retention(RUNTIME)
 @JsonDeserialize
+@AlternativeImmutableAnnotation(markerAnnotation = ConfigPath.class)
 //@InjectAnnotation(ifPresent = true, type = JsonTypeInfo.class, target = InjectAnnotation.Where.IMMUTABLE_TYPE)
 public @interface ConfigPath {
   /**

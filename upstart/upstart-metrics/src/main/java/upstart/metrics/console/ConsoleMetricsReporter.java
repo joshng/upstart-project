@@ -3,7 +3,7 @@ package upstart.metrics.console;
 import com.codahale.metrics.ConsoleReporter;
 import com.codahale.metrics.ScheduledReporter;
 import upstart.config.annotations.ConfigPath;
-import upstart.services.IdleService;
+import upstart.util.concurrent.services.IdleService;
 import upstart.metrics.TaggedMetricRegistry;
 import upstart.metrics.TaggedMetricReporter;
 

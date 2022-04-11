@@ -1,7 +1,7 @@
 package upstart.cluster;
 
-import upstart.services.ManagedServiceGraph;
-import upstart.services.ComposableService;
+import upstart.managedservices.ManagedServiceGraph;
+import upstart.util.concurrent.services.ComposableService;
 
 import javax.inject.Inject;
 

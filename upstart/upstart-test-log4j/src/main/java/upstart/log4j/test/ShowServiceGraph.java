@@ -2,7 +2,7 @@ package upstart.log4j.test;
 
 import upstart.InternalTestBuilder;
 import upstart.log.UpstartLogConfig;
-import upstart.services.LifecycleCoordinator;
+import upstart.managedservices.LifecycleCoordinator;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

@@ -1,6 +1,6 @@
 package upstart.test;
 
-import upstart.services.ScheduledService;
+import upstart.util.concurrent.services.ScheduledService;
 import upstart.util.concurrent.NamedThreadFactory;
 import org.junit.jupiter.api.extension.ExtendWith;
 

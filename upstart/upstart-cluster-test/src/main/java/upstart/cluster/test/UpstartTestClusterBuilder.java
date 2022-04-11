@@ -1,7 +1,7 @@
 package upstart.cluster.test;
 
 import com.google.inject.Injector;
-import upstart.services.UpstartService;
+import upstart.UpstartService;
 import upstart.cluster.zk.ClusterId;
 import upstart.InternalTestBuilder;
 import upstart.config.EnvironmentConfigBuilder;

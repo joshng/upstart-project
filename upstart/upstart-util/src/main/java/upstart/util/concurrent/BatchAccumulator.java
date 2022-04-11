@@ -1,6 +1,6 @@
 package upstart.util.concurrent;
 
-import com.google.common.collect.Ordering;
+import com.google.common.collect.Comparators;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -67,7 +67,7 @@ public class BatchAccumulator<B> {
     }
 
     Instant touchDeadline(Instant now) {
-      return idleDeadline = Ordering.natural().min(now.plus(idleTimeout), accumulationDeadline);
+      return idleDeadline = Comparators.min(now.plus(idleTimeout), accumulationDeadline);
     }
 
     void scheduleTimeout(Duration delay) {

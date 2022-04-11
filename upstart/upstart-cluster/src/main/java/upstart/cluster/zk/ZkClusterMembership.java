@@ -5,7 +5,7 @@ import com.google.common.primitives.Ints;
 import com.google.common.util.concurrent.MoreExecutors;
 import upstart.cluster.ClusterMembership;
 import upstart.cluster.ClusterNodeId;
-import upstart.services.NotifyingService;
+import upstart.util.concurrent.services.NotifyingService;
 import upstart.util.concurrent.CompletableFutures;
 import upstart.util.concurrent.Promise;
 import org.apache.curator.utils.ZKPaths;

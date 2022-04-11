@@ -8,7 +8,7 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbAsyncTable;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
 import software.amazon.awssdk.enhanced.dynamodb.model.Page;
 import software.amazon.awssdk.enhanced.dynamodb.model.PagePublisher;
-import upstart.services.AsyncService;
+import upstart.util.concurrent.services.AsyncService;
 import upstart.util.concurrent.CompletableFutures;
 
 import javax.inject.Inject;

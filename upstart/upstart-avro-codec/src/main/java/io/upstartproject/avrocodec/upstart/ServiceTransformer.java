@@ -1,10 +1,9 @@
 package io.upstartproject.avrocodec.upstart;
 
 import com.google.common.util.concurrent.Service;
-import upstart.UpstartApplication;
-import upstart.services.ComposableService;
-import upstart.services.ManagedServicesModule;
-import upstart.services.UpstartService;
+import upstart.util.concurrent.services.ComposableService;
+import upstart.managedservices.ManagedServicesModule;
+import upstart.UpstartService;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;

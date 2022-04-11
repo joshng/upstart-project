@@ -1,8 +1,8 @@
 package upstart.cluster.zk;
 
-import upstart.services.BaseComposableService;
-import upstart.services.IdleService;
-import upstart.services.ManagedServiceGraph;
+import upstart.util.concurrent.services.BaseComposableService;
+import upstart.util.concurrent.services.IdleService;
+import upstart.managedservices.ManagedServiceGraph;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.recipes.cache.ChildData;
 import org.apache.curator.framework.recipes.cache.PathChildrenCache;

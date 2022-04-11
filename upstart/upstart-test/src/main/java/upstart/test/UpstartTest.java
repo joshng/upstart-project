@@ -2,8 +2,7 @@ package upstart.test;
 
 import com.google.inject.Injector;
 import com.google.inject.Module;
-import upstart.UpstartApplication;
-import upstart.services.UpstartService;
+import upstart.UpstartService;
 import upstart.config.EnvironmentConfigExtension;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

@@ -3,9 +3,9 @@ package upstart.config;
 import com.google.inject.AbstractModule;
 import com.google.inject.Binder;
 import com.google.inject.matcher.Matcher;
-import upstart.services.UpstartService;
+import upstart.UpstartService;
 import upstart.UpstartModuleExtension;
-import upstart.services.ManagedServicesModule;
+import upstart.managedservices.ManagedServicesModule;
 import org.aopalliance.intercept.MethodInterceptor;
 
 import java.lang.reflect.Method;

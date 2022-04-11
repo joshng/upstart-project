@@ -15,12 +15,12 @@ import upstart.guice.GuiceDependencyGraph;
 import upstart.proxy.DynamicProxyBindingBuilder;
 import upstart.proxy.Lazy;
 import upstart.proxy.LazyProvider;
-import upstart.services.ExecutionThreadService;
-import upstart.services.IdleService;
-import upstart.services.InitializingService;
-import upstart.services.ManagedServicesModule;
-import upstart.services.NotifyingService;
-import upstart.services.ScheduledService;
+import upstart.util.concurrent.services.ExecutionThreadService;
+import upstart.util.concurrent.services.IdleService;
+import upstart.util.concurrent.services.InitializingService;
+import upstart.managedservices.ManagedServicesModule;
+import upstart.util.concurrent.services.NotifyingService;
+import upstart.util.concurrent.services.ScheduledService;
 import upstart.util.reflect.Reflect;
 import org.aopalliance.intercept.MethodInterceptor;
 

@@ -1,6 +1,6 @@
 package upstart.cluster.zk;
 
-import upstart.services.NotifyingService;
+import upstart.util.concurrent.services.NotifyingService;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.framework.state.ConnectionState;

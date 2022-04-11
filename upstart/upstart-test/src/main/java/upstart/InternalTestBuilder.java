@@ -16,8 +16,7 @@ import upstart.config.HojackConfigProvider;
 import upstart.config.UpstartConfigBinder;
 import upstart.config.UpstartConfigProvider;
 import upstart.config.UpstartEnvironment;
-import upstart.services.ManagedServicesModule;
-import upstart.services.UpstartService;
+import upstart.managedservices.ManagedServicesModule;
 import upstart.test.CompletableFutureSubject;
 import upstart.test.UpstartExtension;
 import upstart.test.UpstartTestBuilder;
@@ -46,8 +45,7 @@ import java.util.concurrent.FutureTask;
 import java.util.function.Consumer;
 
 import static com.google.common.truth.Truth.assertWithMessage;
-import static upstart.services.ManagedServicesModule.KeyRef;
-import static upstart.test.CompletableFutureSubject.assertThat;
+import static upstart.managedservices.ManagedServicesModule.KeyRef;
 
 public class InternalTestBuilder implements UpstartTestBuilder {
   private static final Logger LOG = LoggerFactory.getLogger(InternalTestBuilder.class);

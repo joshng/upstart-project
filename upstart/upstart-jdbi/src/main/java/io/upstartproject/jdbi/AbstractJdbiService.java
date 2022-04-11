@@ -7,7 +7,7 @@ import org.jdbi.v3.core.extension.ExtensionCallback;
 import org.jdbi.v3.core.extension.ExtensionConsumer;
 import org.jdbi.v3.core.spi.JdbiPlugin;
 import org.jdbi.v3.core.transaction.TransactionIsolationLevel;
-import upstart.services.InitializingService;
+import upstart.util.concurrent.services.InitializingService;
 
 import java.util.Set;
 

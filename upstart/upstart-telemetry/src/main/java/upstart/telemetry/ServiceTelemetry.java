@@ -13,9 +13,9 @@ import upstart.config.ConfigDump;
 import upstart.config.UpstartApplicationConfig;
 import upstart.config.UpstartModule;
 import upstart.metrics.annotations.Metered;
-import upstart.services.IdleService;
-import upstart.services.ManagedServicesModule;
-import upstart.services.ServiceLifecycle;
+import upstart.util.concurrent.services.IdleService;
+import upstart.managedservices.ManagedServicesModule;
+import upstart.managedservices.ServiceLifecycle;
 import upstart.util.LogLevel;
 import upstart.util.collect.PairStream;
 

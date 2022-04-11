@@ -4,8 +4,8 @@ import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Service;
 import upstart.InternalTestBuilder;
 import upstart.UpstartApplication;
-import upstart.services.ManagedServiceGraph;
-import upstart.services.ManagedServicesModule;
+import upstart.managedservices.ManagedServiceGraph;
+import upstart.managedservices.ManagedServicesModule;
 import upstart.util.concurrent.Deadline;
 import upstart.util.reflect.MultiMethodInvoker;
 import upstart.util.reflect.Reflect;
@@ -67,13 +67,6 @@ public class UpstartServiceExtension implements BeforeEachCallback, AfterTestExe
               expectation -> expectation.accept(shutdownFuture),
               shutdownAssertion::completedNormally
       );
-//      try {
-//        graph.stop().get(timeoutNanos, TimeUnit.NANOSECONDS);
-//      } catch (TimeoutException e) {
-//        throw new TimeoutException("Timed out waiting for shutdown.\n" + graph + "\n\nThread dump:\n" + Threads.formatThreadDump());
-//      } catch (ExecutionException e) {
-//
-//      }
     });
   }
 

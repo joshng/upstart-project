@@ -18,7 +18,7 @@ public class UncheckedInterruptedException extends RuntimeException {
     }
   }
 
-  public static <T> T propagate(FallibleSupplier<T, InterruptedException> block) {
+  public static <T> T getOrPropagate(FallibleSupplier<T, InterruptedException> block) {
     try {
       return block.getOrThrow();
     } catch (InterruptedException e) {

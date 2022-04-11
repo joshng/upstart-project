@@ -6,7 +6,7 @@ import upstart.b4.functions.MavenConfig;
 import upstart.b4.incremental.Glob;
 import upstart.commandExecutor.ProcBuilderCommandExecutor;
 import upstart.config.UpstartModule;
-import upstart.services.ThreadPoolService;
+import upstart.util.concurrent.services.ThreadPoolService;
 import upstart.util.concurrent.NamedThreadFactory;
 import upstart.util.Nothing;
 

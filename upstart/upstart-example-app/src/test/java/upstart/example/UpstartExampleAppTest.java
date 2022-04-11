@@ -3,7 +3,7 @@ package upstart.example;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import upstart.services.ServiceDependencyChecker;
+import upstart.util.concurrent.services.ServiceDependencyChecker;
 import upstart.test.AfterInjection;
 import upstart.test.AfterServiceStarted;
 import upstart.test.BeforeServiceStopped;

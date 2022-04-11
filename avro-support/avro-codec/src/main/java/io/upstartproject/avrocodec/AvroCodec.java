@@ -157,7 +157,7 @@ public class AvroCodec extends AbstractService {
     this.schemaRepo = schemaRepo;
   }
 
-  private static boolean isPublishedSchema(Schema schema) {
+  public static boolean isMarkedForPublication(Schema schema) {
     Object publishedProp = schema.getObjectProp(SCHEMA_PUBLISHED_PROPERTY);
     if (publishedProp instanceof Boolean) {
       return (Boolean) publishedProp;
@@ -388,7 +388,7 @@ public class AvroCodec extends AbstractService {
   }
 
   private static void checkPublished(Schema schema) {
-    checkArgument(isPublishedSchema(schema), "Schema cannot be registered because it is not marked for publication (published schemas must declare '\"%s\": true'): %s", SCHEMA_PUBLISHED_PROPERTY, schema.getFullName());
+    checkArgument(isMarkedForPublication(schema), "Schema cannot be registered because it is not marked for publication (published schemas must declare '\"%s\": true'): %s", SCHEMA_PUBLISHED_PROPERTY, schema.getFullName());
   }
 
   /**
@@ -852,7 +852,7 @@ public class AvroCodec extends AbstractService {
 
       return recordClasses.stream()
               .map(specificData::getSchema)
-              .filter(AvroCodec::isPublishedSchema)
+              .filter(AvroCodec::isMarkedForPublication)
               .collect(ImmutableList.toImmutableList());
     }
   }

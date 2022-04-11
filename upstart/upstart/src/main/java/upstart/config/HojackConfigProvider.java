@@ -23,12 +23,11 @@ import java.util.function.BiFunction;
 public abstract class HojackConfigProvider extends UpstartConfigProvider {
 
   private static final LoadingCache<String, Config> REFERENCE_CONFIGS = CacheBuilder.newBuilder()
-          .build(new CacheLoader<String, Config>() {
+          .build(new CacheLoader<>() {
             @Override
             public Config load(String key) {
-              Config defaults = ConfigFactory.parseResourcesAnySyntax(HojackConfigProvider.referenceConfigPath(key));
+              Config defaults = ConfigFactory.parseResourcesAnySyntax(referenceConfigPath(key));
               return defaults.atPath(key);
-//              return defaults.isEmpty() ? ConfigFactory.empty() : defaults.atPath(key);
             }
           });
 

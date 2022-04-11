@@ -14,7 +14,6 @@ import java.lang.annotation.Target;
 @BindingAnnotation
 @Value.Immutable
 @Identifier
-//@Value.Style(typeImmutable = "*s", allParameters = true)
 @Value.Style(typeImmutable = "*s")
 public @interface Database {
   String value();

@@ -4,7 +4,7 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ImmutableList;
-import upstart.services.UpstartService;
+import upstart.UpstartService;
 import upstart.UpstartDeploymentStage;
 import upstart.util.Ambiance;
 import com.typesafe.config.Config;

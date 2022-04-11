@@ -8,7 +8,7 @@ import com.google.inject.Scopes;
 import com.google.inject.multibindings.MapBinder;
 import com.google.inject.util.Types;
 import upstart.config.UpstartModule;
-import upstart.services.ComposableService;
+import upstart.util.concurrent.services.ComposableService;
 import upstart.guice.ImmutableNumbered;
 
 import java.lang.reflect.ParameterizedType;

@@ -1,7 +1,6 @@
 package upstart.javalin;
 
-import upstart.services.IdleService;
-import upstart.services.ServiceLifecycle;
+import upstart.util.concurrent.services.IdleService;
 import upstart.web.WebServerConfig;
 import io.javalin.Javalin;
 
@@ -33,6 +32,6 @@ public class JavalinWebServer extends IdleService {
 
   @Override
   protected void shutDown() throws Exception {
-    javalin.stop();
+    if (javalin != null) javalin.stop();
   }
 }

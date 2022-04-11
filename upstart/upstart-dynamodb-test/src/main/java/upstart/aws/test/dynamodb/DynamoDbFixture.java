@@ -7,7 +7,7 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import upstart.config.UpstartEnvironment;
 import upstart.config.annotations.ConfigPath;
-import upstart.services.IdleService;
+import upstart.util.concurrent.services.IdleService;
 import upstart.test.AvailablePortAllocator;
 import upstart.test.systemStreams.SystemOutCaptor;
 import upstart.util.concurrent.LazyReference;

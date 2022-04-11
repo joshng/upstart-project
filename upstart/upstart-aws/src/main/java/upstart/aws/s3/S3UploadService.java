@@ -2,8 +2,8 @@ package upstart.aws.s3;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import upstart.aws.AwsClientFactory;
-import upstart.services.IdleService;
-import upstart.services.ServiceLifecycle;
+import upstart.util.concurrent.services.IdleService;
+import upstart.managedservices.ServiceLifecycle;
 import org.immutables.value.Value;
 import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.http.async.SdkAsyncHttpClient;

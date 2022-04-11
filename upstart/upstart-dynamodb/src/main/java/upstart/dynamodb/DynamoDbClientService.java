@@ -14,8 +14,8 @@ import software.amazon.awssdk.services.dynamodb.model.TableAlreadyExistsExceptio
 import software.amazon.awssdk.services.dynamodb.model.TableStatus;
 import upstart.aws.Aws;
 import upstart.aws.AwsAsyncClientFactory;
-import upstart.services.IdleService;
-import upstart.services.ThreadPoolService;
+import upstart.util.concurrent.services.IdleService;
+import upstart.util.concurrent.services.ThreadPoolService;
 import upstart.util.concurrent.BlockingBoundedActor;
 import upstart.util.concurrent.CompletableFutures;
 import upstart.util.concurrent.NamedThreadFactory;

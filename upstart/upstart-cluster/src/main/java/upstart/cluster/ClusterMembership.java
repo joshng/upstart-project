@@ -1,7 +1,7 @@
 package upstart.cluster;
 
-import upstart.services.BaseComposableService;
-import upstart.services.ComposableService;
+import upstart.util.concurrent.services.BaseComposableService;
+import upstart.util.concurrent.services.ComposableService;
 
 import java.util.concurrent.CompletableFuture;
 

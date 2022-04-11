@@ -3,7 +3,8 @@ package upstart.test;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import upstart.config.UpstartModule;
-import upstart.services.NotifyingService;
+import upstart.test.systemStreams.CaptureSystemOut;
+import upstart.util.concurrent.services.NotifyingService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 

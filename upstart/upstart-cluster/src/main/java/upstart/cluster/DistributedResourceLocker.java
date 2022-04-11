@@ -1,6 +1,6 @@
 package upstart.cluster;
 
-import upstart.services.NotifyingService;
+import upstart.util.concurrent.services.NotifyingService;
 import upstart.util.concurrent.Promise;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

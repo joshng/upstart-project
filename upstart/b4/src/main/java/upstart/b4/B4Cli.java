@@ -5,7 +5,7 @@ import upstart.b4.config.CommandLineParser;
 import upstart.b4.config.TargetRegistry;
 import upstart.b4.config.TargetConfigurator;
 import upstart.config.ConfigMappingException;
-import upstart.services.ServiceSupervisor;
+import upstart.util.concurrent.services.ServiceSupervisor;
 import upstart.util.Ambiance;
 import upstart.util.BooleanChoice;
 import upstart.util.collect.PairStream;

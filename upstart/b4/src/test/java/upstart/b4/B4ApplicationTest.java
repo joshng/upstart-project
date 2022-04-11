@@ -1,7 +1,7 @@
 package upstart.b4;
 
 import com.google.common.truth.Truth8;
-import upstart.services.UpstartService;
+import upstart.UpstartService;
 import upstart.commandExecutor.CommandResult;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;

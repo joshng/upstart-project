@@ -5,7 +5,7 @@ import com.google.inject.Module;
 import com.google.inject.Scopes;
 import com.google.inject.multibindings.Multibinder;
 import upstart.config.UpstartConfigBinder;
-import upstart.services.ManagedServicesModule;
+import upstart.managedservices.ManagedServicesModule;
 import upstart.web.WebServerConfig;
 import ro.pippo.core.Pippo;
 

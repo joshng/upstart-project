@@ -1,7 +1,7 @@
 package upstart.config;
 
 import com.google.common.collect.ImmutableMap;
-import upstart.services.UpstartService;
+import upstart.UpstartService;
 import upstart.UpstartDeploymentStage;
 import upstart.util.Ambiance;
 import upstart.util.LocalHost;

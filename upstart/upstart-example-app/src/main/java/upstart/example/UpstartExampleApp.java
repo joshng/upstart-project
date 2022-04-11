@@ -3,7 +3,7 @@ package upstart.example;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import upstart.UpstartApplication;
-import upstart.services.ServiceSupervisor;
+import upstart.util.concurrent.services.ServiceSupervisor;
 
 import java.time.Duration;
 

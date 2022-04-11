@@ -2,7 +2,7 @@ package upstart.config;
 
 import com.google.inject.Injector;
 import io.upstartproject.hojack.Size;
-import upstart.services.UpstartService;
+import upstart.UpstartService;
 import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigMemorySize;
 import org.junit.jupiter.api.Test;

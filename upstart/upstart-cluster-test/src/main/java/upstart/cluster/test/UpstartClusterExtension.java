@@ -1,6 +1,6 @@
 package upstart.cluster.test;
 
-import upstart.services.UpstartService;
+import upstart.UpstartService;
 import upstart.config.EnvironmentConfigExtension;
 import upstart.test.ExtensionContexts;
 import upstart.test.UpstartExtension;

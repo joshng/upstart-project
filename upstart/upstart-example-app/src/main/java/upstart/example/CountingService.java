@@ -2,11 +2,10 @@ package upstart.example;
 
 import upstart.config.annotations.ConfigPath;
 import upstart.config.UpstartModule;
-import upstart.services.ScheduledService;
+import upstart.util.concurrent.services.ScheduledService;
 import org.immutables.value.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import upstart.util.concurrent.Threads;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;

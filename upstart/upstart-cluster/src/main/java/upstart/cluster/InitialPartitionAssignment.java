@@ -1,6 +1,6 @@
 package upstart.cluster;
 
-import upstart.services.NotifyingService;
+import upstart.util.concurrent.services.NotifyingService;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;

@@ -1,6 +1,6 @@
 package upstart.b4.devops;
 
-import upstart.services.IdleService;
+import upstart.util.concurrent.services.IdleService;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClient;
 

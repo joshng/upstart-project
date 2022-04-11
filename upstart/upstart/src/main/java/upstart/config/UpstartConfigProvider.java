@@ -4,7 +4,7 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import io.upstartproject.hojack.HojackConfigMapper;
-import upstart.services.UpstartService;
+import upstart.UpstartService;
 import upstart.UpstartDeploymentStage;
 import upstart.util.annotations.Tuple;
 import com.typesafe.config.Config;

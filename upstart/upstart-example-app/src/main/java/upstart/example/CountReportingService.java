@@ -1,10 +1,10 @@
 package upstart.example;
 
 import com.google.inject.Guice;
-import upstart.services.UpstartService;
+import upstart.UpstartService;
 import upstart.config.annotations.ConfigPath;
 import upstart.config.UpstartModule;
-import upstart.services.ExecutionThreadService;
+import upstart.util.concurrent.services.ExecutionThreadService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

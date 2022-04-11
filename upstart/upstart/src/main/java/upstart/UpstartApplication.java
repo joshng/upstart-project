@@ -3,8 +3,7 @@ package upstart;
 import com.google.common.util.concurrent.Service;
 import com.google.inject.AbstractModule;
 import upstart.config.UpstartModule;
-import upstart.services.ServiceSupervisor;
-import upstart.services.UpstartService;
+import upstart.util.concurrent.services.ServiceSupervisor;
 
 /**
  * A managed upstart Application!

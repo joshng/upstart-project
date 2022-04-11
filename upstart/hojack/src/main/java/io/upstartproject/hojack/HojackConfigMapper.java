@@ -61,8 +61,10 @@ import java.util.logging.Logger;
  */
 public class HojackConfigMapper implements ConfigMapper {
   private static final Logger LOG = Logger.getLogger(HojackConfigMapper.class.getName());
-  public static final TypeReference<Map<String, Object>> JSON_MAP_TYPE = new TypeReference<Map<String, Object>>(){};
+  public static final TypeReference<Map<String, Object>> JSON_MAP_TYPE = new TypeReference<>() { };
   public static final String HOJACK_REGISTERED_MODULES_CONFIGPATH = "hojack.registeredModules";
+
+  private volatile static List<Module> _registeredModules = null;
 
   private final ObjectMapper objectMapper;
 
@@ -83,6 +85,15 @@ public class HojackConfigMapper implements ConfigMapper {
   }
 
   public static List<Module> findRegisteredModules() {
+    if (_registeredModules == null) {
+      synchronized (HojackConfigMapper.class) {
+        if (_registeredModules == null) _registeredModules = computeRegisteredModules();
+      }
+    }
+    return _registeredModules;
+  }
+
+  private static List<Module> computeRegisteredModules() {
     List<Module> defaultModules = new ArrayList<>(ObjectMapper.findModules());
     Config moduleConfig;
     try {

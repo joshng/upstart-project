@@ -1,12 +1,9 @@
 package upstart.util.context;
 
-import com.google.common.base.Throwables;
 import com.google.common.collect.Lists;
 import upstart.util.concurrent.CompletableFutures;
 import upstart.util.exceptions.Exceptions;
 import upstart.util.exceptions.Fallible;
-import upstart.util.exceptions.FallibleSupplier;
-import upstart.util.exceptions.ThrowingRunnable;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
@@ -25,7 +22,7 @@ public interface TransientContext {
 
     State NULL = NullState.INSTANCE;
 
-    public enum NullState implements State {
+     enum NullState implements State {
       INSTANCE;
 
       public void exit() {
@@ -80,7 +77,7 @@ public interface TransientContext {
         return null;
       });
     } catch (Exception e) {
-      throw Throwables.propagate(e);
+      throw Exceptions.throwUnchecked(e);
     }
   }
 

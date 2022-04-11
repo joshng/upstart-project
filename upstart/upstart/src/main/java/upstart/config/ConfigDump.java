@@ -16,7 +16,7 @@ public class ConfigDump {
   private static final String DUMP_LINE_PREFIX = "  ";
 
   public static String describe(Config config) {
-    List<ValueDump> values = describeValues(config, 128).collect(Collectors.toList());
+    List<ValueDump> values = describeValues(config, 128).toList();
 
     int longestKey = 0;
     int longestValue = 0;

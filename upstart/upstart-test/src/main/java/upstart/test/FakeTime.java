@@ -2,10 +2,15 @@ package upstart.test;
 
 import com.google.common.util.concurrent.ForwardingExecutorService;
 import com.google.inject.Binder;
+import com.google.inject.Binding;
 import com.google.inject.Module;
+import com.google.inject.matcher.AbstractMatcher;
+import com.google.inject.matcher.Matcher;
+import com.google.inject.matcher.Matchers;
 import com.google.inject.multibindings.MapBinder;
+import com.google.inject.spi.ProvisionListener;
 import upstart.ExecutorServiceScheduler;
-import upstart.services.ScheduledService;
+import upstart.util.concurrent.services.ScheduledService;
 import upstart.util.concurrent.Promise;
 
 import javax.annotation.Nullable;
@@ -213,12 +218,19 @@ public class FakeTime {
       binder.bind(FakeTime.class).toInstance(fakeTime);
       ExecutorServiceScheduler.Module.bindExecutorService(binder).toInstance(fakeTime.scheduledExecutor(immediateExecutor));
       if (!interceptedSchedules.isEmpty()) {
-        MapBinder<Class<? extends ScheduledService>, UnaryOperator<ScheduledExecutorService>> executorBinder = ScheduledService.executorServiceBinder(binder);
-        for (Class<? extends ScheduledService> schedule : interceptedSchedules) {
-          executorBinder.addBinding(schedule).toInstance(fakeTime::scheduledExecutor);
-        }
+        binder.bindListener(new AbstractMatcher<>() {
+          @Override
+          public boolean matches(Binding<?> binding) {
+            return interceptedSchedules.contains(binding.getKey().getTypeLiteral().getRawType());
+          }
+        }, new ProvisionListener() {
+          @Override
+          public <T> void onProvision(ProvisionInvocation<T> provision) {
+            ScheduledService service = (ScheduledService) provision.provision();
+            service.decorateExecutor(fakeTime::scheduledExecutor);
+          }
+        });
       }
     }
   }
-
 }

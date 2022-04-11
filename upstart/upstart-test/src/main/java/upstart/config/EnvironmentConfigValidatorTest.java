@@ -2,7 +2,7 @@ package upstart.config;
 
 import com.google.common.util.concurrent.Service;
 import com.google.inject.Module;
-import upstart.services.UpstartService;
+import upstart.UpstartService;
 import upstart.log.UpstartLogConfig;
 import upstart.test.UpstartExtension;
 import upstart.util.concurrent.LazyReference;

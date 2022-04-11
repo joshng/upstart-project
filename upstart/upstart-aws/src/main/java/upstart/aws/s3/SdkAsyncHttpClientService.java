@@ -5,8 +5,8 @@ import software.amazon.awssdk.http.async.AsyncExecuteRequest;
 import software.amazon.awssdk.http.async.SdkAsyncHttpClient;
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient;
 import upstart.config.annotations.ConfigPath;
-import upstart.services.IdleService;
-import upstart.services.ServiceLifecycle;
+import upstart.util.concurrent.services.IdleService;
+import upstart.managedservices.ServiceLifecycle;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;

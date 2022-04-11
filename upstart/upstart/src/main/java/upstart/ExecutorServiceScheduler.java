@@ -9,8 +9,8 @@ import com.google.inject.binder.LinkedBindingBuilder;
 import com.google.inject.multibindings.OptionalBinder;
 import upstart.config.annotations.ConfigPath;
 import upstart.config.UpstartModule;
-import upstart.services.ServiceLifecycle;
-import upstart.services.ThreadPoolService;
+import upstart.managedservices.ServiceLifecycle;
+import upstart.util.concurrent.services.ThreadPoolService;
 import upstart.util.concurrent.NamedThreadFactory;
 import upstart.util.concurrent.Scheduler;
 

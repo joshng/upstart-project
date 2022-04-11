@@ -2,7 +2,7 @@ package upstart.config;
 
 import com.google.inject.Binder;
 import com.google.inject.Key;
-import upstart.services.UpstartService;
+import upstart.UpstartService;
 import upstart.UpstartModuleExtension;
 import upstart.config.annotations.ConfigPath;
 import upstart.util.collect.MoreStreams;

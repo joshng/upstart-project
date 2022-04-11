@@ -1,7 +1,7 @@
 package upstart.config;
 
 import com.google.common.collect.ImmutableMap;
-import upstart.services.UpstartService;
+import upstart.UpstartService;
 import com.typesafe.config.Config;
 import org.immutables.value.Value;
 

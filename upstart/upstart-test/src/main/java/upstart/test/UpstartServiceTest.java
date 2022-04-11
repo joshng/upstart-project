@@ -2,9 +2,9 @@ package upstart.test;
 
 import com.google.common.util.concurrent.Service;
 import upstart.UpstartApplication;
-import upstart.services.ManagedServiceGraph;
-import upstart.services.ManagedServicesModule;
-import upstart.services.ServiceDependencyChecker;
+import upstart.managedservices.ManagedServiceGraph;
+import upstart.managedservices.ManagedServicesModule;
+import upstart.util.concurrent.services.ServiceDependencyChecker;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
