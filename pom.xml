@@ -38,8 +38,8 @@
     <metrics.version>4.2.4</metrics.version>
     <mockito.version>4.0.0</mockito.version>
     <netty.version>4.1.68.Final</netty.version>
-    <okhttp3.version>4.9.3</okhttp3.version>
-<!--    <okhttp3.version>3.14.1</okhttp3.version>-->
+<!--    <okhttp3.version>4.9.3</okhttp3.version>-->
+    <okhttp3.version>3.14.1</okhttp3.version>
     <pippo.version>1.13.1</pippo.version>
     <scala-library.version>2.13.2</scala-library.version>
     <slf4j.version>1.7.32</slf4j.version>
@@ -238,16 +238,16 @@
         <artifactId>logging-interceptor</artifactId>
         <version>${okhttp3.version}</version>
       </dependency>
-      <dependency>
-        <groupId>org.jetbrains.kotlin</groupId>
-        <artifactId>kotlin-stdlib</artifactId>
-        <version>1.4.10</version>
-      </dependency>
-      <dependency>
-        <groupId>org.jetbrains.kotlin</groupId>
-        <artifactId>kotlin-stdlib-common</artifactId>
-        <version>1.4.10</version>
-      </dependency>
+<!--      <dependency>-->
+<!--        <groupId>org.jetbrains.kotlin</groupId>-->
+<!--        <artifactId>kotlin-stdlib</artifactId>-->
+<!--        <version>1.4.10</version>-->
+<!--      </dependency>-->
+<!--      <dependency>-->
+<!--        <groupId>org.jetbrains.kotlin</groupId>-->
+<!--        <artifactId>kotlin-stdlib-common</artifactId>-->
+<!--        <version>1.4.10</version>-->
+<!--      </dependency>-->
       <dependency>
         <groupId>net.jodah</groupId>
         <artifactId>failsafe</artifactId>
