@@ -31,7 +31,7 @@ public interface UpstartTestBuilder extends UpstartApplicationBuilder<UpstartTes
   }
 
   default UpstartTestBuilder suppressAutoModules(Class<? extends Module> moduleClass) {
-    return suppressAutoModules(moduleClass.getCanonicalName());
+    return suppressAutoModules(moduleClass.getName());
   }
 
   default UpstartTestBuilder suppressAutoModules(String moduleClassName) {

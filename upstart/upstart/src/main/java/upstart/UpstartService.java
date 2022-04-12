@@ -271,7 +271,7 @@ public final class UpstartService extends BaseComposableService<ManagedServiceGr
 
         List<Module> modules = Stream.concat(installs, SERVICELOADER_MODULES.stream())
                 .filter(this::isUnsuppressed)
-                .collect(Collectors.toList());
+                .toList();
 
         if (!modules.isEmpty()) {
           if (LOG.isInfoEnabled()) {
