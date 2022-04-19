@@ -30,6 +30,8 @@ import com.google.inject.spi.ProviderKeyBinding;
 import com.google.inject.spi.ProvidesMethodBinding;
 import com.google.inject.spi.ProvidesMethodTargetVisitor;
 import com.google.inject.spi.UntargettedBinding;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import upstart.util.collect.Optionals;
 import upstart.util.collect.PersistentList;
 
@@ -41,10 +43,12 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Singleton
 public class BindingResolver {
+  private static final Logger LOG = LoggerFactory.getLogger(BindingResolver.class);
   private final LoadingCache<Key<?>, ResolvedBinding<?>> cache = CacheBuilder.newBuilder()
           .build(CacheLoader.from(this::load));
   private final Injector injector;
@@ -186,6 +190,9 @@ public class BindingResolver {
     }
 
     private void traverseDependencies(PersistentList<ResolvedBinding<?>> context, GuiceDependencyGraph.ExternalDependencies externalDeps, Predicate<? super ResolvedBinding<?>> visitor) {
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Traversing\n  {}", context.reversed().stream().map(b -> b.binding.getKey().toString()).collect(Collectors.joining("\n  -> ")));
+      }
       try {
         Streams.concat(getDirectDependencies(), externalDeps.resolvedDependencies(this).stream())
                 .filter(visitor)

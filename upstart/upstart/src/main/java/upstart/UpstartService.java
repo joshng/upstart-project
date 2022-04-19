@@ -284,18 +284,7 @@ public final class UpstartService extends BaseComposableService<ManagedServiceGr
       }
 
       private boolean isUnsuppressed(Module module) {
-        Boolean value = install().get(module.getClass());
-        return value == null || value;
-      }
-
-      @Override
-      public boolean equals(Object obj) {
-        return super.equals(obj);
-      }
-
-      @Override
-      public int hashCode() {
-        return super.hashCode();
+        return install().getOrDefault(module.getClass(), Boolean.TRUE);
       }
     }
 

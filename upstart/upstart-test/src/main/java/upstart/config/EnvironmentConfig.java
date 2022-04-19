@@ -33,9 +33,9 @@ public @interface EnvironmentConfig {
    * <ol>
    *   <li>annotations that are <em>nearer</em> to the test-method are higher precedence (eg, an annotation on a subclass
    *   is higher precedence than on its superclass, and method-annotations are higher precedence than class-annotations)</li>
-   *   <li>{@link EnvironmentConfigFixture} implementations (specified with {@link #value}) are higher precedence than
+   *   <li>{@link EnvironmentConfigFixture} implementations (specified with {@link #impl}) are higher precedence than
    *   {@link #resources()} that appear on the same {@link Fixture} annotation</li>
-   *   <li>Within the lists of {@link #value() EnvironmentConfigFixtures} and {@link #resources()} on a single annotation,
+   *   <li>Within the lists of {@link #impl() EnvironmentConfigFixtures} and {@link #resources()} on a single annotation,
    *   items that appear later in each list are higher precedence than those that came before them.</li>
    * </ol>
    */
@@ -45,7 +45,8 @@ public @interface EnvironmentConfig {
   @Repeatable(EnvironmentConfigFixtures.class)
   @Inherited
   @interface Fixture {
-    Class<? extends EnvironmentConfigFixture>[] value() default {};
+    String value() default "";
+    Class<? extends EnvironmentConfigFixture>[] impl() default {};
     String[] resources() default {};
   }
 

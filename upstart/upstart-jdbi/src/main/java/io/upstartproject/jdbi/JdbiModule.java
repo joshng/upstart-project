@@ -41,6 +41,7 @@ public class JdbiModule extends UpstartModule {
           Key<HikariJdbiService> serviceKey,
           Key<HikariConfig> configKey
   ) {
+    super(serviceKey, configKey);
     this.serviceKey = serviceKey;
     this.configKey = configKey;
   }
@@ -85,24 +86,5 @@ public class JdbiModule extends UpstartModule {
 
   public LinkedBindingBuilder<JdbiPlugin> bindPlugin(Binder binder, Annotation databaseAnnotation) {
     return pluginBinder(binder, databaseAnnotation).addBinding();
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (!super.equals(o)) return false;
-
-    JdbiModule that = (JdbiModule) o;
-
-    if (!serviceKey.equals(that.serviceKey)) return false;
-    return configKey.equals(that.configKey);
-  }
-
-  @Override
-  public int hashCode() {
-    int result = super.hashCode();
-    result = 31 * result + serviceKey.hashCode();
-    result = 31 * result + configKey.hashCode();
-    return result;
   }
 }

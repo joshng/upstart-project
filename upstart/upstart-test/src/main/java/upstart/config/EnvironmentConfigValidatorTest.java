@@ -2,6 +2,7 @@ package upstart.config;
 
 import com.google.common.util.concurrent.Service;
 import com.google.inject.Module;
+import org.slf4j.LoggerFactory;
 import upstart.UpstartService;
 import upstart.log.UpstartLogConfig;
 import upstart.test.UpstartExtension;
@@ -93,8 +94,12 @@ public abstract class EnvironmentConfigValidatorTest extends UpstartModule {
   Stream<DynamicTest> validateEnvironmentConfigs(EnvironmentConfigBuilder configBuilder) {
     assertWithMessage("UPSTART_OVERRIDES environment-variable should be unset")
             .that(System.getenv(UpstartEnvironment.UPSTART_OVERRIDES)).isNull();
-    assertWithMessage("Production-like environments (specified in upstart-env-registry.conf)")
-            .that(PROD_LIKE_ENVIRONMENTS.get()).isNotEmpty();
+//    assertWithMessage("Production-like environments (specified in upstart-env-registry.conf)")
+//            .that(PROD_LIKE_ENVIRONMENTS.get()).isNotEmpty();
+    if (PROD_LIKE_ENVIRONMENTS.get().isEmpty()) {
+      LoggerFactory.getLogger(getClass()).warn("No production-like environments defined in env-registry.conf");
+      return Stream.empty();
+    }
 
     configBuilder.setLogThreshold("upstart", UpstartLogConfig.LogThreshold.WARN);
 

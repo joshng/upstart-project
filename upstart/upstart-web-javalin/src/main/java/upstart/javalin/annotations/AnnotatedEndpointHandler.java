@@ -67,7 +67,7 @@ public class AnnotatedEndpointHandler<T> {
               Http annotation = method.getAnnotation(Http.class);
               return new Endpoint(
                       method,
-                      annotation.verb().handlerType,
+                      annotation.method().handlerType,
                       annotation.path(),
                       annotation.responseDoc(),
                       methodRoles(registry.getRequiredRoles(method))

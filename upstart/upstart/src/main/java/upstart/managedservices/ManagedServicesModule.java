@@ -45,6 +45,7 @@ public class ManagedServicesModule extends UpstartModule {
   private final ServiceLifecycle lifecycle;
 
   private ManagedServicesModule(ServiceLifecycle lifecycle) {
+    super(lifecycle.value());
     this.lifecycle = lifecycle;
   }
 
@@ -84,19 +85,6 @@ public class ManagedServicesModule extends UpstartModule {
     keyBinder(binder(), lifecycle);
     serviceBinder(binder(), lifecycle);
     serviceListenerBinder(binder(), lifecycle);
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (! (o instanceof ManagedServicesModule that)) return false;
-
-    return lifecycle.value() == that.lifecycle.value();
-  }
-
-  @Override
-  public int hashCode() {
-    return 31 * super.hashCode() + lifecycle.value().hashCode();
   }
 
   public static ServiceManager serviceManager(Binder binder) {

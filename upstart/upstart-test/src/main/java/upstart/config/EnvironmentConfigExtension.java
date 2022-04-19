@@ -1,11 +1,14 @@
 package upstart.config;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Streams;
+import com.typesafe.config.ConfigParseOptions;
 import io.upstartproject.hojack.HojackConfigMapper;
 import upstart.test.ExtensionContexts;
 import upstart.test.SingletonParameterResolver;
+import upstart.util.annotations.Identifier;
+import upstart.util.collect.Optionals;
 import upstart.util.reflect.Reflect;
-import upstart.util.annotations.Tuple;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import org.immutables.value.Value;
@@ -44,14 +47,17 @@ public class EnvironmentConfigExtension extends SingletonParameterResolver<Envir
   }
 
   private static Stream<EnvironmentConfigFixture> fixtures(EnvironmentConfig.Fixture fixtureAnnotation) {
-    return Stream.concat(
+    return Streams.concat(
             Stream.of(fixtureAnnotation.resources()).map(ResourceFixture::of),
-            Stream.of(fixtureAnnotation.value()).map(DelegatingFixture::of)
+            Stream.of(fixtureAnnotation.impl()).map(DelegatingFixture::of),
+            Optionals.onlyIf(!fixtureAnnotation.value().isEmpty(), fixtureAnnotation.value())
+                    .map(HoconStringFixture::of)
+                    .stream()
     );
   }
 
   @Value.Immutable(intern = true)
-  @Tuple
+  @Identifier
   abstract static class DelegatingFixture implements EnvironmentConfigFixture {
     static DelegatingFixture of(Class<? extends EnvironmentConfigFixture> fixtureClass) {
       return ImmutableDelegatingFixture.of(fixtureClass);
@@ -67,7 +73,7 @@ public class EnvironmentConfigExtension extends SingletonParameterResolver<Envir
   }
 
   @Value.Immutable(intern = true)
-  @Tuple
+  @Identifier
   abstract static class ResourceFixture implements EnvironmentConfigFixture {
     static ResourceFixture of(String resource) {
       return ImmutableResourceFixture.of(resource);
@@ -75,9 +81,34 @@ public class EnvironmentConfigExtension extends SingletonParameterResolver<Envir
 
     abstract String resourceName();
 
-    @Value.Lazy
+    @Value.Derived
+    @Value.Auxiliary
     Config parsedConfig() {
       return ConfigFactory.parseResourcesAnySyntax(resourceName());
+    }
+
+    @Override
+    public void applyEnvironmentValues(TestConfigBuilder<?> config) {
+      config.overrideConfig(parsedConfig());
+    }
+  }
+
+  @Value.Immutable(intern = true)
+  @Identifier
+  abstract static class HoconStringFixture implements EnvironmentConfigFixture {
+    private static final ConfigParseOptions FIXTURE_ORIGIN_DESCRIPTION = ConfigParseOptions.defaults().setOriginDescription(
+            EnvironmentConfig.Fixture.class.getCanonicalName().substring(EnvironmentConfig.class.getPackageName().length() + 1));
+
+    static HoconStringFixture of(String config) {
+      return ImmutableHoconStringFixture.of(config);
+    }
+
+    abstract String config();
+
+    @Value.Derived
+    @Value.Auxiliary
+    Config parsedConfig() {
+      return ConfigFactory.parseString(config(), FIXTURE_ORIGIN_DESCRIPTION);
     }
 
     @Override

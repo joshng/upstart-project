@@ -13,14 +13,11 @@ import java.lang.annotation.Target;
 @Target({ElementType.TYPE, ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
 @Inherited
-@EnvironmentConfig.Fixture(UpstartContextFixture.Values.class)
+@EnvironmentConfig.Fixture("""
+        upstart.context {
+          application: <test-placeholder>
+          owner: <test-placeholder>
+        }
+        """)
 public @interface UpstartContextFixture {
-  class Values implements EnvironmentConfigFixture {
-    @Override
-    public void applyEnvironmentValues(TestConfigBuilder<?> config) {
-      config.subConfig("upstart.context", context -> context
-              .setPlaceholder("application")
-              .setPlaceholder("owner"));
-    }
-  }
 }

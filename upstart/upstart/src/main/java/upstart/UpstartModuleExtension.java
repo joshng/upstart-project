@@ -66,10 +66,6 @@ public interface UpstartModuleExtension {
     sourceCleanedBinder().install(Reflect.newInstance(className, Module.class));
   }
 
-  default Binder sourceCleanedBinder() {
-    return binder().skipSources(UpstartModuleExtension.class);
-  }
-
   /**
    * Obtains the {@link ManagedServicesModule.ServiceManager} for managing the lifecycles of {@link Service} classes.
    * <p/>
@@ -89,10 +85,10 @@ public interface UpstartModuleExtension {
   }
 
   /**
-   * Provides a facility for declaring that a given component "depends upon" another component, whether or not
-   * there is a visible linkage in the guice injection-graph between them. This is sometimes needed to ensure
+   * Provides a facility for declaring that a given component "depends upon" another component, even if
+   * there is no visible linkage in the guice injection-graph between them. This is sometimes needed to ensure
    * that {@link Service services} managed by the {@link #serviceManager} are started/stopped in the correct order when
-   * they have dependency-relationships that cannot be seen in the guice injection-graph.<p/>
+   * they have dependency-relationships that cannot be inferred from the guice injection-graph.<p/>
    *
    * Examples of scenarios that might require this include:
    * <ol>
@@ -103,17 +99,20 @@ public interface UpstartModuleExtension {
    *   <li>Components whose startup or shutdown depend upon external conditions that are reflected by some other
    *       component's lifecycle. For example, if a DatabaseService starts up an external database, and
    *       a DaoService then connects to that database (and should thus wait for the DatabaseService to be started),
-   *       this could be arranged as follows:<br/>
-   *       <code>
+   *       this could be arranged as follows:
+   *       <pre>
    *         externalDependencyBinder()
    *         &nbsp;&nbsp;.bindExternalDependency(DaoService.class)
    *         &nbsp;&nbsp;.dependsUpon(DatabaseService.class)
-   *       </code></li>
+   *       </pre>
+   *       } </li>
    * </ol>
    *
-   * Note that the need for such explicit dependency-declarations can often be avoided naturally by arranging some reason
-   * for the dependent service to need a reference to the dependency. For example, the DaoService above could
-   * <code>@Inject DatabaseService</code> to obtain a connection from it.
+   * Note that the need for such explicit dependency-declarations can often be avoided (usually with beneficial
+   * architectural consequences) by arranging some way for the dependent service to use the dependency explicitly.
+   * For the example above, the DatabaseService could offer a method for connecting to its database, and the
+   * DaoService could <code>@Inject DatabaseService</code> to obtain its connection as part of its
+   * {@link Service#startAsync startUp} routine.
    */
   default GuiceDependencyGraph.ExternalDependencyBinder externalDependencyBinder() {
     return GuiceDependencyGraph.externalDependencyBinder(sourceCleanedBinder());
@@ -213,11 +212,16 @@ public interface UpstartModuleExtension {
     DynamicProxyBindingBuilder.bindLazyProviderProxy(binder(), proxiedClass);
   }
 
+  /** @see #bindLazyProviderProxy(Class) */
   default <T> void bindLazyProviderProxy(TypeLiteral<T> proxiedClass) {
     DynamicProxyBindingBuilder.bindLazyProviderProxy(binder(), proxiedClass);
   }
 
   default UpstartConfigBinder configBinder() {
     return UpstartConfigBinder.get();
+  }
+
+  private Binder sourceCleanedBinder() {
+    return binder().skipSources(UpstartModuleExtension.class);
   }
 }

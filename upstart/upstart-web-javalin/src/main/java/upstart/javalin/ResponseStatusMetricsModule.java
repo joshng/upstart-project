@@ -26,9 +26,7 @@ public class ResponseStatusMetricsModule extends UpstartModule implements Javali
 
     @Override
     public void initializeWeb(JavalinConfig config) {
-      config.registerPlugin(javalin -> {
-        javalin.after(ctx -> statusMeter(ctx.status()).mark());
-      });
+      config.registerPlugin(javalin -> javalin.after(ctx -> statusMeter(ctx.status()).mark()));
     }
 
     private Meter statusMeter(int statusCode) {

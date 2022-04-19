@@ -15,6 +15,7 @@ public class B4TargetModule extends UpstartModule {
   private final TargetInvocation invocation;
 
   public B4TargetModule(TargetInvocation invocation) {
+    super(invocation);
     this.spec = invocation.spec();
     this.invocation = invocation;
   }
@@ -42,20 +43,6 @@ public class B4TargetModule extends UpstartModule {
 
     MapBinder.newMapBinder(binder(), TargetInstanceId.class, TargetRunner.class).addBinding(invocation.id()).to(targetKey);
     spec.module().ifPresent(this::install);
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    return this == o || Optionals.asInstance(o, B4TargetModule.class)
-            .filter(that -> invocation.equals(that.invocation))
-            .isPresent();
-  }
-
-  @Override
-  public int hashCode() {
-    int result = super.hashCode();
-    result = 31 * result + invocation.hashCode();
-    return result;
   }
 
   @Override

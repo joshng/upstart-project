@@ -7,9 +7,10 @@ import com.google.inject.Key;
 import com.google.inject.Module;
 import com.google.inject.PrivateModule;
 import com.google.inject.TypeLiteral;
+import com.google.inject.multibindings.Multibinder;
+import io.javalin.Javalin;
 import io.javalin.core.JavalinConfig;
 import io.javalin.core.security.RouteRole;
-import io.javalin.plugin.openapi.dsl.OpenApiBuilder;
 import upstart.config.UpstartModule;
 import upstart.guice.PrivateBinding;
 import upstart.guice.TypeLiterals;
@@ -23,9 +24,11 @@ import java.lang.annotation.Annotation;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -101,16 +104,17 @@ public class HttpRegistry {
     private AnnotatedEndpointModule(
             Key<T> targetKey
     ) {
+      super(targetKey);
       this.targetKey = targetKey;
     }
 
     @Override
     protected void configure() {
-      Class<T> targetType = TypeLiterals.getRawType(targetKey.getTypeLiteral());
-      AnnotatedEndpointHandler<T> handler = handlerFor(targetType);
-      TypeLiteral<AnnotatedWebInitializer<T>> initializerType = TypeLiterals.getParameterizedWithOwner(
+      AnnotatedEndpointHandler<T> handler = handlerFor(TypeLiterals.getRawType(targetKey.getTypeLiteral()));
+      Type targetType = targetKey.getTypeLiteral().getType();
+      TypeLiteral<AnnotatedEndpointInitializer<T>> initializerType = TypeLiterals.getParameterizedWithOwner(
               HttpRegistry.class,
-              AnnotatedWebInitializer.class,
+              AnnotatedEndpointInitializer.class,
               targetType
       );
       install(new PrivateModule() {
@@ -122,29 +126,63 @@ public class HttpRegistry {
           expose(initializerType);
         }
       });
-      Key<AnnotatedEndpointHandler<T>> handlerKey = Key.get(TypeLiterals.getParameterized(AnnotatedEndpointHandler.class, targetType));
+      Key<AnnotatedEndpointHandler<T>> handlerKey = Key.get(
+              TypeLiterals.getParameterized(AnnotatedEndpointHandler.class, targetType)
+      );
       if (targetKey.getAnnotation() != null) handlerKey = handlerKey.withAnnotation(targetKey.getAnnotation());
       bind(handlerKey).toInstance(handler);
-      addJavalinWebBinding().to(initializerType);
+      Multibinder.<AnnotatedEndpointInitializer<?>>newSetBinder(binder(), new TypeLiteral<>(){}).addBinding().to(initializerType);
+      install(new AnnotatedWebInitializer.Module());
     }
   }
 
-  private static class AnnotatedWebInitializer<T> implements JavalinWebInitializer {
+  private static class AnnotatedWebInitializer implements JavalinWebInitializer {
+    private final Set<AnnotatedEndpointInitializer<?>> endpointInitializers;
+
+    @Inject
+    AnnotatedWebInitializer(Set<AnnotatedEndpointInitializer<?>> endpointInitializers) {
+      this.endpointInitializers = endpointInitializers;
+    }
+
+    @Override
+    public void initializeWeb(JavalinConfig config) {
+      for (AnnotatedEndpointInitializer<?> endpointInitializer : endpointInitializers) {
+        endpointInitializer.initializeWeb(config);
+      }
+      config.registerPlugin(javalin -> {
+        for (AnnotatedEndpointInitializer<?> endpointInitializer : endpointInitializers) {
+          endpointInitializer.installHandlers(javalin);
+        }
+      });
+    }
+
+    static class Module extends UpstartModule implements JavalinWebModule {
+      @Override
+      protected void configure() {
+        addJavalinWebBinding().to(AnnotatedWebInitializer.class);
+      }
+    }
+  }
+
+  private static class AnnotatedEndpointInitializer<T> implements JavalinWebInitializer {
     private final T target;
     private final AnnotatedEndpointHandler<T> handler;
 
     @Inject
-    public AnnotatedWebInitializer(@PrivateBinding T target, AnnotatedEndpointHandler<T> handler) {
+    public AnnotatedEndpointInitializer(@PrivateBinding T target, AnnotatedEndpointHandler<T> handler) {
       this.target = target;
       this.handler = handler;
     }
 
     @Override
     public void initializeWeb(JavalinConfig config) {
-      config.registerPlugin(javalin -> handler.installHandlers(target, javalin));
       if (target instanceof JavalinWebInitializer initializer) {
         initializer.initializeWeb(config);
       }
+    }
+
+    void installHandlers(Javalin javalin) {
+      handler.installHandlers(target, javalin);
     }
   }
 }

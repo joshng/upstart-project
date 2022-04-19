@@ -11,13 +11,13 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
 public @interface Http {
-  Verb verb();
+  Method method();
   /** The route-pattern to associate with the annotated method, as understood by {@link io.javalin.Javalin} */
   String path();
 
   OpenApiResponse responseDoc() default @OpenApiResponse(status = OpenApiAnnotations.DEFAULT_STATUS);
 
-  enum Verb {
+  enum Method {
     GET(HandlerType.GET),
     POST(HandlerType.POST),
     PUT(HandlerType.PUT),
@@ -29,7 +29,7 @@ public @interface Http {
 
     public final HandlerType handlerType;
 
-    Verb(HandlerType handlerType) {
+    Method(HandlerType handlerType) {
 
       this.handlerType = handlerType;
     }

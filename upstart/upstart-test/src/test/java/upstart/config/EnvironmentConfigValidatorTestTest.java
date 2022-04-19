@@ -25,7 +25,7 @@ public class EnvironmentConfigValidatorTestTest extends EnvironmentConfigValidat
     assertThat(exampleConfig.intValue()).isEqualTo(-1); // from upstart-defaults/example.config.conf
   }
 
-  @EnvironmentConfig.Fixture(value = ExampleConfigFixture.class, resources = "exampleConfigFixture.conf")
+  @EnvironmentConfig.Fixture(impl = ExampleConfigFixture.class, resources = "exampleConfigFixture.conf")
   @Nested
   class WithNestedConfig {
     @Test
@@ -33,7 +33,7 @@ public class EnvironmentConfigValidatorTestTest extends EnvironmentConfigValidat
       assertThat(exampleConfig.intValue()).isEqualTo(1); // from ExampleConfigFixture
     }
 
-    @EnvironmentConfig.Fixture(ExampleConfigFixture.class)
+    @EnvironmentConfig.Fixture(impl = ExampleConfigFixture.class)
     @Nested
     class WithRedundantNestedConfig {
       @Test
