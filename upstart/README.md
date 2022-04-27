@@ -215,8 +215,6 @@ class PurchaseService extends IdleService {
     // ... tear down
   }
   
-  @Value.Immutable
-  @JsonDeserialize(as=ImmutablePurchaseServiceConfig.class)
   @ConfigPath("mycompany.purchase") // where to find this data in the UpstartConfig
   interface PurchaseServiceConfig {
     Duration transactionTimeout();
@@ -297,8 +295,6 @@ my.config {
 ... upstart components could inject this configuration by defining an object to hold the configuration-structure,
 like this:
 ```java
-@Value.Immutable
-@JsonDeserialize(as=ImmutableMyConfig.class)
 @ConfigPath("my.config") 
 interface MyConfig {
   int intValue();
@@ -389,9 +385,9 @@ and is usually accessed by `@Inject`ing values directly into the components that
 `@ConfigPath` specifying where the values are to be found in the HOCON structure.
 
 Although any pre-assembled `Config` object may optionally be used to start a Upstart application, the default
-`ConfigLoader` assembles the configuration from a rich composition of layers intended for different phases of application
-definition. We'll describe these layers here in **increasing** order of precedence (ie, values that appear later in this
-list will override conflicting settings defined earlier in the list): 
+`UpstartEnvironment` loader assembles the configuration from a rich composition of layers intended for different phases
+of application definition. We'll describe these layers here in **increasing** order of precedence (ie, values that
+appear later in this list will override conflicting settings defined earlier in the list): 
 
 1. `upstart-defaults/<ConfigPath>`
 1. `reference`
@@ -410,8 +406,6 @@ are automatically loaded, with the values contained therein prefixed with the sp
  
 For example, given a binding for config POJO: 
 ```java
-@Value.Immutable
-@JsonDeserialize(as = ImmutableSecretMessage.class)
 @ConfigPath("secret.message")
 interface SecretMessage {
   String secret();
@@ -444,7 +438,7 @@ on conditional logic.
  
 In particular, this avoids a problem that would otherwise arise if variable-interpolations in these
 conditionally-loaded resources were unresolvable: upstart requires all configs that are **loaded** to be fully
-resolvable, so loading conditionally-required dynamically ensures that the variables referenced
+resolvable, so loading conditionally-required values dynamically ensures that the variables referenced
 therein only require definitions if they will be used. (See the section on [variable interpolation](#compose-configuration-with-include-and-variableinterpolation) for more about this.)
 
 ### Library Defaults: `upstart-defaults`
