@@ -1,5 +1,6 @@
 package upstart.config;
 
+import com.typesafe.config.ConfigParseOptions;
 import io.upstartproject.hojack.ConfigMapper;
 import io.upstartproject.hojack.HojackConfigMapper;
 import upstart.log.UpstartLogConfig;
@@ -13,6 +14,7 @@ import java.util.function.Consumer;
 
 public interface TestConfigBuilder<S extends TestConfigBuilder<S>> extends SelfType<S> {
   String TEST_OVERRIDE_ORIGIN = "Test EnvironmentConfig";
+  ConfigParseOptions OVERRIDE_PARSE_OPTIONS = ConfigParseOptions.defaults().setOriginDescription(TEST_OVERRIDE_ORIGIN);
   String DEFAULT_CONFIG_PLACEHOLDER = "<test-placeholder>";
 
   default S setLogThreshold(Class<?> logger, UpstartLogConfig.LogThreshold threshold) {
@@ -33,6 +35,10 @@ public interface TestConfigBuilder<S extends TestConfigBuilder<S>> extends SelfT
 
   default S overrideConfig(String configPath, Object value) {
     return overrideConfig(configMapper().asConfig(configPath, value, TEST_OVERRIDE_ORIGIN));
+  }
+
+  default S overrideConfig(String hocon) {
+    return overrideConfig(ConfigFactory.parseString(hocon, OVERRIDE_PARSE_OPTIONS));
   }
 
   default S overrideConfig(Config config) {

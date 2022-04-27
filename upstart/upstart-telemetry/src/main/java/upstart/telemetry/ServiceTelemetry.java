@@ -61,7 +61,7 @@ public class ServiceTelemetry extends IdleService {
     );
     // TODO: should we proceed with startup if this event-delivery fails?
     // for now: no, running without telemetry is running blind. better to prevent a deployment than risk ignoring bad configuration
-    configLogger.publish(LogLevel.Info, configEvent).join();
+    configLogger.publish(LogLevel.Debug, configEvent).join();
   }
 
   @Override

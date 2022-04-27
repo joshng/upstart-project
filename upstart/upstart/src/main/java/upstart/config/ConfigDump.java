@@ -56,8 +56,7 @@ public class ConfigDump {
       // config may contain sensitive values that are probably best kept out of logs (eg, API keys,
       // fake user-credentials in development mode, and anything else that might evade best-practices); try to
       // redact them here
-      if ((configValue.valueType() == ConfigValueType.STRING && looksSensitive(key))
-              || looksSensitive(string = String.valueOf(configValue.unwrapped()))) {
+      if (looksSensitive(key) || looksSensitive(string = String.valueOf(configValue.unwrapped()))) {
         value = "<..redacted..>";
       } else {
         value = MoreStrings.truncateWithEllipsis(string, maxValueLength);
