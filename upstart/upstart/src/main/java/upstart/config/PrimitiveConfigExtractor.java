@@ -60,7 +60,11 @@ public enum PrimitiveConfigExtractor {
   STRING(String.class) {
     @Override
     public Object extractValue(Config config, String path) {
-      return config.getString(path);
+      try {
+        return config.getString(path);
+      } catch (Exception e) {
+        throw new ConfigMappingException("Error extracting %s from:\n%s".formatted(path, config), e);
+      }
     }
   },
   ANY_REF(Object.class) {

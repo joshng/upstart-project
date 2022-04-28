@@ -37,7 +37,7 @@ public class CompletableFutures {
   private static final CompletableFuture<?> EMPTY_FUTURE = CompletableFuture.completedFuture(Optional.empty());
   public static final CompletableFuture<Boolean> TRUE_FUTURE = CompletableFuture.completedFuture(Boolean.TRUE);
   public static final CompletableFuture<Boolean> FALSE_FUTURE = CompletableFuture.completedFuture(Boolean.FALSE);
-  private static final CompletableFuture<?> CANCELLED_FUTURE = new CompletableFuture<Void>() {{
+  private static final CompletableFuture CANCELLED_FUTURE = new CompletableFuture<Void>() {{
     cancel(true);
   }};
   private static final CompletableFuture<?> EMPTY_COLLECTION_FUTURE = CompletableFuture.completedFuture(ImmutableList.of());
@@ -53,9 +53,8 @@ public class CompletableFutures {
     return (FluentFuture<T>) NULL_LISTENABLE_FUTURE;
   }
 
-  @SuppressWarnings("unchecked")
-  public static <T> CompletableFuture<Optional<T>> emptyFuture() {
-    return (CompletableFuture<Optional<T>>) EMPTY_FUTURE;
+  public static <T> OptionalPromise<T> emptyFuture() {
+    return OptionalPromise.empty();
   }
 
   @SuppressWarnings("unchecked")
@@ -63,13 +62,9 @@ public class CompletableFutures {
     return (CompletableFuture<List<T>>) EMPTY_COLLECTION_FUTURE;
   }
 
-  public static <T> CompletableFuture<Optional<T>> toFutureOptional(Optional<? extends CompletionStage<T>> optionalFuture) {
-    return optionalFuture.map(f -> f.thenApply(Optional::ofNullable).toCompletableFuture()).orElse(emptyFuture());
-  }
-
   @SuppressWarnings("unchecked")
   public static <T> CompletableFuture<T> cancelledFuture() {
-    return (CompletableFuture<T>) CANCELLED_FUTURE;
+    return CANCELLED_FUTURE;
   }
 
   public static <T> CompletableFuture<T> failedFuture(Throwable t) {
@@ -138,19 +133,17 @@ public class CompletableFutures {
   }
 
   @SuppressWarnings("unchecked")
-  public static <T> CompletableFuture<List<T>> allAsList(Collection<? extends CompletableFuture<? extends T>> futures) {
+  public static <T> ListPromise<T> allAsList(Collection<? extends CompletableFuture<? extends T>> futures) {
     return allAsList(futures.toArray(new CompletableFuture[0]));
   }
 
-  public static <T> CompletableFuture<List<T>> allAsList(Stream<? extends CompletableFuture<? extends T>> futures) {
+  public static <T> ListPromise<T> allAsList(Stream<? extends CompletableFuture<? extends T>> futures) {
     return allAsList(CompletableFutures.toArray(futures));
   }
 
   @SafeVarargs
-  public static <T> CompletableFuture<List<T>> allAsList(CompletableFuture<? extends T>... array) {
-    return CompletableFuture.allOf(array).thenApply(__ -> Stream.of(array)
-            .map(CompletableFuture::join)
-            .collect(Collectors.toList()));
+  public static <T> ListPromise<T> allAsList(CompletableFuture<? extends T>... array) {
+    return ListPromise.allAsList(array);
   }
 
   public static <T, U> CompletableFuture<U> foldLeft(CompletionStage<U> identity, Stream<T> items, BiFunction<? super U, ? super T, ? extends CompletionStage<U>> combiner) {
@@ -238,20 +231,36 @@ public class CompletableFutures {
             );
   }
 
-  public static <T, E extends Throwable> CompletableFuture<T> recover(CompletionStage<T> future, Class<E> recoverableType, Function<? super E, ? extends T> recovery) {
+  public static <T, E extends Throwable> CompletableFuture<T> recover(
+          CompletionStage<T> future,
+          Class<E> recoverableType,
+          Function<? super E, ? extends T> recovery
+  ) {
     return recover(future, recoverableType, e -> true, recovery);
   }
 
-  public static <T, E extends Throwable> CompletableFuture<T> recover(CompletionStage<T> future, Class<E> recoverableType, Predicate<? super E> exceptionChecker, Function<? super E, ? extends T> recovery) {
-    return future.exceptionally(e -> {
-      var asRecoverable = asRecoverable(e, recoverableType);
-      if (!exceptionChecker.test(asRecoverable)) throw new CompletionException(asRecoverable);
-      return recovery.apply(asRecoverable);
-    }).toCompletableFuture();
+  public static <T, E extends Throwable> CompletableFuture<T> recover(
+          CompletionStage<T> future,
+          Class<E> recoverableType,
+          Predicate<? super E> exceptionChecker,
+          Function<? super E, ? extends T> recovery
+  ) {
+    return future.exceptionally(e -> applyRecovery(e, recoverableType, exceptionChecker, recovery)).toCompletableFuture();
   }
 
-  public static <T, E extends Throwable> CompletableFuture<Optional<T>> optionalForException(CompletionStage<T> future, Class<E> recoverableType) {
-    return recover(future.thenApply(Optional::ofNullable), recoverableType, e -> Optional.empty());
+  static <T, E extends Throwable> T applyRecovery(
+          Throwable e,
+          Class<E> recoverableType,
+          Predicate<? super E> exceptionChecker,
+          Function<? super E, ? extends T> recovery
+  ) {
+    E asRecoverable = asRecoverable(e, recoverableType);
+    if (!exceptionChecker.test(asRecoverable)) throw new CompletionException(asRecoverable);
+    return recovery.apply(asRecoverable);
+  }
+
+  public static <T, E extends Throwable> OptionalPromise<T> optionalForException(CompletionStage<T> future, Class<E> recoverableType) {
+    return OptionalPromise.ofFutureNullable(recover(future, recoverableType, e -> null));
   }
 
   public static <T> CompletableFuture<T> whenCancelled(CompletableFuture<T> future, Runnable cancellationHandler) {

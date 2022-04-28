@@ -145,7 +145,7 @@ public class ServiceTelemetryTest extends UpstartModule {
 
   private List<UnpackableMessageEnvelope> capturePublishedEvents(int expectedEventCount) {
     ArgumentCaptor<byte[]> bytesCaptor = ArgumentCaptor.forClass(byte[].class);
-    Mockito.verify(mockEventSink, Mockito.times(expectedEventCount)).publish(Mockito.eq(LogLevel.Info), any(), bytesCaptor.capture());
+    Mockito.verify(mockEventSink, Mockito.times(expectedEventCount)).publish(any(), any(), bytesCaptor.capture());
 
     List<byte[]> eventBytes = bytesCaptor.getAllValues();
     assertThat(eventBytes).hasSize(expectedEventCount);
