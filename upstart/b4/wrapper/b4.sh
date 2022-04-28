@@ -59,7 +59,7 @@ B4_HOME="${B4_HOME:-"$(find_b4_home)"}"
 cd "$B4_HOME"
 
 #TODO: could alter this to support multiple task-definition jars, by running b4.jar with extension-jars on the classpath
-PROGRAM_JAR="${PROGRAM_JAR:-"$PROGRAM_DIR/target/package/${PROGRAM}.jar"}"
+PROGRAM_JAR="${PROGRAM_JAR:-"$PROGRAM_DIR/target/package/$(basename $PROGRAM_DIR).jar"}"
 
 if [ ! -f "$PROGRAM_JAR" ]; then
   REBUILD=true
