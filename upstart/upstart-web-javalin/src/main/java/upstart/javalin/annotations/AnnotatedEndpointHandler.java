@@ -239,7 +239,7 @@ public class AnnotatedEndpointHandler<T> {
       String name = paramName(parameter.getAnnotation(PathParam.class).value(), parameter);
       return ParamResolver.of(
               name,
-              ParamResolver.UrlParamType.Path,
+              ParamResolver.UrlParamStrategy.Path,
               Optional.of(paramType),
               paramType == String.class
                       ? ctx -> ctx.pathParam(name)
@@ -252,7 +252,7 @@ public class AnnotatedEndpointHandler<T> {
       String name = paramName(parameter.getAnnotation(QueryParam.class).value(), parameter);
       return ParamResolver.of(
               name,
-              ParamResolver.UrlParamType.Query,
+              ParamResolver.UrlParamStrategy.Query,
               Optional.of(paramType),
               paramType == String.class
                       ? ctx -> ctx.queryParam(name)
@@ -274,33 +274,29 @@ public class AnnotatedEndpointHandler<T> {
       private static final OpenApiUpdater<OpenApiDocumentation> NO_DOCUMENTATION = ignored -> {};
 
       private final String paramName;
-      private final UrlParamType paramType;
+      private final UrlParamStrategy paramStrategy;
       private final OpenApiUpdater<OpenApiDocumentation> documentation;
       private final Function<Context, Object> resolver;
 
       ParamResolver(
               String paramName,
-              UrlParamType paramType,
+              UrlParamStrategy paramStrategy,
               Optional<Class<?>> documentedType,
               Function<Context, Object> resolver
       ) {
         this.paramName = paramName;
-        this.paramType = paramType;
+        this.paramStrategy = paramStrategy;
         this.documentation = documentedType
-                .<OpenApiUpdater<OpenApiDocumentation>>map(type -> switch (paramType) {
-                  case None -> doc -> doc.body(type);
-                  case Query -> doc -> doc.queryParam(paramName, documentedType.orElse(String.class));
-                  default -> NO_DOCUMENTATION;
-                })
+                .map(type -> paramStrategy.apiUpdater(paramName, type))
                 .orElse(NO_DOCUMENTATION);
         this.resolver = resolver;
       }
 
       public static ParamResolver nonUrlParam(Parameter parameter, Optional<Class<?>> documentedType, Function<Context, Object> resolver) {
-        return of(parameter.getName(), UrlParamType.None, documentedType, resolver);
+        return of(parameter.getName(), UrlParamStrategy.None, documentedType, resolver);
       }
 
-      public static ParamResolver of(String name, UrlParamType type, Optional<Class<?>> documentedType, Function<Context, Object> resolver) {
+      public static ParamResolver of(String name, UrlParamStrategy type, Optional<Class<?>> documentedType, Function<Context, Object> resolver) {
         return new ParamResolver(name, type, documentedType, resolver);
       }
 
@@ -309,7 +305,7 @@ public class AnnotatedEndpointHandler<T> {
       }
 
       public void applyToUrl(UrlBuilder urlBuilder, Object value) {
-        paramType.applyToUrl(urlBuilder, paramName, value);
+        paramStrategy.applyToUrl(urlBuilder, paramName, value);
       }
 
       @Override
@@ -317,10 +313,18 @@ public class AnnotatedEndpointHandler<T> {
         this.documentation.applyUpdates(documentation);
       }
 
-      public enum UrlParamType {
+      public enum UrlParamStrategy {
         Path,
         Query,
         None;
+
+        public OpenApiUpdater<OpenApiDocumentation> apiUpdater(String name, Class<?> paramType) {
+          return switch (this) {
+            case Path -> doc -> doc.pathParam(name, paramType);
+            case Query -> doc -> doc.queryParam(name, paramType);
+            case None -> doc -> doc.body(paramType, ContentType.JSON);
+          };
+        }
 
         public void applyToUrl(UrlBuilder urlBuilder, String paramName, Object value) {
           switch (this) {

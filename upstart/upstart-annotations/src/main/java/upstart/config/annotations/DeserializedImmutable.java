@@ -3,6 +3,7 @@ package upstart.config.annotations;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import org.immutables.annotate.InjectAnnotation;
 import org.immutables.value.Value;
 
@@ -24,6 +25,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @JsonDeserialize
 @AlternativeImmutableAnnotation(markerAnnotation = DeserializedImmutable.class)
 //@InjectAnnotation(ifPresent = true, type = JsonTypeName.class, target = InjectAnnotation.Where.IMMUTABLE_TYPE)
+//@InjectAnnotation(ifPresent = true, type = JsonNaming.class, target = InjectAnnotation.Where.IMMUTABLE_TYPE)
 public @interface DeserializedImmutable {
   Class<?> deserializeAs() default Void.class;
 }
