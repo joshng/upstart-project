@@ -25,7 +25,6 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Type;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -45,40 +44,50 @@ public class HttpRegistry {
             }
           });
 
-  private final Map<Class<? extends Annotation>, Function<Annotation, RouteRole[]>> roleReaders = new HashMap<>();
+  private final Map<Class<? extends Annotation>, Function<Annotation, SecurityConstraints>> constraintReaders = new HashMap<>();
 
-  public <A extends Annotation> void registerAccessControlAnnotation(Class<A> roleAnnotationClass, Function<A, RouteRole[]> getRoles) {
-    Retention retention = roleAnnotationClass.getAnnotation(Retention.class);
+  public <A extends Annotation> void registerRequiredRoleAnnotation(Class<A> roleAnnotationClass, Function<A, RouteRole[]> getRoles) {
+    registerSecurityAnnotation(
+            roleAnnotationClass,
+            anno -> SecurityConstraints.builder()
+                    .addRequiredRoles(getRoles.apply(anno))
+                    .build()
+    );
+  }
+
+  public <A extends Annotation> void registerSecurityAnnotation(
+          Class<A> annotationClass,
+          Function<A, SecurityConstraints> getConstraints
+  ) {
+    Retention retention = annotationClass.getAnnotation(Retention.class);
     Validation.success()
             .confirm(retention != null && retention.value() == RetentionPolicy.RUNTIME,
                      "@Retention(RUNTIME)"
             )
             .confirm(
-                    roleAnnotationClass.isAnnotationPresent(Http.AccessControlAnnotation.class),
+                    annotationClass.isAnnotationPresent(Http.AccessControlAnnotation.class),
                     "@%s.%s",
                     Http.class.getSimpleName(),
                     Http.AccessControlAnnotation.class.getSimpleName()
             ).throwFailures(messages -> new IllegalArgumentException(messages.stream().collect(Collectors.joining(
                     "\n  ",
-                    "@interface " + roleAnnotationClass.getName() + " must be meta-annotated with:\n  ",
+                    "@interface " + annotationClass.getName() + " must be meta-annotated with:\n  ",
                     ""
             ))));
 
-    roleReaders.put(roleAnnotationClass, Reflect.blindCast(getRoles));
+    constraintReaders.put(annotationClass, Reflect.blindCast(getConstraints));
   }
 
-  RouteRole[] getRequiredRoles(AnnotatedElement element) {
+  SecurityConstraints getSecurityConstraints(AnnotatedElement element) {
     return Reflect.allMetaAnnotations(element)
             .filter(anno -> anno.annotationType().isAnnotationPresent(Http.AccessControlAnnotation.class))
-            .map(anno -> roleReader(element, anno).apply(anno))
-            .flatMap(Arrays::stream)
-            .distinct()
-            .toArray(RouteRole[]::new);
+            .map(anno -> securityReader(element, anno).apply(anno))
+                   .reduce(SecurityConstraints.NONE, SecurityConstraints::merge);
   }
 
-  private Function<Annotation, RouteRole[]> roleReader(AnnotatedElement element, Annotation anno) {
+  private Function<Annotation, SecurityConstraints> securityReader(AnnotatedElement element, Annotation anno) {
     return checkNotNull(
-            roleReaders.get(anno.annotationType()),
+            constraintReaders.get(anno.annotationType()),
             "Http.AccessControlAnnotation must be registered with HttpRegistry.registerAccessControlAnnotation: @%s %s",
             anno,
             element

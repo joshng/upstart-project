@@ -4,7 +4,6 @@ import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ObjectArrays;
 import io.javalin.Javalin;
-import io.javalin.core.security.RouteRole;
 import io.javalin.http.ContentType;
 import io.javalin.http.Context;
 import io.javalin.http.Handler;
@@ -41,7 +40,6 @@ import java.util.concurrent.CompletionStage;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -52,11 +50,10 @@ public class AnnotatedEndpointHandler<T> {
   private final Map<Method, Endpoint> endpoints;
   private final Class<T> type;
   private final LazyReference<RouteProxyInterceptor> routeProxy = LazyReference.from(RouteProxyInterceptor::new);
-  private final RouteRole[] classRoles;
 
   AnnotatedEndpointHandler(Class<T> type, HttpRegistry registry) {
     this.type = type;
-    classRoles = registry.getRequiredRoles(type);
+    var classSecurityConstraints = registry.getSecurityConstraints(type);
 
     endpoints = PairStream.withMappedValues(
             Reflect.allAnnotatedMethods(
@@ -70,24 +67,12 @@ public class AnnotatedEndpointHandler<T> {
                       annotation.method().handlerType,
                       annotation.path(),
                       annotation.responseDoc(),
-                      methodRoles(registry.getRequiredRoles(method))
+                      classSecurityConstraints.merge(registry.getSecurityConstraints(method))
               );
             }).toImmutableMap();
     checkArgument(!endpoints.isEmpty(), "No @Http endpoint-methods found in class: %s", type);
   }
 
-  private RouteRole[] methodRoles(RouteRole[] declaredRoles) {
-    return classRoles.length == 0
-            ? declaredRoles
-            : declaredRoles.length == 0
-            ? classRoles
-            :
-            Stream.concat(
-                    Stream.of(declaredRoles),
-                    Stream.of(classRoles)
-            ).distinct()
-                    .toArray(RouteRole[]::new);
-  }
 
   public void installHandlers(T target, Javalin javalin) {
     for (Endpoint endpoint : endpoints.values()) {
@@ -103,7 +88,7 @@ public class AnnotatedEndpointHandler<T> {
     private final Method method;
     private final HandlerType handlerType;
     private final String path;
-    private final RouteRole[] requiredRoles;
+    private final SecurityConstraints securityConstraints;
     private final List<ParamResolver> paramResolvers;
     private final BiConsumer<Context, Object> resultDispatcher;
     private final OpenApiDocumentation documentation;
@@ -114,7 +99,7 @@ public class AnnotatedEndpointHandler<T> {
             HandlerType handlerType,
             String path,
             OpenApiResponse openApiResponse,
-            RouteRole[] requiredRoles
+            SecurityConstraints securityConstraints
     ) {
       checkArgument(
               Modifiers.Public.matches(method),
@@ -128,7 +113,7 @@ public class AnnotatedEndpointHandler<T> {
               .collect(ImmutableList.toImmutableList());
       this.handlerType = handlerType;
       this.path = path;
-      this.requiredRoles = requiredRoles;
+      this.securityConstraints = securityConstraints;
       ImmutableOpenApiResponse.Builder apiResponse = OpenApiAnnotations.responseBuilder().from(openApiResponse);
       BiConsumer<Context, ?> responder;
       Class<?> returnType = method.getReturnType();
@@ -167,6 +152,7 @@ public class AnnotatedEndpointHandler<T> {
     private OpenApiDocumentation buildDocumentation(OpenApiResponse openApiResponse) {
       OpenApi compositeOpenApi = OpenApiAnnotations.openApi(
               Optional.ofNullable(method.getAnnotation(OpenApi.class)),
+              securityConstraints.securityArray(),
               openApiResponse
       );
 
@@ -180,7 +166,7 @@ public class AnnotatedEndpointHandler<T> {
     public void register(Javalin javalin, Object target) {
       LOG.info("Registered route {}[{}] => {}.{}(...)", handlerType, path, method.getDeclaringClass().getSimpleName(), method.getName());
       Handler handler = OpenApiBuilder.documented(documentation, (Handler) ctx -> invoke(target, ctx));
-      javalin.addHandler(handlerType, path, handler, requiredRoles);
+      javalin.addHandler(handlerType, path, handler, securityConstraints.roleArray());
     }
 
     void invoke(Object target, Context ctx) throws Exception {

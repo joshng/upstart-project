@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class HttpRoutesTest {
   static {
-    HttpRegistry.INSTANCE.registerAccessControlAnnotation(Require.class, Require::value);
+    HttpRegistry.INSTANCE.registerRequiredRoleAnnotation(Require.class, Require::value);
   }
 
   @Retention(RetentionPolicy.RUNTIME)
