@@ -79,7 +79,7 @@ public abstract class ServiceSupervisor {
 
   @Value.Default
   public boolean exitOnUncaughtException() {
-    return false;
+    return true;
   }
 
   @Value.Default
