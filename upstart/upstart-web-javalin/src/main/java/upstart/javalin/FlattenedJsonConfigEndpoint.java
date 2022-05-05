@@ -1,6 +1,9 @@
 package upstart.javalin;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.javalin.http.ContentType;
+import io.javalin.http.Handler;
+import io.javalin.plugin.openapi.dsl.OpenApiBuilder;
 import upstart.config.UpstartApplicationConfig;
 import upstart.config.UpstartModule;
 import upstart.util.exceptions.UncheckedIO;
@@ -38,7 +41,17 @@ public class FlattenedJsonConfigEndpoint implements JavalinWebInitializer {
   public void initializeWeb(JavalinConfig config) {
     Map<String, String> configMap = appConfig.flattenedConfigProperties();
     byte[] response = UncheckedIO.getUnchecked(() -> objectMapper.writerWithDefaultPrettyPrinter().writeValueAsBytes(configMap));
-    config.registerPlugin(javalin -> javalin.get(endpointConfig.uri(), ctx -> ctx.result(response)));
+    config.registerPlugin(javalin -> javalin.get(
+            endpointConfig.uri(),
+            OpenApiBuilder.documented(
+                    RenderedConfigEndpoint.OPEN_API_IGNORE,
+                    ctx -> {
+                      ctx.contentType(ContentType.JSON);
+                      ctx.result(response);
+                    }
+            ),
+            AdminRole.Instance
+    ));
   }
 
   public static class Module extends UpstartModule implements JavalinWebModule {
