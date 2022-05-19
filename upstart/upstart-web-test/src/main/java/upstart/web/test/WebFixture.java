@@ -3,6 +3,7 @@ package upstart.web.test;
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 import upstart.test.AvailablePortAllocator;
+import upstart.test.UpstartTest;
 import upstart.test.UpstartTestBuilder;
 import upstart.web.WebServerConfig;
 import io.restassured.specification.RequestSpecification;
@@ -38,13 +39,20 @@ public class WebFixture {
   }
 
   public RequestSpecification requestJson() {
-    return given(requestSpecification).accept(ContentType.JSON);
+    return request().accept(ContentType.JSON);
   }
 
   public static void configureRandomPort(UpstartTestBuilder testBuilder) {
     testBuilder.apply(builder -> {
-      int port = AvailablePortAllocator.allocatePort();
-      builder.overrideConfig("upstart.web.server.port", port);
+      configurePort(AvailablePortAllocator.allocatePort(), builder);
     });
+  }
+
+  void configurePort(UpstartTestBuilder builder) {
+    configurePort(port, builder);
+  }
+
+  private static void configurePort(int port, UpstartTestBuilder builder) {
+    builder.overrideConfig("upstart.web.server.port", port);
   }
 }

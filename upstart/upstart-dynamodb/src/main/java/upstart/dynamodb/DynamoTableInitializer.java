@@ -8,6 +8,8 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbAsyncTable;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
 import software.amazon.awssdk.enhanced.dynamodb.model.Page;
 import software.amazon.awssdk.enhanced.dynamodb.model.PagePublisher;
+import software.amazon.awssdk.services.dynamodb.model.DescribeTableResponse;
+import software.amazon.awssdk.services.dynamodb.model.TableStatus;
 import upstart.util.concurrent.services.AsyncService;
 import upstart.util.concurrent.CompletableFutures;
 
@@ -22,6 +24,7 @@ public abstract class DynamoTableInitializer<T> extends AsyncService {
   private final TableSchema<T> tableSchema;
   private final DynamoDbClientService db;
   private final DynamoDbNamespace namespace;
+  private final String tableName;
   protected volatile DynamoDbAsyncTable<T> table;
 
   @Inject
@@ -35,11 +38,20 @@ public abstract class DynamoTableInitializer<T> extends AsyncService {
     tableSchema = getTableSchema(mappedClass);
     this.db = db;
     this.namespace = namespace;
+    tableName = namespace.tableName(tableNameSuffix);
   }
 
   @SuppressWarnings("unchecked")
   public static <T> TableSchema<T> getTableSchema(Class<T> mappedClass) {
     return (TableSchema<T>) TABLE_SCHEMAS.getUnchecked(mappedClass);
+  }
+
+  public CompletableFuture<TableStatus> getTableStatus() {
+    return describeTable().thenApply(resp -> resp.table().tableStatus());
+  }
+
+  public CompletableFuture<DescribeTableResponse> describeTable() {
+    return db.describeTable(tableName);
   }
 
   protected DynamoDbAsyncTable<T> table() {
@@ -48,7 +60,7 @@ public abstract class DynamoTableInitializer<T> extends AsyncService {
 
   @Override
   protected CompletableFuture<?> startUp() throws Exception {
-    return db.ensureTableCreated(namespace.tableName(tableNameSuffix), tableSchema)
+    return db.ensureTableCreated(tableName, tableSchema)
             .thenAccept(table -> this.table = table);
   }
 
@@ -61,5 +73,9 @@ public abstract class DynamoTableInitializer<T> extends AsyncService {
     return Flux.from(pagePublisher)
             .map(Page::items)
             .flatMap(Flux::fromIterable);
+  }
+
+  public String tableName() {
+    return tableName;
   }
 }

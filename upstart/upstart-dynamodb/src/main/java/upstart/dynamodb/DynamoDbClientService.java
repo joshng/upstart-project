@@ -8,6 +8,7 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedAsyncClient;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient;
 import software.amazon.awssdk.services.dynamodb.model.DescribeTableRequest;
+import software.amazon.awssdk.services.dynamodb.model.DescribeTableResponse;
 import software.amazon.awssdk.services.dynamodb.model.DynamoDbException;
 import software.amazon.awssdk.services.dynamodb.model.ResourceInUseException;
 import software.amazon.awssdk.services.dynamodb.model.TableAlreadyExistsException;
@@ -54,6 +55,10 @@ public class DynamoDbClientService extends IdleService {
     this.config = config;
   }
 
+  public DynamoDbAsyncClient client() {
+    return client;
+  }
+
   @Override
   protected void startUp() throws Exception {
     client = clientFactory.configureAsyncClientBuilder(DynamoDbAsyncClient.builder(), completionExecutor).build();
@@ -63,7 +68,6 @@ public class DynamoDbClientService extends IdleService {
   public <T> CompletableFuture<DynamoDbAsyncTable<T>> ensureTableCreated(String tableName, TableSchema<T> tableSchema) {
     return tableCreationActor.requestAsync(() -> {
       DynamoDbAsyncTable<T> table = db.table(tableName, tableSchema);
-      DescribeTableRequest describeTable = DescribeTableRequest.builder().tableName(tableName).build();
       // TODO: dynamo doesn't support concurrent DDL operations, but what exception is thrown if a different table is creating?
       LOG.debug("Initiating table creation: {}", tableName);
       return CompletableFutures.recover(
@@ -72,24 +76,29 @@ public class DynamoDbClientService extends IdleService {
               e -> (e instanceof ResourceInUseException) || (e instanceof TableAlreadyExistsException),
               e -> null
       ).thenComposeAsync(ignored -> pollTableStatus(
-                      describeTable,
-                      CompletableFuture.delayedExecutor(config.tableCreationPollPeriod().toMillis(), TimeUnit.MILLISECONDS, directExecutor))
-              ).thenApply(ignored -> table);
+                                 tableName,
+                                 CompletableFuture.delayedExecutor(
+                                         config.tableCreationPollPeriod().toMillis(),
+                                         TimeUnit.MILLISECONDS,
+                                         directExecutor
+                                 )
+                         )
+      ).thenApply(ignored -> table);
     }, directExecutor);
   }
 
-  private CompletableFuture<?> pollTableStatus(
-          DescribeTableRequest request,
-          Executor pollDelayExecutor
-  ) {
-    LOG.debug("Polling table status: {}", request.tableName());
-    String tableName = request.tableName();
-    return client.describeTable(request).thenCompose(resp -> {
+  public CompletableFuture<DescribeTableResponse> describeTable(String tableName) {
+    return client.describeTable(b -> b.tableName(tableName));
+  }
+
+  private CompletableFuture<?> pollTableStatus(String tableName, Executor pollDelayExecutor) {
+    LOG.debug("Polling table status: {}", tableName);
+    return describeTable(tableName).thenCompose(resp -> {
       TableStatus tableStatus = resp.table().tableStatus();
       if (tableStatus == TableStatus.CREATING) {
         LOG.info("Waiting for dynamodb table '{}' creation...", tableName);
         return CompletableFutures.sequence(
-                CompletableFuture.supplyAsync(() -> pollTableStatus(request, pollDelayExecutor), pollDelayExecutor)
+                CompletableFuture.supplyAsync(() -> pollTableStatus(tableName, pollDelayExecutor), pollDelayExecutor)
         );
       } else {
         checkState(
