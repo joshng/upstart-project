@@ -2,10 +2,10 @@ package upstart.javalin;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.javalin.http.ContentType;
-import io.javalin.http.Handler;
 import io.javalin.plugin.openapi.dsl.OpenApiBuilder;
 import upstart.config.UpstartApplicationConfig;
 import upstart.config.UpstartModule;
+import upstart.javalin.annotations.OpenApiAnnotations;
 import upstart.util.exceptions.UncheckedIO;
 import upstart.web.FlattenedJsonConfigEndpointConfig;
 import io.javalin.core.JavalinConfig;
@@ -44,7 +44,7 @@ public class FlattenedJsonConfigEndpoint implements JavalinWebInitializer {
     config.registerPlugin(javalin -> javalin.get(
             endpointConfig.uri(),
             OpenApiBuilder.documented(
-                    RenderedConfigEndpoint.OPEN_API_IGNORE,
+                    OpenApiAnnotations.DOCUMENTATION_IGNORE,
                     ctx -> {
                       ctx.contentType(ContentType.JSON);
                       ctx.result(response);

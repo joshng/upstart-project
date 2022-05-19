@@ -17,6 +17,8 @@ public @interface Http {
 
   OpenApiResponse responseDoc() default @OpenApiResponse(status = OpenApiAnnotations.DEFAULT_STATUS);
 
+  boolean hideApiDoc() default false;
+
   enum Method {
     GET(HandlerType.GET),
     POST(HandlerType.POST),

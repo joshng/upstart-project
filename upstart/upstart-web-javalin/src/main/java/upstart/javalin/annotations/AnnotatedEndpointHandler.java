@@ -1,8 +1,10 @@
 package upstart.javalin.annotations;
 
+import com.google.common.base.Defaults;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ObjectArrays;
+import com.google.common.primitives.Primitives;
 import io.javalin.Javalin;
 import io.javalin.http.ContentType;
 import io.javalin.http.Context;
@@ -16,7 +18,6 @@ import io.javalin.plugin.openapi.dsl.OpenApiBuilder;
 import io.javalin.plugin.openapi.dsl.OpenApiDocumentation;
 import io.javalin.plugin.openapi.dsl.OpenApiUpdater;
 import io.javalin.plugin.openapi.dsl.OpenApiUpdaterKt;
-import org.mockito.internal.util.Primitives;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import upstart.proxy.Proxies;
@@ -67,6 +68,7 @@ public class AnnotatedEndpointHandler<T> {
                       annotation.method().handlerType,
                       annotation.path(),
                       annotation.responseDoc(),
+                      annotation.hideApiDoc(),
                       classSecurityConstraints.merge(registry.getSecurityConstraints(method))
               );
             }).toImmutableMap();
@@ -99,6 +101,7 @@ public class AnnotatedEndpointHandler<T> {
             HandlerType handlerType,
             String path,
             OpenApiResponse openApiResponse,
+            boolean hideApiDoc,
             SecurityConstraints securityConstraints
     ) {
       checkArgument(
@@ -135,7 +138,9 @@ public class AnnotatedEndpointHandler<T> {
         responder = Context::json;
       }
 
-      documentation = buildDocumentation(apiResponse.content(openApiContent).build());
+      documentation = hideApiDoc
+              ? OpenApiAnnotations.DOCUMENTATION_IGNORE
+              : buildDocumentation(apiResponse.content(openApiContent).build());
       //noinspection unchecked
       resultDispatcher = (BiConsumer<Context, Object>) responder;
     }
@@ -145,6 +150,7 @@ public class AnnotatedEndpointHandler<T> {
             String contentType,
             OpenApiResponse providedResponse
     ) {
+      if (Primitives.unwrap(from) == void.class) return providedResponse.content();
       ImmutableOpenApiContent addedContent = OpenApiAnnotations.contentBuilder().from(from).type(contentType).build();
       return ObjectArrays.concat(addedContent, providedResponse.content());
     }
@@ -317,7 +323,7 @@ public class AnnotatedEndpointHandler<T> {
             case Path -> urlBuilder.withPathParam(paramName, value);
             case Query -> urlBuilder.withQueryParam(paramName, value);
             case None -> checkArgument(
-                    value == null || value.equals(Primitives.defaultValue(value.getClass())),
+                    value == null || value.equals(Defaults.defaultValue(value.getClass())),
                     "Non-null/default value passed to HttpRoutes proxy-method for parameter '%s'",
                     paramName
             );

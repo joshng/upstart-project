@@ -1,11 +1,10 @@
 package upstart.javalin;
 
 import io.javalin.http.ContentType;
-import io.javalin.http.Handler;
 import io.javalin.plugin.openapi.dsl.OpenApiBuilder;
-import io.javalin.plugin.openapi.dsl.OpenApiDocumentation;
 import upstart.config.UpstartApplicationConfig;
 import upstart.config.UpstartModule;
+import upstart.javalin.annotations.OpenApiAnnotations;
 import upstart.web.ConfigEndpointConfig;
 import com.typesafe.config.ConfigObject;
 import com.typesafe.config.ConfigRenderOptions;
@@ -26,7 +25,6 @@ import java.nio.charset.StandardCharsets;
  */
 
 public class RenderedConfigEndpoint implements JavalinWebInitializer {
-  static final OpenApiDocumentation OPEN_API_IGNORE = OpenApiBuilder.document().ignore();
   private final ConfigEndpointConfig endpointConfig;
   private final UpstartApplicationConfig appConfig;
 
@@ -42,7 +40,7 @@ public class RenderedConfigEndpoint implements JavalinWebInitializer {
   @Override
   public void initializeWeb(JavalinConfig config) {
     byte[] rendered = appConfig.activeConfig().root().render(endpointConfig.renderOptions().parsed()).getBytes(StandardCharsets.UTF_8);
-    config.registerPlugin(javalin -> javalin.get(endpointConfig.uri(), OpenApiBuilder.documented(OPEN_API_IGNORE, ctx -> {
+    config.registerPlugin(javalin -> javalin.get(endpointConfig.uri(), OpenApiBuilder.documented(OpenApiAnnotations.DOCUMENTATION_IGNORE, ctx -> {
       if (endpointConfig.renderOptions().json()) ctx.contentType(ContentType.JSON);
       ctx.result(rendered);
     }), AdminRole.Instance));
