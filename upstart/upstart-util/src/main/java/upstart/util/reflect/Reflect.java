@@ -49,7 +49,8 @@ public class Reflect {
   }
 
   public static Stream<Class<?>> superclassLineage(Class<?> start) {
-    return MoreStreams.generate(start, Class::getSuperclass);
+    Stream<Class<?>> heritage = MoreStreams.generate(start, Class::getSuperclass);
+    return heritage.takeWhile(cls -> cls != Object.class);
   }
 
   @SuppressWarnings("unchecked")
@@ -65,7 +66,8 @@ public class Reflect {
     Stream<? extends Class<?>> lineage = superclassLineage(targetClass);
     if (order != LineageOrder.SubclassBeforeSuperclass) lineage = lineage.collect(toImmutableList()).reverse().stream();
 
-    return lineage.flatMap(cls -> Stream.of(cls.getDeclaredMethods()));
+    return lineage.flatMap(cls -> Stream.of(cls.getDeclaredMethods())
+            .filter(m -> !m.isSynthetic()));
   }
 
   public static Stream<Method> allAnnotatedMethods(Class<?> annotatedClass, Class<? extends Annotation> annotationClass, LineageOrder lineageOrder) {

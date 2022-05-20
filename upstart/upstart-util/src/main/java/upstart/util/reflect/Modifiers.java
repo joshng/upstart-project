@@ -33,7 +33,7 @@ public enum Modifiers implements Predicate<Class<?>> {
     return matches(c.getModifiers());
   }
 
-  public Predicate<Member> member() {
+  public <M extends Member> Predicate<M> member() {
     return this::matches;
   }
 

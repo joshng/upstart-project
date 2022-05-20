@@ -3,6 +3,7 @@ package upstart;
 import com.google.inject.Binder;
 import com.google.inject.Key;
 import com.google.inject.Provider;
+import com.google.inject.matcher.AbstractMatcher;
 import com.google.inject.matcher.Matcher;
 import com.google.inject.matcher.Matchers;
 import upstart.config.UpstartModule;
@@ -22,6 +23,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 
 /**
@@ -58,6 +60,13 @@ public interface MethodInterceptorFactory {
           Matchers.not(Matchers.inSubpackage("com.google"))
                   .and(Matchers.not(Matchers.inSubpackage("java")));
 
+  Matcher<Method> NON_SYNTHETIC_INSTANCE_METHOD_MATCHER = new AbstractMatcher<>() {
+    @Override
+    public boolean matches(Method method) {
+      return !method.isSynthetic() && !Modifiers.Static.matches(method);
+    }
+  };
+
   /**
    * Implement this method to return a {@link MethodInterceptor} instance appropriate for the given
    * <code>interceptedMethod</code>. The returned object may use dependencies which are {@link Inject @Injected}
@@ -75,6 +84,7 @@ public interface MethodInterceptorFactory {
           Key<? extends MethodInterceptorFactory> interceptorKey
   ) {
     Binder binder = externalDependencyBinder.binder();
+    methodMatcher = NON_SYNTHETIC_INSTANCE_METHOD_MATCHER.and(methodMatcher);
     Provider<? extends MethodInterceptorFactory> factoryProvider = binder.getProvider(interceptorKey);
     InjectedMethodInterceptor injectedInterceptor = new InjectedMethodInterceptor(factoryProvider, classMatcher, methodMatcher, interceptorKey);
     binder.bindInterceptor(classMatcher, methodMatcher, injectedInterceptor);

@@ -37,7 +37,6 @@ public class TimedInterceptorFactory implements MethodInterceptorFactory {
     } else {
       return new TimedMethodInterceptor(timer);
     }
-
   }
 
 
