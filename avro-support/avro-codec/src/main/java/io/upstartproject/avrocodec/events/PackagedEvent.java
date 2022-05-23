@@ -32,33 +32,37 @@ import static com.google.common.base.Preconditions.checkArgument;
  */
 @Value.Immutable
 @Value.Style(overshadowImplementation = true)
-public interface PackagedEvent {
-  static Builder builder() {
+public abstract class PackagedEvent {
+  public static Builder builder() {
     return new Builder();
   }
 
   @JsonInclude(JsonInclude.Include.NON_EMPTY)
-  @JsonProperty Optional<byte[]> key();
+  @JsonProperty
+  public abstract Optional<byte[]> key();
 
   @Value.Default
-  @JsonProperty default String uniqueId() {
+  @JsonProperty
+  public String uniqueId() {
     return EnvelopeCodec.newRandomId();
   }
 
-  @JsonProperty Instant timestamp();
+  @JsonProperty
+  public abstract Instant timestamp();
 
   @JsonIgnore
-  MessageMetadata metadata();
+  public abstract MessageMetadata metadata();
 
   @JsonProperty("record")
-  PackableRecord<?> event();
+  public abstract PackableRecord<?> event();
 
-  @JsonIgnore List<PackableRecord<?>> annotations();
+  @JsonIgnore
+  public abstract List<PackableRecord<?>> annotations();
 
   @Value.Derived
   @Value.Auxiliary
   @JsonProperty("annotations")
-  default Map<AvroCodec.RecordTypeFamily, PackableRecord<?>> annotationMap() {
+  public Map<AvroCodec.RecordTypeFamily, PackableRecord<?>> annotationMap() {
     Set<String> duplicatedTypes = new HashSet<>();
     Map<AvroCodec.RecordTypeFamily, PackableRecord<?>> recordTypeFamilies = PairStream.withMappedKeys(
             annotations().stream(),
@@ -71,12 +75,17 @@ public interface PackagedEvent {
     return recordTypeFamilies;
   }
 
-  default MessageEnvelope toEnvelope(EnvelopeCodec codec) {
+  public MessageEnvelope toEnvelope(EnvelopeCodec codec) {
     return codec.buildMessageEnvelope(timestamp(), Optional.of(uniqueId()), event(), metadata(), annotations());
   }
 
+  @Override
+  public String toString() {
+    return event().getRecordTypeFamily().getFullName() + "{uniqueId=" + uniqueId() + ", timestamp=" + timestamp() + ", metadata=" + metadata() + ", event=" + event().record() + "}";
+  }
+
   @FunctionalInterface
-  interface Decorator {
+  public interface Decorator {
     Builder decorate(Builder eventBuilder);
 
     default Decorator andThen(Decorator next) {
@@ -84,7 +93,7 @@ public interface PackagedEvent {
     }
   }
 
-  interface Decoratable<S extends Decoratable<S>> extends SelfType<S> {
+  public interface Decoratable<S extends Decoratable<S>> extends SelfType<S> {
     PackagedEvent.Decorator decorator();
 
     S overrideDecorator(PackagedEvent.Decorator eventDecorator);
@@ -98,5 +107,5 @@ public interface PackagedEvent {
     }
   }
 
-  class Builder extends ImmutablePackagedEvent.Builder { }
+  public static class Builder extends ImmutablePackagedEvent.Builder { }
 }

@@ -1,22 +1,21 @@
 package upstart.util.concurrent.resourceguard;
 
+import upstart.util.SelfType;
 import upstart.util.collect.Optionals;
 import upstart.util.concurrent.Deadline;
 import upstart.util.concurrent.Promise;
 import upstart.util.concurrent.ShutdownException;
-import upstart.util.concurrent.services.AggregateService;
 import upstart.util.concurrent.services.ComposableService;
 import upstart.util.context.TransientContext;
 import upstart.util.exceptions.UncheckedInterruptedException;
 import upstart.util.functions.MoreFunctions;
 
-import java.util.Arrays;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-public interface BoundedResourceGuard extends ComposableService, AutoCloseable {
+public interface BoundedResourceGuard<S extends BoundedResourceGuard<S>> extends ComposableService, AutoCloseable, SelfType<S> {
   boolean tryAcquire(int permits);
   boolean tryAcquire(int permits, Deadline deadline) throws InterruptedException, ShutdownException;
   void acquire(int permits) throws InterruptedException, ShutdownException;
@@ -78,64 +77,13 @@ public interface BoundedResourceGuard extends ComposableService, AutoCloseable {
     ShutdownException.throwIf(!isRunning());
   }
 
-  default BoundedResourceGuard andThen(BoundedResourceGuard next) {
-    return new CompositeResourceGuard(this, next);
+  default <B extends BoundedResourceGuard<B>> CompositeResourceGuard<S, B> andThen(B next) {
+    return new CompositeResourceGuard<>(self(), next);
   }
 
-  default BoundedResourceGuard started() {
+  default S started() {
     start().join();
-    return this;
-  }
-
-  class CompositeResourceGuard extends AggregateService implements BoundedResourceGuard {
-    private final BoundedResourceGuard first;
-    private final BoundedResourceGuard second;
-
-    public CompositeResourceGuard(BoundedResourceGuard first, BoundedResourceGuard second) {
-      this.first = first;
-      this.second = second;
-    }
-
-    @Override
-    public boolean tryAcquire(int permits) {
-      if (!first.tryAcquire(permits)) return false;
-      boolean acquired = second.tryAcquire(permits);
-      if (!acquired) first.release(permits);
-      return acquired;
-    }
-
-    @Override
-    public boolean tryAcquire(int permits, Deadline deadline) throws InterruptedException, ShutdownException {
-      if (!first.tryAcquire(permits, deadline)) return false;
-      boolean acquired = false;
-      try {
-        return acquired = second.tryAcquire(permits, deadline);
-      } finally {
-        if (!acquired) first.release(permits);
-      }
-    }
-
-    @Override
-    public void acquire(int permits) throws InterruptedException, ShutdownException {
-      first.acquire(permits);
-      try {
-        second.acquire(permits);
-      } catch (Exception e) {
-        first.release(permits);
-        throw e;
-      }
-    }
-
-    @Override
-    public void release(int permits) {
-      second.release(permits);
-      first.release(permits);
-    }
-
-    @Override
-    protected Iterable<? extends ComposableService> getComponentServices() {
-      return Arrays.asList(first, second);
-    }
+    return self();
   }
 }
 

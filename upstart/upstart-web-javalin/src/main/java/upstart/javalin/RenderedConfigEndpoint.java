@@ -13,6 +13,8 @@ import io.javalin.core.JavalinConfig;
 import javax.inject.Inject;
 import java.nio.charset.StandardCharsets;
 
+import static upstart.javalin.annotations.OpenApiAnnotations.openApiIgnored;
+
 /**
  * Defines a web-endpoint that renders the contents of the active {@link UpstartApplicationConfig} as
  * rendered by {@link ConfigObject#render(ConfigRenderOptions)}. The specific formatting of the output
@@ -40,7 +42,7 @@ public class RenderedConfigEndpoint implements JavalinWebInitializer {
   @Override
   public void initializeWeb(JavalinConfig config) {
     byte[] rendered = appConfig.activeConfig().root().render(endpointConfig.renderOptions().parsed()).getBytes(StandardCharsets.UTF_8);
-    config.registerPlugin(javalin -> javalin.get(endpointConfig.uri(), OpenApiBuilder.documented(OpenApiAnnotations.DOCUMENTATION_IGNORE, ctx -> {
+    config.registerPlugin(javalin -> javalin.get(endpointConfig.uri(), openApiIgnored(ctx -> {
       if (endpointConfig.renderOptions().json()) ctx.contentType(ContentType.JSON);
       ctx.result(rendered);
     }), AdminRole.Instance));

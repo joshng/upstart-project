@@ -1,6 +1,7 @@
 package upstart.javalin.annotations;
 
 import com.google.common.collect.ObjectArrays;
+import io.javalin.http.Handler;
 import io.javalin.plugin.openapi.annotations.OpenApi;
 import io.javalin.plugin.openapi.annotations.OpenApiContent;
 import io.javalin.plugin.openapi.annotations.OpenApiResponse;
@@ -24,6 +25,10 @@ public interface OpenApiAnnotations {
                     .responses(ObjectArrays.concat(response, provided.responses())),
             () -> builder.responses(response).security(securities));
     return builder.build();
+  }
+
+  static Handler openApiIgnored(Handler handler) {
+    return OpenApiBuilder.documented(DOCUMENTATION_IGNORE, handler);
   }
 
   static ImmutableOpenApiResponse.Builder responseBuilder() {

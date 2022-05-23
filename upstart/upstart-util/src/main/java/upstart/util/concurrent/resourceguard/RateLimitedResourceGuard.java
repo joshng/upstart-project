@@ -8,7 +8,7 @@ import upstart.util.concurrent.services.LightweightService;
 
 import java.time.Duration;
 
-public class RateLimitedResourceGuard extends LightweightService implements BoundedResourceGuard {
+public class RateLimitedResourceGuard extends LightweightService implements BoundedResourceGuard<RateLimitedResourceGuard> {
   public static final Duration DEFAULT_SHUTDOWN_POLL_PERIOD = Duration.ofMillis(300);
 
   private final Duration shutdownPollPeriod;

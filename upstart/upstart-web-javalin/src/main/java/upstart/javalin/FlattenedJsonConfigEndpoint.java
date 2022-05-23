@@ -43,8 +43,7 @@ public class FlattenedJsonConfigEndpoint implements JavalinWebInitializer {
     byte[] response = UncheckedIO.getUnchecked(() -> objectMapper.writerWithDefaultPrettyPrinter().writeValueAsBytes(configMap));
     config.registerPlugin(javalin -> javalin.get(
             endpointConfig.uri(),
-            OpenApiBuilder.documented(
-                    OpenApiAnnotations.DOCUMENTATION_IGNORE,
+            OpenApiAnnotations.openApiIgnored(
                     ctx -> {
                       ctx.contentType(ContentType.JSON);
                       ctx.result(response);

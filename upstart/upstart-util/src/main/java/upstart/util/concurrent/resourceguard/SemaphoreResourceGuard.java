@@ -6,14 +6,17 @@ import upstart.util.concurrent.services.LightweightService;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class SemaphoreResourceGuard extends LightweightService implements BoundedResourceGuard {
+public class SemaphoreResourceGuard extends LightweightService implements BoundedResourceGuard<SemaphoreResourceGuard> {
   private final Object syncRoot = new Object();
   private boolean aThreadHasPriority = false;
-  private int availablePermits;
-
+  private volatile int availablePermits;
 
   public SemaphoreResourceGuard(int availablePermits) {
     this.availablePermits = availablePermits;
+  }
+
+  public int availablePermits() {
+    return availablePermits;
   }
 
   @Override

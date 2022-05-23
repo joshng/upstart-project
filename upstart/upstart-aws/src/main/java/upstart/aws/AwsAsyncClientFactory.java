@@ -1,5 +1,6 @@
 package upstart.aws;
 
+import software.amazon.awssdk.core.retry.RetryPolicy;
 import upstart.aws.s3.SdkAsyncHttpClientService;
 import software.amazon.awssdk.awscore.client.builder.AwsClientBuilder;
 import software.amazon.awssdk.core.client.builder.SdkAsyncClientBuilder;
@@ -33,6 +34,7 @@ public class AwsAsyncClientFactory {
   ) {
     return clientFactory.configureClientBuilder(builder, config)
             .httpClient(httpClientService)
+            .overrideConfiguration(b -> b.retryPolicy(RetryPolicy.defaultRetryPolicy()))
             .asyncConfiguration(b -> b.advancedOption(SdkAdvancedAsyncClientOption.FUTURE_COMPLETION_EXECUTOR, completionExecutor));
   }
 }

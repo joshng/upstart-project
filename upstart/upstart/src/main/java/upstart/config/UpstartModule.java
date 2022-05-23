@@ -28,6 +28,13 @@ import java.util.List;
  * @see #deduplicateBy
  */
 public abstract class UpstartModule extends AbstractModule implements UpstartModuleExtension {
+  /**
+   * we override `configure` here just to better surface its IDE autocompletion
+   */
+  @Override
+  protected void configure() {
+  }
+
   public UpstartModule() {
   }
 
@@ -45,14 +52,7 @@ public abstract class UpstartModule extends AbstractModule implements UpstartMod
     deduplicateBy(identityInputs);
   }
 
-
   private final List<Object> identity = new ArrayList<>();
-  /**
-   * we override `configure` here just to better surface its IDE autocompletion
-   */
-  @Override
-  protected void configure() {
-  }
 
   /**
    * we override `binder` to expose it as public, so that mixin-interfaces can access it

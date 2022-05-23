@@ -19,11 +19,11 @@ public interface FlowControlConfig {
     return RateLimitedResourceGuard.DEFAULT_SHUTDOWN_POLL_PERIOD;
   }
 
-  default BoundedResourceGuard startResourceGuard() {
+  default CompositeResourceGuard<SemaphoreResourceGuard, RateLimitedResourceGuard> startResourceGuard() {
     return buildResourceGuard().started();
   }
 
-  private BoundedResourceGuard buildResourceGuard() {
+  private CompositeResourceGuard<SemaphoreResourceGuard, RateLimitedResourceGuard> buildResourceGuard() {
     return new SemaphoreResourceGuard(maxInFlightRequests())
             .andThen(new RateLimitedResourceGuard(maxRequestsPerSec(), shutdownPollPeriod()));
   }
