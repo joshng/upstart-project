@@ -9,6 +9,7 @@ import upstart.config.UpstartModule;
 import upstart.javalin.JavalinWebModule;
 import upstart.test.UpstartServiceTest;
 import upstart.test.UpstartTestBuilder;
+import upstart.web.test.WebTest;
 
 import javax.inject.Inject;
 import java.lang.annotation.Retention;
@@ -65,6 +66,7 @@ class HttpRoutesTest {
 
   @Nested
   @UpstartServiceTest
+  @WebTest
   class WithUpstartApp extends UpstartModule implements JavalinWebModule {
     @Override
     protected void configure() {
