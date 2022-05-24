@@ -3,6 +3,7 @@ package upstart.util.concurrent;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.InstantSource;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -95,6 +96,8 @@ public sealed abstract class Deadline {
 
   public abstract boolean await(Condition condition) throws InterruptedException;
 
+  public abstract boolean await(CountDownLatch latch) throws InterruptedException;
+
   private static final class Bounded extends Deadline {
     private final Duration initialDuration;
     private final Instant deadline;
@@ -162,6 +165,11 @@ public sealed abstract class Deadline {
       return condition.await(remainingNanos(), TimeUnit.NANOSECONDS);
     }
 
+    @Override
+    public boolean await(CountDownLatch latch) throws InterruptedException {
+      return latch.await(remainingNanos(), TimeUnit.NANOSECONDS);
+    }
+
     private long remainingNanos() {
       return remaining().toNanos();
     }
@@ -226,6 +234,12 @@ public sealed abstract class Deadline {
     @Override
     public boolean await(Condition condition) throws InterruptedException {
       condition.await();
+      return true;
+    }
+
+    @Override
+    public boolean await(CountDownLatch latch) throws InterruptedException {
+      latch.await();
       return true;
     }
 

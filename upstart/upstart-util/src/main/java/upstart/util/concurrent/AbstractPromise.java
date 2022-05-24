@@ -1,6 +1,7 @@
 package upstart.util.concurrent;
 
 import upstart.util.SelfType;
+import upstart.util.exceptions.FallibleSupplier;
 import upstart.util.exceptions.ThrowingRunnable;
 
 import java.util.List;
@@ -103,8 +104,20 @@ public abstract class AbstractPromise<T, P extends AbstractPromise<T, P>> extend
     return thenApply(__ -> value);
   }
 
-  public <U> Promise<U> thenReplaceFrom(Supplier<U> supplier) {
-    return thenApply(__ -> supplier.get());
+  public <U> Promise<U> thenGet(FallibleSupplier<U, ?> supplier) {
+    return thenApply(ignored -> supplier.get());
+  }
+
+  public <U> Promise<U> thenGetAsync(FallibleSupplier<U, ?> supplier, Executor executor) {
+    return thenApplyAsync(ignored -> supplier.get(), executor);
+  }
+
+  public <U> Promise<U> thenComposeGet(FallibleSupplier<? extends CompletionStage<U>, ?> supplier) {
+    return thenCompose(ignored -> supplier.get());
+  }
+
+  public <U> Promise<U> thenComposeGetAsync(FallibleSupplier<? extends CompletionStage<U>, ?> supplier, Executor executor) {
+    return thenComposeAsync(ignored -> supplier.get(), executor);
   }
 
   public <U> OptionalPromise<U> thenApplyOptional(Function<? super T, Optional<U>> fn) {

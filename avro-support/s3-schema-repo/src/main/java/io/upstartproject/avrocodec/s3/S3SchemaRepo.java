@@ -17,6 +17,7 @@ import software.amazon.awssdk.services.s3.model.ListObjectVersionsResponse;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.ObjectIdentifier;
 import software.amazon.awssdk.services.s3.model.ObjectVersion;
+import upstart.util.concurrent.Promise;
 
 import javax.inject.Inject;
 import java.time.Instant;
@@ -95,10 +96,14 @@ public class S3SchemaRepo extends BaseSchemaRepo {
                               .filter(reportedVersions::add)
                               .sorted(S3SchemaEntry.COMPARATOR) // sort to report all versions in their deterministic creation-order
                               .map(S3SchemaEntry::loadDescriptor)
-                              .reduce(CompletableFutures.nullFuture(), (accum, descriptorFuture) -> descriptorFuture.thenCombine(accum, (descriptor, ignored2) -> {
-                                notifySchemaAdded(descriptor);
-                                return null;
-                              }), CompletableFuture::allOf));
+                              .reduce(
+                                      (CompletableFuture<Void>) CompletableFutures.<Void>nullFuture(),
+                                      (accum, descriptorFuture) -> descriptorFuture.thenCombine(accum, (descriptor, ignored2) -> {
+                                        notifySchemaAdded(descriptor);
+                                        return null;
+                                      }),
+                                      CompletableFuture::allOf
+                              ));
     });
   }
 

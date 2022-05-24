@@ -33,7 +33,7 @@ import java.util.stream.Stream;
 import static com.google.common.base.Preconditions.checkState;
 
 public class CompletableFutures {
-  private static final CompletableFuture<?> NULL_FUTURE = CompletableFuture.completedFuture(null);
+  private static final Promise<?> NULL_FUTURE = Promise.completed(null);
   private static final CompletableFuture<?> EMPTY_FUTURE = CompletableFuture.completedFuture(Optional.empty());
   public static final CompletableFuture<Boolean> TRUE_FUTURE = CompletableFuture.completedFuture(Boolean.TRUE);
   public static final CompletableFuture<Boolean> FALSE_FUTURE = CompletableFuture.completedFuture(Boolean.FALSE);
@@ -44,8 +44,8 @@ public class CompletableFutures {
   private static final FluentFuture<?> NULL_LISTENABLE_FUTURE = FluentFuture.from(Futures.immediateFuture(null));
 
   @SuppressWarnings("unchecked")
-  public static <T> CompletableFuture<T> nullFuture() {
-    return (CompletableFuture<T>) NULL_FUTURE;
+  public static <T> Promise<T> nullFuture() {
+    return (Promise<T>) NULL_FUTURE;
   }
 
   @SuppressWarnings("unchecked")
