@@ -2,11 +2,13 @@ package upstart.util.concurrent.resourceguard;
 
 import com.google.common.collect.Comparators;
 import com.google.common.util.concurrent.RateLimiter;
+import org.immutables.value.Value;
 import upstart.util.concurrent.Deadline;
 import upstart.util.concurrent.ShutdownException;
 import upstart.util.concurrent.services.LightweightService;
 
 import java.time.Duration;
+import java.util.Optional;
 
 public class RateLimitedResourceGuard extends LightweightService implements BoundedResourceGuard<RateLimitedResourceGuard> {
   public static final Duration DEFAULT_SHUTDOWN_POLL_PERIOD = Duration.ofMillis(300);
@@ -62,5 +64,21 @@ public class RateLimitedResourceGuard extends LightweightService implements Boun
 
   @Override
   public void release(int permits) {
+  }
+
+  public interface RateLimitConfig {
+    double maxRequestsPerSec();
+
+    @Value.Default
+    default Duration shutdownPollPeriod() {
+      return DEFAULT_SHUTDOWN_POLL_PERIOD;
+    }
+
+    Optional<Duration> warmupPeriod();
+
+    default RateLimitedResourceGuard buildRateLimitGuard() {
+      return warmupPeriod().map(warmup -> new RateLimitedResourceGuard(RateLimiter.create(maxRequestsPerSec(), warmup), shutdownPollPeriod()))
+              .orElseGet(() -> new RateLimitedResourceGuard(maxRequestsPerSec(), shutdownPollPeriod()));
+    }
   }
 }

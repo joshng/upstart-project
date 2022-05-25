@@ -2,30 +2,21 @@ package upstart.util.concurrent.resourceguard;
 
 import org.immutables.value.Value;
 
-import java.time.Duration;
 
-
-public interface FlowControlConfig {
+public interface FlowControlConfig extends RateLimitedResourceGuard.RateLimitConfig {
   static Builder builder() {
     return new Builder();
   }
 
   int maxInFlightRequests();
 
-  double maxRequestsPerSec();
-
-  @Value.Default
-  default Duration shutdownPollPeriod() {
-    return RateLimitedResourceGuard.DEFAULT_SHUTDOWN_POLL_PERIOD;
-  }
-
   default CompositeResourceGuard<SemaphoreResourceGuard, RateLimitedResourceGuard> startResourceGuard() {
-    return buildResourceGuard().started();
+    return buildFlowControlGuard().started();
   }
 
-  private CompositeResourceGuard<SemaphoreResourceGuard, RateLimitedResourceGuard> buildResourceGuard() {
+  private CompositeResourceGuard<SemaphoreResourceGuard, RateLimitedResourceGuard> buildFlowControlGuard() {
     return new SemaphoreResourceGuard(maxInFlightRequests())
-            .andThen(new RateLimitedResourceGuard(maxRequestsPerSec(), shutdownPollPeriod()));
+            .andThen(buildRateLimitGuard());
   }
 
   class Builder extends SimpleFlowControlConfig.Builder {
