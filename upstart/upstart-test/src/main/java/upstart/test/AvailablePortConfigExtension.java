@@ -15,7 +15,7 @@ public class AvailablePortConfigExtension implements BeforeEachCallback {
   @Override
   public void beforeEach(ExtensionContext extensionContext) {
     Map<String, Integer> selectedPorts = PairStream.withMappedValues(
-                    ExtensionContexts.findTestAnnotations(
+                    ExtensionContexts.findRepeatableTestAnnotations(
                                     ConfigureAvailablePort.class,
                                     Reflect.LineageOrder.SuperclassBeforeSubclass,
                                     extensionContext
