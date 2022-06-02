@@ -56,6 +56,10 @@ public class UpstartExtension extends SingletonParameterResolver<UpstartTestBuil
     return getOrCreateOptionalContext(UpstartTestBuilder.class, extensionContext);
   }
 
+  public static UpstartTestBuilder getRequiredTestBuilder(ExtensionContext extensionContext) {
+    return getOptionalTestBuilder(extensionContext).orElseThrow(() -> new IllegalStateException("No UpstartTest found"));
+  }
+
   @Override
   protected InternalTestBuilder createContext(ExtensionContext extensionContext) throws Exception {
     Preconditions.checkState(extensionContext.getTestInstance().isPresent(),

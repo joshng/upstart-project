@@ -55,7 +55,7 @@ public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Th
   }
 
   public static <T> Promise<T> of(CompletionStage<T> stage) {
-    return (stage instanceof Promise promise) ? promise : new Promise<T>().completeWith(stage);
+    return (stage instanceof Promise<T> promise) ? promise : new Promise<T>().completeWith(stage);
   }
 
   public static <T> Promise<T> completed(T result) {

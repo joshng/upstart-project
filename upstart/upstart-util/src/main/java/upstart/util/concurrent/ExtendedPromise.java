@@ -17,8 +17,7 @@ public abstract class ExtendedPromise<T, P extends ExtendedPromise<T, P>> extend
   protected abstract Promise.PromiseFactory<P> factory();
 
   public P tryComplete(Callable<T> completion) {
-    consumeFailure(() -> complete(completion.call()));
-    return self();
+    return consumeFailure(() -> complete(completion.call()));
   }
 
   public P tryComplete(T value, ThrowingRunnable completion) {
