@@ -33,11 +33,10 @@ import java.util.stream.Stream;
 import static com.google.common.base.Preconditions.checkState;
 
 public class CompletableFutures {
-  private static final Promise<?> NULL_FUTURE = Promise.completed(null);
-  private static final CompletableFuture<?> EMPTY_FUTURE = CompletableFuture.completedFuture(Optional.empty());
+  private static final Promise<?> NULL_FUTURE = Promise.completed((Object)null);
   public static final CompletableFuture<Boolean> TRUE_FUTURE = CompletableFuture.completedFuture(Boolean.TRUE);
   public static final CompletableFuture<Boolean> FALSE_FUTURE = CompletableFuture.completedFuture(Boolean.FALSE);
-  private static final CompletableFuture CANCELLED_FUTURE = new CompletableFuture<Void>() {{
+  private static final Promise CANCELLED_FUTURE = new Promise<Void>() {{
     cancel(true);
   }};
   private static final CompletableFuture<?> EMPTY_COLLECTION_FUTURE = CompletableFuture.completedFuture(ImmutableList.of());
@@ -57,20 +56,17 @@ public class CompletableFutures {
     return OptionalPromise.empty();
   }
 
-  @SuppressWarnings("unchecked")
-  public static <T> CompletableFuture<List<T>> emptyListFuture() {
-    return (CompletableFuture<List<T>>) EMPTY_COLLECTION_FUTURE;
+  public static <T> ListPromise<T> emptyListFuture() {
+    return ListPromise.empty();
   }
 
   @SuppressWarnings("unchecked")
-  public static <T> CompletableFuture<T> cancelledFuture() {
+  public static <T> Promise<T> cancelledFuture() {
     return CANCELLED_FUTURE;
   }
 
-  public static <T> CompletableFuture<T> failedFuture(Throwable t) {
-    CompletableFuture<T> f = new CompletableFuture<>();
-    f.completeExceptionally(t);
-    return f;
+  public static <T> Promise<T> failedFuture(Throwable t) {
+    return Promise.failedPromise(t);
   }
 
   public static CompletableFuture<Void> runSafely(Runnable runnable) {

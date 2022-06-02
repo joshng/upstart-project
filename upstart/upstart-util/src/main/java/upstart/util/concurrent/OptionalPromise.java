@@ -9,42 +9,10 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
-public class OptionalPromise<T> extends AbstractPromise<Optional<T>, OptionalPromise<T>> {
-  @SuppressWarnings("rawtypes")
-  private static final OptionalPromise EMPTY = new OptionalPromise<>() {
-    {
-      fulfill(Optional.empty());
-    }
-
-    @Override
-    public <O> OptionalPromise<O> thenMap(Function<? super Object, ? extends O> mapper) {
-      return empty();
-    }
-
-    @Override
-    public <O> OptionalPromise<O> thenMapCompose(Function<? super Object, ? extends CompletionStage<O>> mapper) {
-      return empty();
-    }
-
-    @Override
-    public <O> OptionalPromise<O> thenFlatMapCompose(Function<? super Object, ? extends CompletionStage<Optional<O>>> mapper) {
-      return empty();
-    }
-
-    @Override
-    public <O> OptionalPromise<O> thenFlatMap(Function<? super Object, ? extends Optional<O>> mapper) {
-      return empty();
-    }
-
-    @Override
-    public OptionalPromise<Object> thenFilter(Predicate<? super Object> filter) {
-      return this;
-    }
-  };
-
+public class OptionalPromise<T> extends ExtendedPromise<Optional<T>, OptionalPromise<T>> {
   @SuppressWarnings("unchecked")
   public static <T> OptionalPromise<T> empty() {
-    return EMPTY;
+    return (OptionalPromise<T>) EmptyPromise.INSTANCE;
   }
 
   public static <T> OptionalPromise<T> completed(@Nonnull Optional<T> optional) {
@@ -118,7 +86,40 @@ public class OptionalPromise<T> extends AbstractPromise<Optional<T>, OptionalPro
   }
 
   @Override
-  protected PromiseFactory<OptionalPromise<T>> factory() {
+  protected Promise.PromiseFactory<OptionalPromise<T>> factory() {
     return OptionalPromise::new;
+  }
+
+  private static class EmptyPromise extends OptionalPromise<Object> {
+    static final EmptyPromise INSTANCE = new EmptyPromise();
+
+    EmptyPromise() {
+      fulfill(Optional.empty());
+    }
+
+    @Override
+    public <O> OptionalPromise<O> thenMap(Function<? super Object, ? extends O> mapper) {
+      return empty();
+    }
+
+    @Override
+    public <O> OptionalPromise<O> thenMapCompose(Function<? super Object, ? extends CompletionStage<O>> mapper) {
+      return empty();
+    }
+
+    @Override
+    public <O> OptionalPromise<O> thenFlatMapCompose(Function<? super Object, ? extends CompletionStage<Optional<O>>> mapper) {
+      return empty();
+    }
+
+    @Override
+    public <O> OptionalPromise<O> thenFlatMap(Function<? super Object, ? extends Optional<O>> mapper) {
+      return empty();
+    }
+
+    @Override
+    public OptionalPromise<Object> thenFilter(Predicate<? super Object> filter) {
+      return this;
+    }
   }
 }
