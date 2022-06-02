@@ -15,6 +15,8 @@ import org.slf4j.Logger;
 import javax.inject.Inject;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 public class EventLogger<T extends SpecificRecordBase> implements PackagedEvent.Decoratable<EventLogger<T>>, RecordPackerApi<T> {
   private final AvroPacker<T> packer;
@@ -34,6 +36,21 @@ public class EventLogger<T extends SpecificRecordBase> implements PackagedEvent.
     publish(logLevel, eventRecord).whenComplete((ignored, e) -> {
       Optional.ofNullable(e).ifPresent(err -> errorLogger.warn("Error while logging event: {}{}", eventRecord.getClass().getName(), eventRecord, e));
     });
+  }
+
+  public EventLogger<T> withKeyStrategy(Function<T, String> keyStrategy) {
+    return decorated((eventRecord, b) -> b.key(keyStrategy.apply(eventRecord)));
+  }
+
+
+  public EventLogger<T> decorated(BiFunction<T, PackagedEvent.Builder, PackagedEvent.Builder> initializer) {
+
+    return new EventLogger<>(packer, eventLog) {
+      @Override
+      public CompletableFuture<?> publish(LogLevel diagnosticLogLevel, T eventRecord) {
+        return decorated(b -> initializer.apply(eventRecord, b)).publish(diagnosticLogLevel, eventRecord);
+      }
+    };
   }
 
   @Override

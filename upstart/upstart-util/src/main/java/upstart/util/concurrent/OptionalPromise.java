@@ -11,34 +11,67 @@ import java.util.function.Supplier;
 
 public class OptionalPromise<T> extends AbstractPromise<Optional<T>, OptionalPromise<T>> {
   @SuppressWarnings("rawtypes")
-  private static final OptionalPromise EMPTY = new OptionalPromise<>().fulfill(Optional.empty());
+  private static final OptionalPromise EMPTY = new OptionalPromise<>() {
+    {
+      fulfill(Optional.empty());
+    }
+
+    @Override
+    public <O> OptionalPromise<O> thenMap(Function<? super Object, ? extends O> mapper) {
+      return empty();
+    }
+
+    @Override
+    public <O> OptionalPromise<O> thenMapCompose(Function<? super Object, ? extends CompletionStage<O>> mapper) {
+      return empty();
+    }
+
+    @Override
+    public <O> OptionalPromise<O> thenFlatMapCompose(Function<? super Object, ? extends CompletionStage<Optional<O>>> mapper) {
+      return empty();
+    }
+
+    @Override
+    public <O> OptionalPromise<O> thenFlatMap(Function<? super Object, ? extends Optional<O>> mapper) {
+      return empty();
+    }
+
+    @Override
+    public OptionalPromise<Object> thenFilter(Predicate<? super Object> filter) {
+      return this;
+    }
+  };
 
   @SuppressWarnings("unchecked")
   public static <T> OptionalPromise<T> empty() {
     return EMPTY;
   }
 
-  public static <T> OptionalPromise<T> of(@Nonnull Optional<T> optional) {
+  public static <T> OptionalPromise<T> completed(@Nonnull Optional<T> optional) {
     return optional.isEmpty() ? empty() : new OptionalPromise<T>().fulfill(optional);
   }
 
-  public static <T> OptionalPromise<T> present(@Nonnull T value) {
+  public static <T> OptionalPromise<T> of(@Nonnull T value) {
     return new OptionalPromise<T>().fulfill(Optional.of(value));
   }
 
-  public static <T> OptionalPromise<T> completedNullable(@Nullable T value) {
-    return value == null ? empty() : present(value);
+  public static <T> OptionalPromise<T> ofNullable(@Nullable T value) {
+    return value == null ? empty() : of(value);
   }
-  public static <T> OptionalPromise<T> ofFutureNullable(CompletionStage<T> future) {
-    return ofFutureOptional(future.thenApply(Optional::ofNullable));
+  public static <T> OptionalPromise<T> ofFutureNullable(CompletableFuture<T> future) {
+    return Promise.of(future).thenApplyOptional(Optional::ofNullable);
   }
 
-  public static <T> OptionalPromise<T> ofFutureOptional(CompletionStage<Optional<T>> future) {
-    return future instanceof OptionalPromise<T> already ? already : new OptionalPromise<T>().completeWith(future);
+  public static <T> OptionalPromise<T> ofFutureOptional(CompletableFuture<Optional<T>> future) {
+    return future instanceof OptionalPromise<T> already
+            ? already
+            : CompletableFutures.isCompletedNormally(future)
+                    ? completed(future.join())
+                    : new OptionalPromise<T>().completeWith(future);
   }
 
   public static <T> OptionalPromise<T> toFutureOptional(Optional<? extends CompletionStage<T>> optionalFuture) {
-    return ofFutureOptional(optionalFuture.map(f -> f.thenApply(Optional::ofNullable).toCompletableFuture()).orElse(empty()));
+    return optionalFuture.map(f -> Promise.of(f).thenApplyOptional(Optional::ofNullable)).orElse(empty());
   }
 
   public <O> OptionalPromise<O> thenMap(Function<? super T, ? extends O> mapper) {

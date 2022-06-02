@@ -7,6 +7,7 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbAsyncTable;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedAsyncClient;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient;
+import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClientBuilder;
 import software.amazon.awssdk.services.dynamodb.model.DescribeTableRequest;
 import software.amazon.awssdk.services.dynamodb.model.DescribeTableResponse;
 import software.amazon.awssdk.services.dynamodb.model.DynamoDbException;
@@ -15,6 +16,7 @@ import software.amazon.awssdk.services.dynamodb.model.TableAlreadyExistsExceptio
 import software.amazon.awssdk.services.dynamodb.model.TableStatus;
 import upstart.aws.Aws;
 import upstart.aws.AwsAsyncClientFactory;
+import upstart.aws.BaseAwsAsyncClientService;
 import upstart.util.concurrent.services.IdleService;
 import upstart.util.concurrent.services.ThreadPoolService;
 import upstart.util.concurrent.BlockingBoundedActor;
@@ -33,15 +35,12 @@ import java.util.concurrent.TimeUnit;
 import static com.google.common.base.Preconditions.checkState;
 
 @Singleton
-public class DynamoDbClientService extends IdleService {
+public class DynamoDbClientService extends BaseAwsAsyncClientService<DynamoDbAsyncClient, DynamoDbAsyncClientBuilder> {
   private static final Logger LOG = LoggerFactory.getLogger(DynamoDbClientService.class);
-  private final AwsAsyncClientFactory clientFactory;
-  private final Executor completionExecutor;
   private final Executor directExecutor = MoreExecutors.directExecutor();
   private final DynamoDbConfig config;
   private final BlockingBoundedActor tableCreationActor = new BlockingBoundedActor(10);
   private DynamoDbEnhancedAsyncClient db;
-  private DynamoDbAsyncClient client;
 
 
   @Inject
@@ -50,19 +49,19 @@ public class DynamoDbClientService extends IdleService {
           DynamoThreadPoolService completionExecutor,
           DynamoDbConfig config
   ) {
-    this.clientFactory = clientFactory;
-    this.completionExecutor = completionExecutor;
+    super(clientFactory, completionExecutor);
     this.config = config;
   }
 
-  public DynamoDbAsyncClient client() {
-    return client;
+  @Override
+  protected DynamoDbAsyncClientBuilder asyncClientBuilder() {
+    return DynamoDbAsyncClient.builder();
   }
 
   @Override
   protected void startUp() throws Exception {
-    client = clientFactory.configureAsyncClientBuilder(DynamoDbAsyncClient.builder(), completionExecutor).build();
-    db = DynamoDbEnhancedAsyncClient.builder().dynamoDbClient(client).build();
+    super.startUp();
+    db = DynamoDbEnhancedAsyncClient.builder().dynamoDbClient(client()).build();
   }
 
   public <T> CompletableFuture<DynamoDbAsyncTable<T>> ensureTableCreated(String tableName, TableSchema<T> tableSchema) {
@@ -88,7 +87,7 @@ public class DynamoDbClientService extends IdleService {
   }
 
   public CompletableFuture<DescribeTableResponse> describeTable(String tableName) {
-    return client.describeTable(b -> b.tableName(tableName));
+    return client().describeTable(b -> b.tableName(tableName));
   }
 
   private CompletableFuture<?> pollTableStatus(String tableName, Executor pollDelayExecutor) {
@@ -110,11 +109,6 @@ public class DynamoDbClientService extends IdleService {
         return CompletableFutures.nullFuture();
       }
     });
-  }
-
-  @Override
-  protected void shutDown() throws Exception {
-    if (client != null) client.close();
   }
 
   @Singleton

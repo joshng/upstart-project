@@ -7,6 +7,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -44,6 +45,14 @@ public class ListPromise<T> extends AbstractPromise<List<T>, ListPromise<T>> {
   public <O> ListPromise<O> thenFlatMapCompose(Function<? super T, ? extends CompletableFuture<List<O>>> mapper) {
     return asListPromise(() -> baseCompose(value -> CompletableFutures.allAsList(value.stream().map(mapper))
             .thenApply(lists -> lists.stream().flatMap(List::stream).toList())));
+  }
+
+  public ListPromise<T> thenFilter(Predicate<? super T> filter) {
+    return asListPromise(() -> baseApply(value -> value.stream().filter(filter).toList()));
+  }
+
+  public <V> ListPromise<V> thenFilter(Class<V> filterClass) {
+    return asListPromise(() -> baseApply(value -> value.stream().filter(filterClass::isInstance).map(filterClass::cast).toList()));
   }
 
   public <O> Promise<O> thenFoldLeft(O identity, BiFunction<? super O, ? super T, ? extends O> folder) {

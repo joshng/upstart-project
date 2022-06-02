@@ -1,4 +1,4 @@
-package upstart.web.javalin;
+package upstart.javalin;
 
 import io.javalin.core.security.AccessManager;
 import io.javalin.core.security.RouteRole;
@@ -15,14 +15,6 @@ public class JavalinRenderedConfigEndpointTest extends BaseRenderedConfigEndpoin
   @Override
   protected void configureConfigEndpoint() {
     install(RenderedConfigEndpoint.Module.class);
-    addJavalinWebBinding().toInstance(config -> config.accessManager(new AccessManager() {
-      @Override
-      public void manage(
-              @NotNull Handler handler, @NotNull Context ctx, @NotNull Set<RouteRole> routeRoles
-      ) throws Exception {
-        handler.handle(ctx);
-      }
-    }));
-
+    addJavalinWebBinding().toInstance(config -> config.accessManager((handler, ctx, routeRoles) -> handler.handle(ctx)));
   }
 }

@@ -39,7 +39,7 @@ public abstract class PackagedEvent {
 
   @JsonInclude(JsonInclude.Include.NON_EMPTY)
   @JsonProperty
-  public abstract Optional<byte[]> key();
+  public abstract Optional<String> key();
 
   @Value.Default
   @JsonProperty
@@ -59,8 +59,7 @@ public abstract class PackagedEvent {
   @JsonIgnore
   public abstract List<PackableRecord<?>> annotations();
 
-  @Value.Derived
-  @Value.Auxiliary
+  @Value.Lazy
   @JsonProperty("annotations")
   public Map<AvroCodec.RecordTypeFamily, PackableRecord<?>> annotationMap() {
     Set<String> duplicatedTypes = new HashSet<>();

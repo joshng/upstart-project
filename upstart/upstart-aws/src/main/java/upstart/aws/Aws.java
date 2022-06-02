@@ -20,7 +20,8 @@ public @interface Aws {
   enum Service {
     Defaults,
     S3,
-    DynamoDB;
+    DynamoDB,
+    Kinesis;
 
     public final String configPath = "upstart.aws." + toString().toLowerCase();
     public final Aws annotation = ImmutableAws.of(this);

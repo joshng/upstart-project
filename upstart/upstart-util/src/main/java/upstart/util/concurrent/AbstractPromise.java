@@ -1,6 +1,7 @@
 package upstart.util.concurrent;
 
 import upstart.util.SelfType;
+import upstart.util.collect.Optionals;
 import upstart.util.exceptions.FallibleSupplier;
 import upstart.util.exceptions.ThrowingRunnable;
 
@@ -15,6 +16,7 @@ import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 public abstract class AbstractPromise<T, P extends AbstractPromise<T, P>> extends CompletableFuture<T> implements BiConsumer<T, Throwable>, SelfType<P> {
@@ -108,6 +110,10 @@ public abstract class AbstractPromise<T, P extends AbstractPromise<T, P>> extend
     return thenApply(ignored -> supplier.get());
   }
 
+  public <E extends Throwable> P recover(Class<E> exceptionType, Function<? super E, ? extends T> recovery) {
+    return (P) CompletableFutures.recover(this, exceptionType, recovery);
+  }
+
   public <U> Promise<U> thenGetAsync(FallibleSupplier<U, ?> supplier, Executor executor) {
     return thenApplyAsync(ignored -> supplier.get(), executor);
   }
@@ -121,17 +127,32 @@ public abstract class AbstractPromise<T, P extends AbstractPromise<T, P>> extend
   }
 
   public <U> OptionalPromise<U> thenApplyOptional(Function<? super T, Optional<U>> fn) {
-    return asOptionalPromise(() -> baseApply(fn));
+    return isCompletedNormally()
+            ? OptionalPromise.completed(fn.apply(join()))
+            : asOptionalPromise(() -> baseApply(fn));
+  }
+
+  public OptionalPromise<T> thenFilterOptional(Predicate<? super T> filter) {
+    return isCompletedNormally()
+            ? OptionalPromise.completed(Optional.ofNullable(join()).filter(filter))
+            : asOptionalPromise(() -> baseApply(v -> Optional.ofNullable(v).filter(filter)));
+  }
+
+  public <U> OptionalPromise<U> thenFilterOptional(Class<U> type) {
+    return isCompletedNormally()
+            ? OptionalPromise.completed(Optionals.asInstance(join(), type))
+            : asOptionalPromise(() -> baseApply(v -> Optionals.asInstance(v, type)));
   }
 
   public <U> OptionalPromise<U> thenComposeOptional(Function<? super T, ? extends CompletionStage<Optional<U>>> fn) {
     return asOptionalPromise(() -> baseCompose(fn));
   }
 
-  public <U> OptionalPromise<U> thenOptionallyCompose(Function<? super T, Optional<? extends CompletionStage<U>>> fn) {
-    return asOptionalPromise(() -> baseCompose(result -> fn.apply(result)
-            .map(f -> f.thenApply(Optional::ofNullable))
-            .orElse(OptionalPromise.empty())));
+  public <U> OptionalPromise<U> thenOptionallyCompose(Function<? super T, Optional<? extends CompletableFuture<U>>> fn) {
+    Function<T, OptionalPromise<U>> opWrapper = value -> OptionalPromise.toFutureOptional(fn.apply(value));
+    return isCompletedNormally()
+            ? opWrapper.apply(join())
+            : asOptionalPromise(() -> baseCompose(opWrapper));
   }
 
   public OptionalPromise<T> exceptionAsOptional(Class<? extends Exception> exceptionType) {
@@ -152,18 +173,23 @@ public abstract class AbstractPromise<T, P extends AbstractPromise<T, P>> extend
     return asListPromise(() -> baseCompose(fn));
   }
 
-  @SuppressWarnings("unchecked")
-  public <U> Promise<U> thenApply(Function<? super T, ? extends U> fn) {
-    return (Promise<U>) super.thenApply(fn);
-  }
 
-  @SuppressWarnings("unchecked")
   public P onCancel(Runnable callback) {
     return withSideEffect(() -> CompletableFutures.whenCancelled(this, callback));
   }
 
   public <U> Promise<U> thenReplaceFuture(Supplier<? extends CompletionStage<U>> supplier) {
     return thenCompose(__ -> supplier.get());
+  }
+
+  public boolean isCompletedNormally() {
+    return isDone() && !isCompletedExceptionally();
+  }
+
+  ///////////////////// CompletionStage /////////////////////
+  @SuppressWarnings("unchecked")
+  public <U> Promise<U> thenApply(Function<? super T, ? extends U> fn) {
+    return (Promise<U>) super.thenApply(fn);
   }
 
   @SuppressWarnings("unchecked")
