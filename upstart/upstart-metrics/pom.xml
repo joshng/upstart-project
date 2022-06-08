@@ -12,6 +12,18 @@
 
   <artifactId>upstart-metrics</artifactId>
 
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>io.dropwizard.metrics</groupId>
+        <artifactId>metrics-bom</artifactId>
+        <version>${metrics.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
   <dependencies>
     <dependency>
       <groupId>io.upstartproject</groupId>
@@ -21,7 +33,6 @@
     <dependency>
       <groupId>io.dropwizard.metrics</groupId>
       <artifactId>metrics-jvm</artifactId>
-      <version>${metrics.version}</version>
     </dependency>
 
 
