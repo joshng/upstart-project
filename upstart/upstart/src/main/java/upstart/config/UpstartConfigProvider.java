@@ -3,6 +3,7 @@ package upstart.config;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import io.upstartproject.hojack.ConfigMapper;
 import io.upstartproject.hojack.HojackConfigMapper;
 import upstart.UpstartService;
 import upstart.UpstartDeploymentStage;
@@ -28,6 +29,10 @@ public abstract class UpstartConfigProvider {
           .build(CacheLoader.from(this::loadConfigObject));
 
   public abstract UpstartDeploymentStage deploymentStage();
+
+  abstract Config resolvedBaseConfig();
+
+  public abstract ConfigMapper configMapper();
 
   public abstract Optional<String> getOptionalString(String path);
 

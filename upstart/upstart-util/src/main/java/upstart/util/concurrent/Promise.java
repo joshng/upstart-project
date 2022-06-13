@@ -101,10 +101,6 @@ public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Th
     }
   }
 
-  private PromiseFactory<Promise<T>> factory() {
-    return Promise::new;
-  }
-
   private Promise<T> withSideEffect(Supplier<CompletableFuture<T>> superCall) {
     return (Promise<T>) superCall.get();
   }

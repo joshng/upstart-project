@@ -9,7 +9,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Locates ports which are available for use by tests, and stores them in the provided
+ * Locates ports which are available for use by tests, and stores them in the indicated
  * upstart-config locations.
  */
 @Retention(RetentionPolicy.RUNTIME)

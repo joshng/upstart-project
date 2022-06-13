@@ -5,9 +5,11 @@ import javax.annotation.Nullable;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 public class OptionalPromise<T> extends ExtendedPromise<Optional<T>, OptionalPromise<T>> {
   @SuppressWarnings("unchecked")
@@ -42,6 +44,10 @@ public class OptionalPromise<T> extends ExtendedPromise<Optional<T>, OptionalPro
     return optionalFuture.map(f -> Promise.of(f).thenApplyOptional(Optional::ofNullable)).orElse(empty());
   }
 
+  public static <T> ListPromise<T> toFlattenedList(Stream<OptionalPromise<T>> optionalPromiseStream) {
+    return CompletableFutures.allAsList(optionalPromiseStream).thenFlatMap(Optional::stream);
+  }
+
   public <O> OptionalPromise<O> thenMap(Function<? super T, ? extends O> mapper) {
     return asOptionalPromise(() -> baseApply(value -> value.map(mapper)));
   }
@@ -61,6 +67,13 @@ public class OptionalPromise<T> extends ExtendedPromise<Optional<T>, OptionalPro
 
   public OptionalPromise<T> thenFilter(Predicate<? super T> filter) {
     return asOptionalPromise(() -> baseApply(value -> value.filter(filter)));
+  }
+
+  public OptionalPromise<T> thenIfPresent(Consumer<? super T> consumer) {
+    return thenApplyOptional(value -> {
+      value.ifPresent(consumer);
+      return value;
+    });
   }
 
   public Promise<T> orElse(T value) {
@@ -119,6 +132,11 @@ public class OptionalPromise<T> extends ExtendedPromise<Optional<T>, OptionalPro
 
     @Override
     public OptionalPromise<Object> thenFilter(Predicate<? super Object> filter) {
+      return this;
+    }
+
+    @Override
+    public OptionalPromise<Object> thenIfPresent(Consumer<? super Object> consumer) {
       return this;
     }
   }

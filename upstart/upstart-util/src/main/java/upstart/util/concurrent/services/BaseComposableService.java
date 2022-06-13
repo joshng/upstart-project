@@ -3,15 +3,13 @@ package upstart.util.concurrent.services;
 
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.common.util.concurrent.Service;
+import upstart.util.functions.AsyncFunction;
 import upstart.util.reflect.Reflect;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.function.Function;
-
-import static com.google.common.base.Preconditions.checkState;
 
 
 public abstract class BaseComposableService<S extends Service> implements ComposableService {
@@ -195,9 +193,5 @@ public abstract class BaseComposableService<S extends Service> implements Compos
       case TERMINATED -> "T";
       case FAILED -> "!";
     };
-  }
-
-  public interface AsyncFunction<I, O> extends Function<I, CompletableFuture<O>> {
-
   }
 }

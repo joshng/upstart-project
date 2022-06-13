@@ -52,7 +52,7 @@ public class HealthChecker {
 
   private OptionalPromise<Pair<String, HealthCheck.Unhealthy>> runHealthCheck(String name, HealthCheck healthCheck) {
     return Promise.of(healthCheck.checkHealth())
-            .recover(Exception.class, HealthCheck.HealthStatus::unhealthy)
+            .exceptionally(HealthCheck.HealthStatus::unhealthy)
             .thenFilterOptional(HealthCheck.Unhealthy.class)
             .thenMap(unhealthy -> Pair.of(name, unhealthy));
   }

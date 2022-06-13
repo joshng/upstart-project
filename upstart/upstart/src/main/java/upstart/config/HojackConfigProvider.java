@@ -51,11 +51,13 @@ public abstract class HojackConfigProvider extends UpstartConfigProvider {
     return UpstartDeploymentStage.prod;
   }
 
+  @Override
   @Value.Lazy
   Config resolvedBaseConfig() {
     return baseConfig().resolve();
   }
 
+  @Override
   @Value.Default
   public ConfigMapper configMapper() {
     return DefaultMapperHolder.DEFAULT_CONFIG_MAPPER;

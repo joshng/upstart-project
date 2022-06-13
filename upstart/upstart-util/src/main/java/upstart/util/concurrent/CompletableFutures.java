@@ -27,6 +27,7 @@ import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -39,17 +40,10 @@ public class CompletableFutures {
   private static final Promise CANCELLED_FUTURE = new Promise<Void>() {{
     cancel(true);
   }};
-  private static final CompletableFuture<?> EMPTY_COLLECTION_FUTURE = CompletableFuture.completedFuture(ImmutableList.of());
-  private static final FluentFuture<?> NULL_LISTENABLE_FUTURE = FluentFuture.from(Futures.immediateFuture(null));
 
   @SuppressWarnings("unchecked")
   public static <T> Promise<T> nullFuture() {
     return (Promise<T>) NULL_FUTURE;
-  }
-
-  @SuppressWarnings("unchecked")
-  public static <T> FluentFuture<T> nullListenableFuture() {
-    return (FluentFuture<T>) NULL_LISTENABLE_FUTURE;
   }
 
   public static <T> OptionalPromise<T> emptyFuture() {
@@ -134,7 +128,7 @@ public class CompletableFutures {
   }
 
   public static <T> ListPromise<T> allAsList(Stream<? extends CompletableFuture<? extends T>> futures) {
-    return allAsList(CompletableFutures.toArray(futures));
+    return ListPromise.allAsList(futures);
   }
 
   @SafeVarargs

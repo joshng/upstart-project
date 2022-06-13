@@ -1,6 +1,7 @@
 package upstart.test;
 
 import upstart.util.collect.MoreStreams;
+import upstart.util.concurrent.Deadline;
 import upstart.util.concurrent.Promise;
 
 import java.time.Duration;
@@ -15,9 +16,18 @@ import java.util.stream.Stream;
 
 public class ThreadPauseHelper {
   private final Queue<PendingPause> pendingPauses = new ConcurrentLinkedQueue<>();
+  private final Deadline deadline;
 
-  public OngoingPause requestAndAwaitPause(int threadsToPause, Duration initiationTimeout) throws InterruptedException, TimeoutException {
-    return requestPause(threadsToPause).awaitPause(initiationTimeout);
+  public ThreadPauseHelper(Deadline deadline) {
+    this.deadline = deadline;
+  }
+
+  public OngoingPause requestAndAwaitPause(int threadsToPause) throws InterruptedException, TimeoutException {
+    return requestPause(threadsToPause).awaitPause();
+  }
+
+  public OngoingPause requestAndAwaitPause(int threadsToPause, Duration timeout) throws InterruptedException, TimeoutException {
+    return requestPause(threadsToPause).awaitPause(timeout);
   }
 
   public PendingPause requestPause(int threadsToPause) {
@@ -41,6 +51,10 @@ public class ThreadPauseHelper {
     ).thenAccept(PendingPause::resume);
   }
 
+  public void pauseIfRequested() throws InterruptedException, TimeoutException {
+    pauseIfRequested(deadline.remaining());
+  }
+
   public void pauseIfRequested(Duration completionTimeout) throws InterruptedException, TimeoutException {
     while (true) {
       PendingPause pause = pendingPauses.peek();
@@ -55,6 +69,10 @@ public class ThreadPauseHelper {
     private final Promise<Void> resumedPromise = new Promise<>();
     private PendingPause(int threadsToPause) {
       countdown = new AtomicInteger(threadsToPause);
+    }
+
+    public OngoingPause awaitPause() throws InterruptedException, TimeoutException {
+      return awaitPause(deadline.remaining());
     }
 
     public OngoingPause awaitPause(Duration initiationTimeout) throws InterruptedException, TimeoutException {
