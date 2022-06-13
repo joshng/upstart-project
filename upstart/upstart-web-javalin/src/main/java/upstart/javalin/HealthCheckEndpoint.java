@@ -3,6 +3,7 @@ package upstart.javalin;
 import io.javalin.core.JavalinConfig;
 import upstart.config.annotations.ConfigPath;
 import upstart.healthchecks.HealthChecker;
+import upstart.javalin.annotations.OpenApiAnnotations;
 
 import javax.inject.Inject;
 
@@ -20,7 +21,7 @@ public class HealthCheckEndpoint implements JavalinWebInitializer {
   public void initializeWeb(JavalinConfig config) {
     config.registerPlugin(javalin -> javalin.get(
             endpointConfig.livenessCheckPath(),
-            ctx -> ctx.future(healthChecker.healthyPromise())
+            OpenApiAnnotations.openApiIgnored(ctx -> ctx.future(healthChecker.healthyPromise()))
     ));
   }
 
