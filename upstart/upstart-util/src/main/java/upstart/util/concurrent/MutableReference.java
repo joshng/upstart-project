@@ -58,5 +58,17 @@ public interface MutableReference<T> extends Supplier<T>, Callable<T> {
     };
   }
 
+  default TransientContext contextWithUpdatedValue(UnaryOperator<T> updater) {
+    return () -> {
+      T existingValue;
+      T newValue;
+      do {
+        existingValue = get();
+        newValue = updater.apply(existingValue);
+      } while (!compareAndSet(existingValue, newValue));
+      T reset = existingValue;
+      return () -> set(reset);
+    };
+  }
 }
 

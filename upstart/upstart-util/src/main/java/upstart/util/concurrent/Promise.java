@@ -2,13 +2,20 @@ package upstart.util.concurrent;
 
 
 import upstart.util.collect.Optionals;
-import upstart.util.exceptions.FallibleSupplier;
+import upstart.util.context.AsyncContext;
+import upstart.util.context.AsyncLocal;
+import upstart.util.context.Contextualized;
+import upstart.util.context.ContextualizedFuture;
 import upstart.util.exceptions.ThrowingConsumer;
 import upstart.util.exceptions.ThrowingRunnable;
+import upstart.util.exceptions.Try;
+import upstart.util.reflect.Reflect;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
@@ -23,10 +30,38 @@ import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 /**
- * A simple extension of {@link CompletableFuture} with utility methods for completing a "Promise" in various ways.
+ * An extension of {@link CompletableFuture} with utility methods for completing a "Promise" in various ways, while
+ * retaining the values of all {@link AsyncLocal}s across completions.
  */
 public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Throwable> {
-  private static final ThreadLocal<PromiseFactory<?>> INCOMPLETE_FUTURE_FACTORY = new ThreadLocal<>();
+  private static final ThreadLocalReference<PromiseFactory> INCOMPLETE_PROMISE = new ThreadLocalReference<>();
+  static final PromiseFactory PROMISE_FACTORY = PromiseFactory.of(null, Promise::new);
+  private final CompletableFuture<Contextualized<T>> completion;
+
+  public Promise() {
+    completion = ContextualizedFuture.<T>contextualizeResult(super::whenComplete);
+    arrangeCompletion();
+  }
+
+  protected Promise(CompletableFuture<Contextualized<T>> completion) {
+    this.completion = completion;
+    arrangeCompletion();
+  }
+
+  public CompletableFuture<Contextualized<T>> contextualizedFuture() {
+    return completion;
+  }
+
+  private void arrangeCompletion() {
+    // necessary to enact the expected behavior of isDone(), isCompletedExceptionally(), etc
+    completion.thenAccept(contextualized -> contextualized.value().accept((v, e) -> {
+      if (e != null) {
+        super.completeExceptionally(e);
+      } else {
+        super.complete(v);
+      }
+    }));
+  }
 
   /**
    * Encapsulates the common pattern of allocating a Future, performing some initialization to prepare for its
@@ -54,12 +89,18 @@ public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Th
     return promise.consumeFailure(() -> initializer.accept(promise));
   }
 
+  @SuppressWarnings("unchecked")
   public static <T> Promise<T> of(CompletionStage<T> stage) {
-    return (stage instanceof Promise<T> promise) ? promise : new Promise<T>().completeWith(stage);
+    return (stage instanceof Promise promise) ? promise : new Promise<>(ContextualizedFuture.captureContext(stage));
   }
 
   public static <T> Promise<T> completed(T result) {
     return new Promise<T>().fulfill(result);
+  }
+
+
+  public static <T> Promise<T> nullPromise() {
+    return PROMISE_FACTORY.emptyInstance();
   }
 
   public static <T> OptionalPromise<T> completed(Optional<T> optional) {
@@ -76,39 +117,60 @@ public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Th
     return promise;
   }
 
+  public static Promise<Void> allOf(Stream<? extends CompletableFuture<?>> futures) {
+    return allOf(CompletableFutures.toArray(futures));
+  }
+
+  public static Promise<Void> allOf(CompletableFuture<?>... futures) {
+    if (futures.length == 0) return nullPromise();
+    if (futures.length == 1) return of(futures[0]).toVoid();
+
+    CompletableFuture<Contextualized<Void>>[] contexts = CompletableFutures.toArray(
+            Arrays.stream(futures)
+                    .map(ContextualizedFuture::captureContext)
+                    .map(f -> f.thenApply(ctx -> ctx.map(ignored -> null))) // discard results, just need context
+    );
+
+    CompletableFuture<Void> wrappersDone = CompletableFuture.allOf(futures).exceptionally(e -> null);
+    CompletableFuture<Contextualized<Void>> cf = CompletableFuture.allOf(contexts)
+            .thenCombine(wrappersDone,
+                         (ignored1, ignored2) -> Arrays.stream(contexts)
+                                 .map(CompletableFuture::join)
+                                 .reduce(Contextualized::mergeContexts).orElseThrow()
+            );
+    return new Promise<>(cf);
+  }
+
   public static <T> Promise<T> completeAsync(Callable<? extends CompletionStage<? extends T>> completionSupplier) {
     return completeAsync(completionSupplier, ForkJoinPool.commonPool());
   }
 
   public static <T> Promise<T> completeAsync(Callable<? extends CompletionStage<? extends T>> completionSupplier, Executor executor) {
-    return Promise.thatCompletes(promise -> CompletableFuture.runAsync(() -> promise.tryCompleteWith(completionSupplier), executor));
+    return Promise.thatCompletes(promise -> CompletableFuture.runAsync(
+            AsyncContext.current().wrapRunnable(() -> promise.tryCompleteWith(completionSupplier)), executor)
+    );
   }
 
   public static <T> Promise<T> callAsync(Callable<? extends T> callable, Executor executor) {
-    return completeAsync(() -> CompletableFuture.completedFuture(callable.call()), executor);
+    return Promise.thatCompletes(promise -> CompletableFuture.runAsync(
+            AsyncContext.current().wrapRunnable(() -> promise.tryComplete(callable)), executor)
+    );
   }
 
   @SuppressWarnings("unchecked")
-  protected static <T, P extends CompletableFuture<T>> P chainWithFactory(
-          Supplier<? extends CompletableFuture<T>> superMethod,
-          PromiseFactory<P> factory
+  protected static <T, P extends Promise<T>> P returningSubsequent(
+          PromiseFactory subsequent,
+          Supplier<? extends CompletionStage<? extends T>> superMethod
   ) {
-    INCOMPLETE_FUTURE_FACTORY.set(factory);
-    try {
-      return (P) superMethod.get();
-    } finally {
-      INCOMPLETE_FUTURE_FACTORY.remove();
-    }
-  }
-
-  private Promise<T> withSideEffect(Supplier<CompletableFuture<T>> superCall) {
-    return (Promise<T>) superCall.get();
+    assert INCOMPLETE_PROMISE.get() == null : "Promise already in progress";
+    INCOMPLETE_PROMISE.set(subsequent);
+    return (P) superMethod.get();
   }
 
   /**
    * Complete this Future with the result of calling the given {@link Callable}, or with any exception that it throws.
    */
-  public Promise<T> tryComplete(Callable<T> completion) {
+  public Promise<T> tryComplete(Callable<? extends T> completion) {
     return consumeFailure(() -> complete(completion.call()));
   }
 
@@ -170,7 +232,7 @@ public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Th
    * is normal or exceptional).<p/>
    * <p>
    * Note that this uses {@link #whenComplete} to invoke the sideEffect, which implies that the returned {@link Promise}
-   * will not reflect any exception that may be thrown by the sideEffect;
+   * will not reflect any exception that may be thrown by the sideEffect!
    *
    * @return a Promise which completes after this Promise is done, and the sideEffect has executed.
    */
@@ -186,7 +248,7 @@ public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Th
     return thenApply(__ -> value);
   }
 
-  public <U> Promise<U> thenGet(FallibleSupplier<U, ?> supplier) {
+  public <U> Promise<U> thenGet(Supplier<U> supplier) {
     return thenApply(ignored -> supplier.get());
   }
 
@@ -194,45 +256,48 @@ public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Th
     return (Promise<T>) CompletableFutures.recover(this, exceptionType, recovery);
   }
 
-  public <U> Promise<U> thenGetAsync(FallibleSupplier<U, ?> supplier, Executor executor) {
+  public <U> Promise<U> thenGetAsync(Supplier<U> supplier, Executor executor) {
     return thenApplyAsync(ignored -> supplier.get(), executor);
   }
 
-  public <U> Promise<U> thenComposeGet(FallibleSupplier<? extends CompletionStage<U>, ?> supplier) {
+  public <U> Promise<U> thenComposeGet(Supplier<? extends CompletionStage<U>> supplier) {
     return thenCompose(ignored -> supplier.get());
   }
 
-  public <U> Promise<U> thenComposeGetAsync(FallibleSupplier<? extends CompletionStage<U>, ?> supplier, Executor executor) {
+  public <U> Promise<U> thenComposeGetAsync(Supplier<? extends CompletionStage<U>> supplier, Executor executor) {
     return thenComposeAsync(ignored -> supplier.get(), executor);
   }
 
   public <U> OptionalPromise<U> thenApplyOptional(Function<? super T, Optional<U>> fn) {
     return isCompletedNormally()
             ? OptionalPromise.completed(fn.apply(join()))
-            : asOptionalPromise(() -> baseApply(fn));
+            : asOptionalPromise(() -> thenApply(fn));
   }
 
   public OptionalPromise<T> thenFilterOptional(Predicate<? super T> filter) {
     return isCompletedNormally()
             ? OptionalPromise.completed(Optional.ofNullable(join()).filter(filter))
-            : asOptionalPromise(() -> baseApply(v -> Optional.ofNullable(v).filter(filter)));
+            : asOptionalPromise(() -> thenApply(v -> Optional.ofNullable(v).filter(filter)));
   }
 
   public <U> OptionalPromise<U> thenFilterOptional(Class<U> type) {
     return isCompletedNormally()
             ? OptionalPromise.completed(Optionals.asInstance(join(), type))
-            : asOptionalPromise(() -> baseApply(v -> Optionals.asInstance(v, type)));
+            : asOptionalPromise(() -> thenApply((Function<? super T, ? extends Optional<U>>) v -> Optionals.asInstance(
+                    v,
+                    type
+            )));
   }
 
   public <U> OptionalPromise<U> thenComposeOptional(Function<? super T, ? extends CompletionStage<Optional<U>>> fn) {
-    return asOptionalPromise(() -> baseCompose(fn));
+    return asOptionalPromise(() -> thenCompose(fn));
   }
 
   public <U> OptionalPromise<U> thenOptionallyCompose(Function<? super T, Optional<? extends CompletableFuture<U>>> fn) {
     Function<T, OptionalPromise<U>> opWrapper = value -> OptionalPromise.toFutureOptional(fn.apply(value));
     return isCompletedNormally()
             ? opWrapper.apply(join())
-            : asOptionalPromise(() -> baseCompose(opWrapper));
+            : asOptionalPromise(() -> thenCompose(opWrapper));
   }
 
   public OptionalPromise<T> exceptionAsOptional(Class<? extends Exception> exceptionType) {
@@ -246,27 +311,27 @@ public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Th
   }
 
   public <U> ListPromise<U> thenApplyList(Function<? super T, ? extends List<U>> fn) {
-    return asListPromise(() -> baseApply(fn));
+    return asListPromise(() -> thenApply(fn));
   }
 
-  public <U> ListPromise<U> thenApplyStream(Function<? super T, Stream<U>> fn) {
-    return asListPromise(() -> baseApply(fn.andThen(Stream::toList)));
+  public <U> ListPromise<U> thenStreamToList(Function<? super T, Stream<U>> fn) {
+    return new ListPromise<>(completion.thenApply(Contextualized.liftFunction(in -> fn.apply(in).toList())));
   }
 
   public <U> ListPromise<U> thenComposeList(Function<? super T, ? extends CompletionStage<List<U>>> fn) {
-    return asListPromise(() -> baseCompose(fn));
+    return asListPromise(() -> thenCompose(fn));
   }
 
   public Promise<T> onCancel(Runnable callback) {
-    return withSideEffect(() -> CompletableFutures.whenCancelled(this, callback));
+    return (Promise<T>) CompletableFutures.whenCancelled(this, callback);
   }
 
   public <U> Promise<U> thenReplaceFuture(Supplier<? extends CompletionStage<U>> supplier) {
     return thenCompose(__ -> supplier.get());
   }
 
-  public boolean isCompletedNormally() {
-    return isDone() && !isCompletedExceptionally();
+  public CompletableFuture<AsyncContext> completionContext() {
+    return completion.thenApply(Contextualized::context);
   }
 
   @Override
@@ -278,193 +343,232 @@ public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Th
     }
   }
 
-  ///////////////////// CompletionStage /////////////////////
-  @SuppressWarnings("unchecked")
-  public <U> Promise<U> thenApply(Function<? super T, ? extends U> fn) {
-    return (Promise<U>) super.thenApply(fn);
+  public boolean isCompletedNormally() {
+    return isDone() && !isCompletedExceptionally();
   }
 
-  @SuppressWarnings("unchecked")
+  ///////////////////// CompletableFuture methods /////////////////////
+
+  @Override
+  public boolean complete(T value) {
+    return completion.complete(Contextualized.value(value));
+  }
+
+  @Override
+  public boolean cancel(boolean mayInterruptIfRunning) {
+    return completion.complete(Contextualized.canceled());
+  }
+
+  @Override
+  public boolean completeExceptionally(Throwable ex) {
+    return completion.complete(Contextualized.failure(ex));
+  }
+
+  @Override
+  public T join() {
+    AsyncContext.apply(completion.join().context());
+    return super.join();
+  }
+
+
+  ///////////////////// CompletionStage /////////////////////
+  @Override
+  public <U> Promise<U> thenApply(Function<? super T, ? extends U> fn) {
+    return toPromise(completion.thenApply(Contextualized.liftFunction(fn)));
+  }
+
   @Override
   public <U> Promise<U> thenApplyAsync(Function<? super T, ? extends U> fn) {
-    return (Promise<U>) super.thenApplyAsync(fn);
+    return toPromise(completion.thenApplyAsync(Contextualized.liftFunction(fn)));
   }
 
-  @SuppressWarnings("unchecked")
   @Override
   public <U> Promise<U> thenApplyAsync(Function<? super T, ? extends U> fn, Executor executor) {
-    return (Promise<U>) super.thenApplyAsync(fn, executor);
+    return toPromise(completion.thenApplyAsync(Contextualized.liftFunction(fn), executor));
   }
 
   @Override
   public Promise<Void> thenAccept(Consumer<? super T> action) {
-    return (Promise<Void>) super.thenAccept(action);
+    return toPromise(completion.thenApply(Contextualized.liftConsumer(action)));
   }
 
   @Override
   public Promise<Void> thenAcceptAsync(Consumer<? super T> action) {
-    return (Promise<Void>) super.thenAcceptAsync(action);
+    return toPromise(completion.thenApplyAsync(Contextualized.liftConsumer(action)));
   }
 
   @Override
   public Promise<Void> thenAcceptAsync(Consumer<? super T> action, Executor executor) {
-    return (Promise<Void>) super.thenAcceptAsync(action, executor);
+    return toPromise(completion.thenApplyAsync(Contextualized.liftConsumer(action), executor));
   }
 
   @Override
   public Promise<Void> thenRun(Runnable action) {
-    return (Promise<Void>) super.thenRun(action);
+    return toPromise(completion.thenApply(Contextualized.liftRunnable(action)));
   }
 
   @Override
   public Promise<Void> thenRunAsync(Runnable action) {
-    return (Promise<Void>) super.thenRunAsync(action);
+    return toPromise(completion.thenApplyAsync(Contextualized.liftRunnable(action)));
   }
 
   @Override
   public Promise<Void> thenRunAsync(Runnable action, Executor executor) {
-    return (Promise<Void>) super.thenRunAsync(action, executor);
+    return toPromise(completion.thenApplyAsync(Contextualized.liftRunnable(action), executor));
   }
 
-  @SuppressWarnings("unchecked")
   @Override
   public <U, V> Promise<V> thenCombine(CompletionStage<? extends U> other, BiFunction<? super T, ? super U, ? extends V> fn) {
-    return (Promise<V>) super.thenCombine(other, fn);
+    return toPromise(completion.thenCombine(Promise.of(other).completion, Contextualized.liftBiFunction(fn)));
   }
 
-  @SuppressWarnings("unchecked")
   @Override
   public <U, V> Promise<V> thenCombineAsync(CompletionStage<? extends U> other, BiFunction<? super T, ? super U, ? extends V> fn) {
-    return (Promise<V>) super.thenCombineAsync(other, fn);
+    return toPromise(completion.thenCombineAsync(Promise.of(other).completion, Contextualized.liftBiFunction(fn)));
   }
 
-  @SuppressWarnings("unchecked")
   @Override
   public <U, V> Promise<V> thenCombineAsync(CompletionStage<? extends U> other, BiFunction<? super T, ? super U, ? extends V> fn, Executor executor) {
-    return (Promise<V>) super.thenCombineAsync(other, fn, executor);
+    return toPromise(completion.thenCombineAsync(Promise.of(other).completion, Contextualized.liftBiFunction(fn), executor));
   }
 
   @Override
   public <U> Promise<Void> thenAcceptBoth(CompletionStage<? extends U> other, BiConsumer<? super T, ? super U> action) {
-    return (Promise<Void>) super.thenAcceptBoth(other, action);
+    return thenCombine(other, Contextualized.liftBiConsumer(action));
   }
 
   @Override
   public <U> Promise<Void> thenAcceptBothAsync(CompletionStage<? extends U> other, BiConsumer<? super T, ? super U> action) {
-    return (Promise<Void>) super.thenAcceptBothAsync(other, action);
+    return thenCombineAsync(other, Contextualized.liftBiConsumer(action));
   }
 
   @Override
   public <U> Promise<Void> thenAcceptBothAsync(CompletionStage<? extends U> other, BiConsumer<? super T, ? super U> action, Executor executor) {
-    return (Promise<Void>) super.thenAcceptBothAsync(other, action, executor);
+    return thenCombineAsync(other, Contextualized.liftBiConsumer(action), executor);
   }
 
+  //
   @Override
   public Promise<Void> runAfterBoth(CompletionStage<?> other, Runnable action) {
-    return (Promise<Void>) super.runAfterBoth(other, action);
+    return thenCombine(other, runAfterBothFunction(action));
   }
 
   @Override
   public Promise<Void> runAfterBothAsync(CompletionStage<?> other, Runnable action) {
-    return (Promise<Void>) super.runAfterBothAsync(other, action);
+    return thenCombineAsync(other, runAfterBothFunction(action));
   }
 
   @Override
   public Promise<Void> runAfterBothAsync(CompletionStage<?> other, Runnable action, Executor executor) {
-    return (Promise<Void>) super.runAfterBothAsync(other, action, executor);
+    return thenCombineAsync(other, runAfterBothFunction(action), executor);
+  }
+
+  private static <T, U> BiFunction<? super T, ? super U, Void> runAfterBothFunction(Runnable action) {
+    return (t, u) -> {
+      action.run();
+      return null;
+    };
   }
 
   @Override
   public <U> Promise<U> applyToEither(CompletionStage<? extends T> other, Function<? super T, U> fn) {
-    return (Promise<U>) super.applyToEither(other, fn);
+    return or(other).thenApply(fn);
   }
 
   @Override
   public <U> Promise<U> applyToEitherAsync(CompletionStage<? extends T> other, Function<? super T, U> fn) {
-    return (Promise<U>) super.applyToEitherAsync(other, fn);
+    return or(other).thenApplyAsync(fn);
   }
 
   @Override
   public <U> Promise<U> applyToEitherAsync(CompletionStage<? extends T> other, Function<? super T, U> fn, Executor executor) {
-    return (Promise<U>) super.applyToEitherAsync(other, fn, executor);
+    return or(other).thenApplyAsync(fn, executor);
+  }
+
+  public Promise<T> or(CompletionStage<? extends T> other) {
+    return Promise.thatCompletes(promise -> promise.completeWith(this).completeWith(other));
   }
 
   @Override
   public Promise<Void> acceptEither(CompletionStage<? extends T> other, Consumer<? super T> action) {
-    return (Promise<Void>) super.acceptEither(other, action);
+    return or(other).thenAccept(action);
   }
 
   @Override
   public Promise<Void> acceptEitherAsync(CompletionStage<? extends T> other, Consumer<? super T> action) {
-    return (Promise<Void>) super.acceptEitherAsync(other, action);
+    return or(other).thenAcceptAsync(action);
   }
 
   @Override
   public Promise<Void> acceptEitherAsync(CompletionStage<? extends T> other, Consumer<? super T> action, Executor executor) {
-    return (Promise<Void>) super.acceptEitherAsync(other, action, executor);
+    return or(other).thenAcceptAsync(action, executor);
   }
 
+  @SuppressWarnings("unchecked")
   @Override
   public Promise<Void> runAfterEither(CompletionStage<?> other, Runnable action) {
-    return (Promise<Void>) super.runAfterEither(other, action);
+    return or((CompletionStage<? extends T>) other).thenRun(action);
   }
 
+  @SuppressWarnings("unchecked")
   @Override
   public Promise<Void> runAfterEitherAsync(CompletionStage<?> other, Runnable action) {
-    return (Promise<Void>) super.runAfterEitherAsync(other, action);
+    return or((CompletionStage<? extends T>) other).thenRunAsync(action);
   }
 
+  @SuppressWarnings("unchecked")
   @Override
   public Promise<Void> runAfterEitherAsync(CompletionStage<?> other, Runnable action, Executor executor) {
-    return (Promise<Void>) super.runAfterEitherAsync(other, action, executor);
+    return or((CompletionStage<? extends T>) other).thenRunAsync(action, executor);
   }
 
+  //TODO: test error-handling context
   @Override
   public <U> Promise<U> thenCompose(Function<? super T, ? extends CompletionStage<U>> fn) {
-    return (Promise<U>) super.thenCompose(fn);
+    return toPromise(completion.thenCompose(Contextualized.liftAsyncFunction(fn)));
   }
 
   @Override
   public <U> Promise<U> thenComposeAsync(Function<? super T, ? extends CompletionStage<U>> fn) {
-    return (Promise<U>) super.thenComposeAsync(fn);
+    return toPromise(completion.thenComposeAsync(Contextualized.liftAsyncFunction(fn)));
   }
 
   @Override
   public <U> Promise<U> thenComposeAsync(Function<? super T, ? extends CompletionStage<U>> fn, Executor executor) {
-    return (Promise<U>) super.thenComposeAsync(fn, executor);
+    return toPromise(completion.thenComposeAsync(Contextualized.liftAsyncFunction(fn), executor));
   }
 
-  @SuppressWarnings("unchecked")
   @Override
   public <U> Promise<U> handle(BiFunction<? super T, Throwable, ? extends U> fn) {
-    return (Promise<U>) super.handle(fn);
+    return toPromise(completion.thenApply(Contextualized.liftHandlerFunction(fn)));
   }
 
-  @SuppressWarnings("unchecked")
   @Override
   public <U> Promise<U> handleAsync(BiFunction<? super T, Throwable, ? extends U> fn) {
-    return (Promise<U>) super.handleAsync(fn);
+    return toPromise(completion.thenApplyAsync(Contextualized.liftHandlerFunction(fn)));
   }
 
-  @SuppressWarnings("unchecked")
   @Override
   public <U> Promise<U> handleAsync(BiFunction<? super T, Throwable, ? extends U> fn, Executor executor) {
-    return (Promise<U>) super.handleAsync(fn, executor);
+    return toPromise(completion.thenApplyAsync(Contextualized.liftHandlerFunction(fn), executor));
   }
-
   @Override
   public Promise<T> whenComplete(BiConsumer<? super T, ? super Throwable> action) {
-    return withSideEffect(() -> super.whenComplete(action));
+    return toPromise(completion.whenComplete(whenCompleteFn(action)));
   }
 
   @Override
   public Promise<T> whenCompleteAsync(BiConsumer<? super T, ? super Throwable> action) {
-    return withSideEffect(() -> super.whenCompleteAsync(action));
+    return toPromise(completion.whenCompleteAsync(whenCompleteFn(action)));
   }
 
   @Override
   public Promise<T> whenCompleteAsync(BiConsumer<? super T, ? super Throwable> action, Executor executor) {
-    return withSideEffect(() -> super.whenCompleteAsync(action, executor));
+    return toPromise(completion.whenCompleteAsync(whenCompleteFn(action), executor));
+  }
+
+  private static <T> BiConsumer<Contextualized<T>, Throwable> whenCompleteFn(BiConsumer<? super T, ? super Throwable> action) {
+    return (ctx, ignored) -> ctx.accept(action);
   }
 
   @Override
@@ -474,39 +578,107 @@ public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Th
 
   @Override
   public Promise<T> exceptionally(Function<Throwable, ? extends T> fn) {
-    return withSideEffect(() -> super.exceptionally(fn));
+    return toPromise(completion.thenApply(Contextualized.liftRecoverFunction(fn)));
+  }
+
+  @Override
+  public Promise<T> exceptionallyAsync(Function<Throwable, ? extends T> fn) {
+    return toPromise(completion.thenApplyAsync(Contextualized.liftRecoverFunction(fn)));
+  }
+
+  @Override
+  public Promise<T> exceptionallyAsync(Function<Throwable, ? extends T> fn, Executor executor) {
+    return toPromise(completion.thenApplyAsync(Contextualized.liftRecoverFunction(fn), executor));
+  }
+
+  @Override
+  public Promise<T> exceptionallyCompose(Function<Throwable, ? extends CompletionStage<T>> fn) {
+    return toPromise(completion.thenCompose(Contextualized.liftAsyncRecoverFunction(fn)));
+  }
+
+  @Override
+  public Promise<T> exceptionallyComposeAsync(Function<Throwable, ? extends CompletionStage<T>> fn) {
+    return toPromise(completion.thenComposeAsync(Contextualized.liftAsyncRecoverFunction(fn)));
+  }
+
+  @Override
+  public Promise<T> exceptionallyComposeAsync(Function<Throwable, ? extends CompletionStage<T>> fn, Executor executor) {
+    return toPromise(completion.thenComposeAsync(Contextualized.liftAsyncRecoverFunction(fn), executor));
   }
 
   @Override
   public Promise<T> orTimeout(long timeout, TimeUnit unit) {
-    super.orTimeout(timeout, unit);
+    completion.orTimeout(timeout, unit);
     return this;
   }
 
-  @SuppressWarnings("unchecked")
   @Override
-  public <U> CompletableFuture<U> newIncompleteFuture() {
-    PromiseFactory<?> factory = INCOMPLETE_FUTURE_FACTORY.get();
-    return factory == null ? new Promise<>() : (CompletableFuture<U>) factory.newIncompleteFuture();
+  public void obtrudeException(Throwable ex) {
+    completion.obtrudeException(ex);
+    super.obtrudeException(ex);
   }
 
-  protected <U> CompletableFuture<U> baseApply(Function<? super T, ? extends U> fn) {
-    return super.thenApply(fn);
+  @Override
+  public void obtrudeValue(T value) {
+    completion.obtrudeValue(Contextualized.value(value));
+    super.obtrudeValue(value);
   }
 
-  protected <U> CompletableFuture<U> baseCompose(Function<? super T, ? extends CompletionStage<U>> fn) {
-    return super.thenCompose(fn);
+  protected static <O> OptionalPromise<O> asOptionalPromise(Supplier<CompletableFuture<Optional<O>>> chainMethod) {
+    return returningSubsequent(OptionalPromise.OPTIONAL_PROMISE_FACTORY, chainMethod);
   }
 
-  protected <O> OptionalPromise<O> asOptionalPromise(Supplier<CompletableFuture<Optional<O>>> superMethod) {
-    return chainWithFactory(superMethod, OptionalPromise::new);
+  protected static <O> ListPromise<O> asListPromise(Supplier<CompletableFuture<List<O>>> chainMethod) {
+    return returningSubsequent(ListPromise.LIST_PROMISE_FACTORY, chainMethod);
   }
 
-  protected <O> ListPromise<O> asListPromise(Supplier<CompletableFuture<List<O>>> chainMethod) {
-    return chainWithFactory(chainMethod, ListPromise::new);
+  private static <U> Promise<U> toPromise(CompletableFuture<Contextualized<U>> contextualizedFuture) {
+    PromiseFactory promiseFactory = INCOMPLETE_PROMISE.get();
+    if (promiseFactory == null) {
+      return new Promise<>(contextualizedFuture);
+    } else {
+      INCOMPLETE_PROMISE.remove();
+      return promiseFactory.newPromise(contextualizedFuture);
+    }
   }
 
-  protected interface PromiseFactory<P extends CompletableFuture<?>> {
-    P newIncompleteFuture();
+  @SuppressWarnings("rawtypes")
+  protected abstract static class PromiseFactory {
+    private final Object emptyValue;
+    private final Promise emptyInstance;
+    private final Promise canceledInstance;
+
+    protected PromiseFactory(Object emptyValue) {
+      this.emptyValue = emptyValue;
+      emptyInstance = newPromise(ContextualizedFuture.of(emptyValue, AsyncContext.EMPTY));
+      canceledInstance = newPromise(new ContextualizedFuture<>());
+      canceledInstance.cancel(false);
+    }
+
+    protected static <V> PromiseFactory of(V emptyValue, Function<CompletableFuture<Contextualized<V>>, ? extends Promise<V>> constructor) {
+      return new PromiseFactory(emptyValue) {
+        @SuppressWarnings("unchecked")
+        @Override
+        public <T> Promise<T> newPromise(CompletableFuture<Contextualized<T>> future) {
+          return (Promise<T>) constructor.apply(Reflect.blindCast(future));
+        }
+      };
+    }
+
+    public abstract <T> Promise<T> newPromise(CompletableFuture<Contextualized<T>> contextualizedFuture);
+
+    @SuppressWarnings("unchecked")
+    public <T, P extends Promise<T>> P emptyInstance() {
+      AsyncContext context = AsyncContext.current();
+      return (P) (context.isEmpty() ? emptyInstance : newPromise(ContextualizedFuture.of(emptyValue, context)));
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T, P extends Promise<T>> P canceledInstance() {
+      AsyncContext context = AsyncContext.current();
+      return (P) (context.isEmpty()
+              ? canceledInstance
+              : newPromise(ContextualizedFuture.completed(new Contextualized<>(Try.failure(new CancellationException()), context))));
+    }
   }
 }

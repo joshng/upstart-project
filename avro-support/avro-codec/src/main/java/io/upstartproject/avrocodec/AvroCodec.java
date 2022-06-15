@@ -16,6 +16,7 @@ import upstart.util.annotations.Identifier;
 import upstart.util.annotations.Tuple;
 import upstart.util.concurrent.CompletableFutures;
 import upstart.util.concurrent.Promise;
+import upstart.util.concurrent.ShutdownException;
 import upstart.util.exceptions.UncheckedIO;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaCompatibility;
@@ -548,7 +549,7 @@ public class AvroCodec extends AbstractService {
     schemaRepo.shutDown().whenComplete((__, e) -> {
 //      IllegalStateException stragglerException = new IllegalStateException("AvroCodec was shut down");
       knownPackersByFingerprint.asMap().forEach((fingerprint, promise) -> {
-        if (!promise.isDone()) promise.completeExceptionally(new IllegalStateException("AvroCodec was shut down while awaiting schema: " + fingerprint.hexValue()));
+        if (!promise.isDone()) promise.completeExceptionally(new ShutdownException("AvroCodec was shut down while awaiting schema: " + fingerprint.hexValue()));
       });
       if (e == null) {
         notifyStopped();

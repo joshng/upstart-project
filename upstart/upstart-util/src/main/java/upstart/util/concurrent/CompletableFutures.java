@@ -1,9 +1,6 @@
 package upstart.util.concurrent;
 
 import com.google.common.base.MoreObjects;
-import com.google.common.collect.ImmutableList;
-import com.google.common.util.concurrent.FluentFuture;
-import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 
 import java.lang.reflect.InvocationTargetException;
@@ -27,23 +24,18 @@ import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkState;
 
 public class CompletableFutures {
-  private static final Promise<?> NULL_FUTURE = Promise.completed((Object)null);
-  public static final CompletableFuture<Boolean> TRUE_FUTURE = CompletableFuture.completedFuture(Boolean.TRUE);
-  public static final CompletableFuture<Boolean> FALSE_FUTURE = CompletableFuture.completedFuture(Boolean.FALSE);
   private static final Promise CANCELLED_FUTURE = new Promise<Void>() {{
     cancel(true);
   }};
 
-  @SuppressWarnings("unchecked")
   public static <T> Promise<T> nullFuture() {
-    return (Promise<T>) NULL_FUTURE;
+    return Promise.nullPromise();
   }
 
   public static <T> OptionalPromise<T> emptyFuture() {
@@ -110,12 +102,16 @@ public class CompletableFutures {
     return Optional.empty();
   }
 
-  public static CompletableFuture<Void> allOf(Stream<? extends CompletableFuture<?>> stream) {
+  public static Promise<Void> allOf(Stream<? extends CompletableFuture<?>> stream) {
+    return Promise.allOf(stream);
+  }
+
+  public static CompletableFuture<Void> allWithoutContext(Stream<? extends CompletableFuture<?>> stream) {
     return CompletableFuture.allOf(toArray(stream));
   }
 
   public static CompletableFuture<Void> allOf(Collection<? extends CompletableFuture<?>> futures) {
-    return futures.isEmpty() ? nullFuture() : CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
+    return futures.isEmpty() ? nullFuture() : Promise.allOf(futures.toArray(new CompletableFuture[0]));
   }
 
   public static <B> CompletableFuture<Void> afterBoth(CompletionStage<?> a, CompletionStage<B> b) {

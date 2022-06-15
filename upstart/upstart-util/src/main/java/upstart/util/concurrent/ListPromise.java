@@ -3,11 +3,13 @@ package upstart.util.concurrent;
 import com.google.common.collect.Iterables;
 import upstart.util.Nothing;
 import upstart.util.collect.MoreStreams;
+import upstart.util.context.Contextualized;
 
 import javax.annotation.Nonnull;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -15,9 +17,17 @@ import java.util.stream.Collector;
 import java.util.stream.Stream;
 
 public class ListPromise<T> extends ExtendedPromise<List<T>, ListPromise<T>> {
-  @SuppressWarnings("unchecked")
+  static final PromiseFactory LIST_PROMISE_FACTORY = PromiseFactory.of(List.of(), ListPromise::new);
+
+  public ListPromise() {
+  }
+
+  protected ListPromise(CompletableFuture<Contextualized<List<T>>> completion) {
+    super(completion);
+  }
+
   public static <T> ListPromise<T> empty() {
-    return (ListPromise<T>) EmptyPromise.INSTANCE;
+    return LIST_PROMISE_FACTORY.emptyInstance();
   }
 
   public static <T> ListPromise<T> completed(@Nonnull List<T> list) {
@@ -28,8 +38,7 @@ public class ListPromise<T> extends ExtendedPromise<List<T>, ListPromise<T>> {
   public static <T> ListPromise<T> allAsList(CompletableFuture<? extends T>... array) {
     return array.length == 0
             ? empty()
-            : Promise.of(CompletableFuture.allOf(array))
-                    .thenApplyStream(ignored -> Stream.of(array).map(CompletableFuture::join));
+            : allOf(array).thenStreamToList(ignored -> Stream.of(array).map(CompletableFuture::join));
   }
 
   public static <T> ListPromise<T> allAsList(Stream<? extends CompletableFuture<? extends T>> futures) {
@@ -57,28 +66,31 @@ public class ListPromise<T> extends ExtendedPromise<List<T>, ListPromise<T>> {
   }
 
   public <O> ListPromise<O> thenMap(Function<? super T, O> mapper) {
-    return asListPromise(() -> baseApply(value -> value.stream().map(mapper).toList()));
+    return asListPromise(() -> thenApply(value -> value.stream().map(mapper).toList()));
   }
 
   public <O> ListPromise<O> thenFlatMap(Function<? super T, ? extends Stream<O>> mapper) {
-    return asListPromise(() -> baseApply(value -> value.stream().flatMap(mapper).toList()));
+    return asListPromise(() -> thenApply(value -> value.stream().flatMap(mapper).toList()));
   }
 
   public <O> ListPromise<O> thenMapCompose(Function<? super T, ? extends CompletableFuture<O>> mapper) {
-    return asListPromise(() -> baseCompose(value -> CompletableFutures.allAsList(value.stream().map(mapper))));
+    return asListPromise(() -> thenCompose(value -> CompletableFutures.allAsList(value.stream().map(mapper))));
   }
 
   public <O> ListPromise<O> thenFlatMapCompose(Function<? super T, ? extends CompletableFuture<List<O>>> mapper) {
-    return asListPromise(() -> baseCompose(value -> CompletableFutures.allAsList(value.stream().map(mapper))
+    return asListPromise(() -> thenCompose((Function<? super List<T>, ? extends CompletionStage<List<O>>>) value -> CompletableFutures.allAsList(
+                    value.stream().map(mapper))
             .thenApply(lists -> lists.stream().flatMap(List::stream).toList())));
   }
 
   public ListPromise<T> thenFilter(Predicate<? super T> filter) {
-    return asListPromise(() -> baseApply(value -> value.stream().filter(filter).toList()));
+    return asListPromise(() -> thenApply((Function<? super List<T>, ? extends List<T>>) value -> value.stream().filter(
+            filter).toList()));
   }
 
   public <V> ListPromise<V> thenFilter(Class<V> filterClass) {
-    return asListPromise(() -> baseApply(value -> value.stream().filter(filterClass::isInstance).map(filterClass::cast).toList()));
+    return asListPromise(() -> thenApply((Function<? super List<T>, ? extends List<V>>) value -> value.stream().filter(
+            filterClass::isInstance).map(filterClass::cast).toList()));
   }
 
   public <O> Promise<O> thenFoldLeft(O identity, BiFunction<? super O, ? super T, ? extends O> folder) {
@@ -86,8 +98,8 @@ public class ListPromise<T> extends ExtendedPromise<List<T>, ListPromise<T>> {
   }
 
   @Override
-  protected Promise.PromiseFactory<ListPromise<T>> factory() {
-    return ListPromise::new;
+  protected Promise.PromiseFactory factory() {
+    return LIST_PROMISE_FACTORY;
   }
 
   private static class EmptyPromise<T> extends ListPromise<T> {

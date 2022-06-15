@@ -1,4 +1,4 @@
-package upstart.test;
+package upstart.test.truth;
 
 import com.google.common.truth.Fact;
 import com.google.common.truth.FailureMetadata;

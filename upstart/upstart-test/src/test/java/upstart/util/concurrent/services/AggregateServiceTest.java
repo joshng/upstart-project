@@ -15,7 +15,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static com.google.common.truth.Truth.assertThat;
-import static upstart.test.CompletableFutureSubject.assertThat;
+import static upstart.test.truth.CompletableFutureSubject.assertThat;
 
 public class AggregateServiceTest {
   static {
@@ -66,7 +66,7 @@ public class AggregateServiceTest {
       assertThat(started).doneWithin(deadline).failedWith(StacklessTestException.class);
 
       try {
-        assertThat(aggregateService.getTerminationFuture()).doneWithin(deadline).completedWithResultThat().isEqualTo(
+        assertThat(aggregateService.getTerminationFuture()).doneWithin(deadline).havingResultThat().isEqualTo(
                 Service.State.FAILED);
       } catch (Throwable e) {
         System.out.println(aggregateService);

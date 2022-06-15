@@ -11,6 +11,7 @@ import upstart.util.collect.PairStream;
 import upstart.util.SelfType;
 import io.upstartproject.avrocodec.AvroCodec;
 import org.immutables.value.Value;
+import upstart.util.strings.RandomId;
 
 import java.time.Instant;
 import java.util.HashSet;
@@ -44,7 +45,7 @@ public abstract class PackagedEvent {
   @Value.Default
   @JsonProperty
   public String uniqueId() {
-    return EnvelopeCodec.newRandomId();
+    return RandomId.newRandomId();
   }
 
   @JsonProperty

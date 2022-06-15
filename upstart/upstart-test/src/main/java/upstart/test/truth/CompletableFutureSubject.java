@@ -1,5 +1,6 @@
-package upstart.test;
+package upstart.test.truth;
 
+import com.google.common.truth.CustomSubjectBuilder;
 import com.google.common.truth.Fact;
 import com.google.common.truth.FailureMetadata;
 import com.google.common.truth.Subject;
@@ -11,6 +12,7 @@ import upstart.util.concurrent.Deadline;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
 
 public class CompletableFutureSubject<T> extends Subject {
   private final CompletableFuture<T> actual;
@@ -50,12 +52,21 @@ public class CompletableFutureSubject<T> extends Subject {
     return actual.join();
   }
 
-  public Subject completedWithResultThat() {
+  public Subject havingResultThat() {
     isDone();
     return check("join()").that(actual.join());
   }
 
-  public <S extends Subject, F extends Factory<S, T>> S completedWithResultThat(F factory) {
+  public <S extends Subject> S completedWithResultSatisfying(Function<? super T, S> assertThat) {
+    isDone();
+    return check("join()").about((metadata, actual1) -> assertThat.apply((T) actual1)).that(actual.join());
+  }
+  public <S extends CustomSubjectBuilder> S completedWithResult(CustomSubjectBuilder.Factory<S> assertThat) {
+    isDone();
+    return check("join()").about(assertThat);
+  }
+
+  public <S extends Subject, F extends Factory<S, T>> S havingResultThat(F factory) {
     isDone();
     return check("join()").about(factory).that(actual.join());
   }
@@ -76,5 +87,4 @@ public class CompletableFutureSubject<T> extends Subject {
   public <E extends Throwable> E failedWith(Class<E> exceptionType) {
     return completedExceptionallyWith(exceptionType);
   }
-
 }

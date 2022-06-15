@@ -1,91 +1,82 @@
 package upstart.util.context;
 
-import com.google.common.collect.Lists;
 import upstart.util.concurrent.CompletableFutures;
-import upstart.util.exceptions.Exceptions;
 import upstart.util.exceptions.Fallible;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
 public interface TransientContext {
-  static CompositeTransientContext sequence(TransientContext first, TransientContext second, TransientContext... rest) {
-    return new CompositeTransientContext(Lists.asList(first, second, rest));
-  }
 
-  interface State {
-    void exit();
+
+  interface State extends AutoCloseable {
+    @Override
+    void close();
 
     State NULL = NullState.INSTANCE;
 
      enum NullState implements State {
       INSTANCE;
 
-      public void exit() {
+      public void close() {
         // nothing
       }
     }
   }
 
-  State enter();
+  State open();
 
   default TransientContext andThen(TransientContext innerContext) {
-    return innerContext != NullContext.INSTANCE ? sequence(this, innerContext) : this;
-  }
-
-  default void runInContext(Runnable r) {
-    try {
-      callInContext(Fallible.fallible(r::run));
-    } catch (Exception e) {
-      throw Exceptions.throwUnchecked(e);
-    }
+    return innerContext == NULL ? this : new CompositeTransientContext(this, innerContext);
   }
 
   default <T> T callInContext(Callable<T> callable) throws Exception {
-    State state = enter();
-    try {
+    try (State ignored = open()) {
       return callable.call();
-    } finally {
-      state.exit();
+    }
+  }
+
+  default void runInContext(Runnable r) {
+    try (State ignored = open()) {
+      r.run();
+    }
+  }
+
+  default <E extends Exception> void runOrThrowInContext(Fallible<E> r) throws E {
+    try (State ignored = open()) {
+      r.runOrThrow();
     }
   }
 
   default <T> T getInContext(Supplier<T> supplier) {
-    try {
-      return callInContext(supplier::get);
-    } catch (Exception e) {
-      throw Exceptions.throwUnchecked(e);
+    try (State ignored = open()) {
+      return supplier.get();
     }
   }
 
   default <I, O> O applyInContext(I input, Function<? super I, ? extends O> fn) {
-    try {
-      return callInContext(() -> fn.apply(input));
-    } catch (Exception e) {
-      throw Exceptions.throwUnchecked(e);
+    try (State ignored = open()) {
+      return fn.apply(input);
     }
   }
 
   default <I> void acceptInContext(I input, Consumer<? super I> consumer) {
-    try {
-      callInContext(() -> {
-        consumer.accept(input);
-        return null;
-      });
-    } catch (Exception e) {
-      throw Exceptions.throwUnchecked(e);
+    try (State ignored = open()) {
+      consumer.accept(input);
     }
   }
 
   default <T> CompletableFuture<T> callInContextAsync(Callable<? extends CompletionStage<T>> futureBlock) {
-    final State state = enter();
+    final State state = open();
     try {
       return CompletableFutures.callSafely(futureBlock)
-              .whenComplete((ignored, e) -> state.exit());
+              .whenComplete((ignored, e) -> state.close());
     } catch (Exception e) {
       return CompletableFutures.failedFuture(e);
     }
@@ -111,13 +102,22 @@ public interface TransientContext {
     return () -> callInContextAsync(futureBlock);
   }
 
+  default <T, U> BiConsumer<T, U> wrapBiConsumer(BiConsumer<T, U> biConsumer) {
+    return (t, u) -> runInContext(() -> biConsumer.accept(t, u));
+  }
+
+  default <A, B, C> BiFunction<A,B,C> wrapBiFunction(BiFunction<A, B, C> fn) {
+    return (a, b) -> getInContext(() -> fn.apply(a, b));
+  }
+
+
   TransientContext NULL = NullContext.INSTANCE;
 
   enum NullContext implements TransientContext {
     INSTANCE;
 
     @Override
-    public State enter() {
+    public State open() {
       return State.NULL;
     }
 
@@ -174,6 +174,16 @@ public interface TransientContext {
     @Override
     public <T> Consumer<T> wrapConsumer(Consumer<T> sink) {
       return sink;
+    }
+
+    @Override
+    public <T, U> BiConsumer<T, U> wrapBiConsumer(BiConsumer<T, U> biConsumer) {
+      return biConsumer;
+    }
+
+    @Override
+    public <A, B, C> BiFunction<A,B,C> wrapBiFunction(BiFunction<A, B, C> fn) {
+      return fn;
     }
   }
 }

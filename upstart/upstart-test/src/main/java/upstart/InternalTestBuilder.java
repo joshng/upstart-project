@@ -17,7 +17,7 @@ import upstart.config.UpstartConfigBinder;
 import upstart.config.UpstartConfigProvider;
 import upstart.config.UpstartEnvironment;
 import upstart.managedservices.ManagedServicesModule;
-import upstart.test.CompletableFutureSubject;
+import upstart.test.truth.CompletableFutureSubject;
 import upstart.test.UpstartExtension;
 import upstart.test.UpstartTestBuilder;
 import upstart.test.SingletonExtension;

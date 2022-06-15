@@ -1,6 +1,5 @@
 package upstart.test;
 
-import com.google.common.truth.Truth;
 import org.junit.jupiter.api.Test;
 import upstart.config.UpstartModule;
 import upstart.util.concurrent.Promise;
@@ -14,7 +13,7 @@ import java.time.Instant;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.google.common.truth.Truth.assertThat;
-import static upstart.test.CompletableFutureSubject.assertThat;
+import static upstart.test.truth.CompletableFutureSubject.assertThat;
 
 @UpstartServiceTest
 @FakeTimeTest(interceptSchedules = FakeTimeExtensionTest.FakeScheduledService.class)
@@ -31,7 +30,7 @@ class FakeTimeExtensionTest extends UpstartModule {
     assertThat(service.timestamp).isNotDone();
 
     fakeTime.advance(Duration.ofDays(2));
-    assertThat(service.timestamp).completedWithResultThat().isEqualTo(Instant.EPOCH);
+    assertThat(service.timestamp).havingResultThat().isEqualTo(Instant.EPOCH);
     assertThat(service.counter.get()).isEqualTo(3);
 
   }

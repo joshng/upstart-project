@@ -27,7 +27,7 @@ import java.util.concurrent.TimeoutException;
 import static com.google.common.truth.Truth.assertThat;
 import static com.google.common.truth.Truth.assertWithMessage;
 import static org.awaitility.Awaitility.await;
-import static upstart.test.CompletableFutureSubject.assertThat;
+import static upstart.test.truth.CompletableFutureSubject.assertThat;
 
 class ManagedServiceGraphTest {
   static {
@@ -136,7 +136,7 @@ class ManagedServiceGraphTest {
     assertThat(app.getStoppedFuture()).doneWithin(deadline)
             .completedWithExceptionThat().isSameInstanceAs(failureException);
     assertThat(failingService.getTerminationFuture()).doneWithin(deadline)
-            .completedWithResultThat().isEqualTo(Service.State.FAILED);
+            .havingResultThat().isEqualTo(Service.State.FAILED);
     assertThat(app.state()).isEqualTo(Service.State.FAILED);
     assertThat(app.getInstance(ProviderService.class).state()).isEqualTo(Service.State.TERMINATED);
   }

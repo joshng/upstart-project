@@ -1,20 +1,20 @@
 package upstart.util.context;
 
 import com.google.common.collect.ImmutableList;
-import upstart.util.exceptions.MultiException;
 
-import java.util.ArrayDeque;
-import java.util.Deque;
 import java.util.concurrent.Callable;
 
 public class CompositeTransientContext implements TransientContext {
-  private final ImmutableList<? extends TransientContext> contexts;
+  private final TransientContext outer;
+  private final TransientContext inner;
 
-  public CompositeTransientContext(Iterable<? extends TransientContext> contexts) {
-    this.contexts = ImmutableList.copyOf(contexts);
+  public CompositeTransientContext(TransientContext outer, TransientContext inner) {
+    this.outer = outer;
+    this.inner = inner;
   }
 
-  public CompositeState enter() {
+  public CompositeState open() {
+
     return new CompositeState();
   }
 
@@ -22,41 +22,36 @@ public class CompositeTransientContext implements TransientContext {
     return wrapCallable(callable).call();
   }
 
-  public <T> Callable<T> wrapCallable(Callable<T> callable) {
-    Callable<T> wrapped = callable;
-    for (TransientContext context : contexts) {
-      wrapped = context.wrapCallable(wrapped);
-    }
-    return wrapped;
-  }
-
   private class CompositeState implements State {
-    private final Deque<State> states = new ArrayDeque<>(contexts.size());
+    private final State outerState;
+    private final State innerState;
 
     CompositeState() {
+      outerState = outer.open();
       try {
-        for (TransientContext context : contexts) {
-          states.push(context.enter());
-        }
-      } catch (RuntimeException e) {
-        exit(MultiException.Empty.with(e));
+        innerState = inner.open();
+      } catch (Throwable e) {
+        closeOuterState(e);
+        throw e;
       }
     }
 
-    public void exit() {
-      exit(MultiException.Empty);
+    public void close() {
+      try {
+        innerState.close();
+      } catch (Throwable e) {
+        closeOuterState(e);
+        throw e;
+      }
+      outerState.close();
     }
 
-    private void exit(MultiException exception) {
-      while (!states.isEmpty()) {
-        try {
-          states.pop().exit();
-        } catch (RuntimeException e) {
-          exception = exception.with(e);
-        }
+    private void closeOuterState(Throwable innerException) {
+      try {
+        outerState.close();
+      } catch (Exception ex) {
+        innerException.addSuppressed(ex);
       }
-
-      exception.throwRuntimeIfAny();
     }
   }
 }

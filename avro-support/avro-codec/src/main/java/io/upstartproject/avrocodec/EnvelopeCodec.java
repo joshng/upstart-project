@@ -3,8 +3,6 @@ package io.upstartproject.avrocodec;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Streams;
-import com.google.common.io.BaseEncoding;
-import com.google.common.util.concurrent.Service;
 import io.upstartproject.avro.EventTimestampResolution;
 import io.upstartproject.avro.MessageEnvelope;
 import io.upstartproject.avro.MessageEnvelopePayload;
@@ -15,19 +13,18 @@ import org.apache.avro.file.DataFileReader;
 import org.apache.avro.file.DataFileStream;
 import org.apache.avro.file.SeekableInput;
 import org.apache.avro.specific.SpecificDatumReader;
+import upstart.util.strings.RandomId;
 
 import java.io.ByteArrayInputStream;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
@@ -37,8 +34,6 @@ import java.util.stream.Stream;
  */
 public class EnvelopeCodec {
 
-  private static final int UUID_BYTE_LENGTH = 2 * Long.BYTES;
-  private static final BaseEncoding RANDOM_ID_ENCODING = BaseEncoding.base64Url().omitPadding();
   private final AvroCodec avroCodec;
   private final SpecificRecordUnpacker<MessageEnvelopePayload> payloadUnpacker;
   private final SpecificRecordUnpacker<MessageEnvelope> envelopeUnpacker;
@@ -84,7 +79,7 @@ public class EnvelopeCodec {
     return new MessageEnvelope(
             record,
             annotations,
-            uniqueId.orElseGet(EnvelopeCodec::newRandomId),
+            uniqueId.orElseGet(RandomId::newRandomId),
             eventTimestamp,
             timestampResolution,
             metadata.application(),
@@ -185,25 +180,12 @@ public class EnvelopeCodec {
             .thenCompose(unpackable -> avroCodec.toUnpackable(payloadUnpacker.unpack(unpackable).getMessage()));
   }
 
-  public static String newRandomId() {
-    return RANDOM_ID_ENCODING.encode(toBytes(UUID.randomUUID()));
-  }
-
   public PackableRecord<MessageEnvelope> makePackable(MessageEnvelope envelope) {
     return envelopePacker().makePackable(envelope);
   }
 
   public byte[] getSerializedBytes(MessageEnvelope envelope) {
     return makePackable(envelope).serialize();
-  }
-
-  private static byte[] toBytes(UUID identifier) {
-    return putBytes(ByteBuffer.allocate(UUID_BYTE_LENGTH), identifier).array();
-  }
-
-  private static ByteBuffer putBytes(ByteBuffer buf, UUID identifier) {
-    return buf.putLong(identifier.getMostSignificantBits())
-            .putLong(identifier.getLeastSignificantBits());
   }
 
   private SpecificRecordPacker<MessageEnvelope> envelopePacker() {

@@ -20,17 +20,16 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import upstart.config.UpstartModule;
 import upstart.log4j.test.SuppressLogs;
-import upstart.metrics.TaggedMetricRegistry;
 import upstart.managedservices.LifecycleCoordinator;
 import upstart.managedservices.ManagedServiceGraph;
-import upstart.util.concurrent.services.NotifyingService;
-import upstart.util.concurrent.services.ServiceDependencyChecker;
 import upstart.managedservices.ServiceLifecycle;
+import upstart.metrics.TaggedMetricRegistry;
 import upstart.test.StacklessTestException;
 import upstart.test.UpstartTest;
-import upstart.util.LogLevel;
 import upstart.util.concurrent.CompletableFutures;
 import upstart.util.concurrent.Deadline;
+import upstart.util.concurrent.services.NotifyingService;
+import upstart.util.concurrent.services.ServiceDependencyChecker;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -43,11 +42,10 @@ import java.util.stream.Stream;
 
 import static com.google.common.truth.Truth.assertThat;
 import static com.google.common.truth.Truth.assertWithMessage;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static upstart.test.CompletableFutureSubject.assertThat;
+import static upstart.test.truth.CompletableFutureSubject.assertThat;
 
 //@ShowServiceGraph
 @SuppressLogs({LifecycleCoordinator.class, TaggedMetricRegistry.class})

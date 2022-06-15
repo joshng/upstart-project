@@ -93,7 +93,7 @@ public class ThreadPauseHelper {
         } finally {
           if (resumeAfter) resume();
         }
-      });
+      }).orTimeout(deadline.remaining().toMillis(), TimeUnit.MILLISECONDS);
     }
 
     public void resume() {
@@ -114,7 +114,9 @@ public class ThreadPauseHelper {
     private boolean onPaused(Duration initiationTimeout) throws InterruptedException, TimeoutException {
       int count = countdown.decrementAndGet();
       if (count < 0) return false;
-      if (count == 0) pausedPromise.complete(null);
+      if (count == 0) {
+        pausedPromise.complete(null);
+      }
       try {
         resumedPromise.get(initiationTimeout.toNanos(), TimeUnit.NANOSECONDS);
       } catch (InterruptedException | TimeoutException e) {

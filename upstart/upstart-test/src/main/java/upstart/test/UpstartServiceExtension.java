@@ -6,6 +6,7 @@ import upstart.InternalTestBuilder;
 import upstart.UpstartApplication;
 import upstart.managedservices.ManagedServiceGraph;
 import upstart.managedservices.ManagedServicesModule;
+import upstart.test.truth.CompletableFutureSubject;
 import upstart.util.concurrent.Deadline;
 import upstart.util.reflect.MultiMethodInvoker;
 import upstart.util.reflect.Reflect;
