@@ -28,6 +28,7 @@ public abstract class BaseAwsAsyncClientService<
 
   @Override
   protected void startUp() throws Exception {
+    System.setProperty("com.amazonaws.sdk.enableDefaultMetrics", "cloudwatchRegion=" + clientFactory.getDefaultConfig().region());
     client = clientFactory.configureAsyncClientBuilder(asyncClientBuilder(), threadPool).build();
   }
 

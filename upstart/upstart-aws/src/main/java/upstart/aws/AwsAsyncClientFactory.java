@@ -34,7 +34,7 @@ public class AwsAsyncClientFactory {
   ) {
     return clientFactory.configureClientBuilder(builder, config)
             .httpClient(httpClientService)
-            .overrideConfiguration(b -> b.retryPolicy(RetryPolicy.defaultRetryPolicy()))
+            .overrideConfiguration(b -> b.retryPolicy(RetryPolicy.defaultRetryPolicy().copy(rp -> rp.numRetries(config.maxRetries()))))
             .asyncConfiguration(b -> b.advancedOption(SdkAdvancedAsyncClientOption.FUTURE_COMPLETION_EXECUTOR, completionExecutor));
   }
 }

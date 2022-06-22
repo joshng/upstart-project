@@ -48,6 +48,8 @@ public class AwsModule extends UpstartModule {
     AwsConfig withEndpoint(URI endpoint);
     AwsConfig withRegion(String region);
 
+    int maxRetries();
+
     default AwsConfig withRegion(Region region) {
       return withRegion(region.id());
     }
