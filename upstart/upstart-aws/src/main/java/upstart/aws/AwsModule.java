@@ -4,14 +4,13 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.common.base.Throwables;
 import com.google.inject.Key;
 import com.google.inject.PrivateModule;
-import upstart.config.annotations.ConfigPath;
-import upstart.config.UpstartModule;
 import org.immutables.value.Value;
 import software.amazon.awssdk.auth.credentials.AnonymousCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.awscore.client.builder.AwsClientBuilder;
 import software.amazon.awssdk.regions.Region;
+import upstart.config.UpstartModule;
 import upstart.config.annotations.DeserializedImmutable;
 
 import java.net.URI;

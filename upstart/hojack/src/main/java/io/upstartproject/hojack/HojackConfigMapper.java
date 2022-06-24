@@ -117,7 +117,7 @@ public class HojackConfigMapper implements ConfigMapper {
           String className = entry.getKey().replace("\"", "");
           if (register) {
             try {
-              defaultModules.add(Class.forName(className).asSubclass(Module.class).newInstance());
+              defaultModules.add(Class.forName(className).asSubclass(Module.class).getDeclaredConstructor().newInstance());
             } catch (Exception e) {
               throw new RuntimeException("Unable to register requested hojack.registeredModule: " + className, e);
             }
