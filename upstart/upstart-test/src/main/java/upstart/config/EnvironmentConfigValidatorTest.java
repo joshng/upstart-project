@@ -105,20 +105,24 @@ public abstract class EnvironmentConfigValidatorTest extends UpstartModule {
 
     return PROD_LIKE_ENVIRONMENTS.get().stream()
             .map(env -> DynamicTest.dynamicTest(env.name(), () -> {
-              EnvironmentConfigBuilder envConfigurator = configBuilder.copy().setEnvironmentName(env.name());
+              try {
+                EnvironmentConfigBuilder envConfigurator = configBuilder.copy().setEnvironmentName(env.name());
 
-              applyEnvironmentValues(envConfigurator);
+                applyEnvironmentValues(envConfigurator);
 
-              Config environmentNameConfig = ConfigValueFactory.fromAnyRef(env.name(), getClass().getSimpleName())
-                      .atPath(UPSTART_ENVIRONMENT);
-              Config overrideConfig = environmentNameConfig.withFallback(envConfigurator.getOverrideConfig());
+                Config environmentNameConfig = ConfigValueFactory.fromAnyRef(env.name(), getClass().getSimpleName())
+                        .atPath(UPSTART_ENVIRONMENT);
+                Config overrideConfig = environmentNameConfig.withFallback(envConfigurator.getOverrideConfig());
 
-              HojackConfigProvider overriddenConfig = env.configProvider().withOverrideConfig(overrideConfig);
+                HojackConfigProvider overriddenConfig = env.configProvider().withOverrideConfig(overrideConfig);
 
-              // configs are deemed valid if we can build an application for this environment
-              UpstartService.builder(overriddenConfig)
-                      .installModule(this)
-                      .build();
+                // configs are deemed valid if we can build an application for this environment
+                UpstartService.builder(overriddenConfig)
+                        .installModule(this)
+                        .build();
+              } catch (Exception e) {
+                throw new AssertionError("Config validation failed for for environment '" + env.name() + "':\n" + e.getMessage(), e);
+              }
             }));
   }
 
