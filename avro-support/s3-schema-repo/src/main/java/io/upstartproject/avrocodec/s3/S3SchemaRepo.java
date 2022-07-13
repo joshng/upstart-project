@@ -51,11 +51,10 @@ public class S3SchemaRepo extends BaseSchemaRepo {
     return CompletableFutures.sequence(supplyOnDedicatedThread("STARTING", () -> {
       client = clientSupplier.get();
       return client.getBucketVersioning(b -> b.bucket(config.repoBucket()))
-              .thenCompose(versioningResponse -> {
+              .thenAccept(versioningResponse -> {
                 BucketVersioningStatus status = versioningResponse.status();
                 checkState(status == BucketVersioningStatus.ENABLED,
                         "S3SchemaRepo requires S3 object-versioning, but bucket %s does not have versioning enabled (status=%s)", config.repoBucket(), status);
-                return refresh();
               });
     }));
   }

@@ -7,6 +7,7 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import upstart.config.UpstartEnvironment;
 import upstart.config.annotations.ConfigPath;
+import upstart.test.UpstartTestBuilder;
 import upstart.util.concurrent.services.IdleService;
 import upstart.test.AvailablePortAllocator;
 import upstart.test.systemStreams.SystemOutCaptor;
@@ -64,6 +65,10 @@ public class DynamoDbFixture extends IdleService {
       throw e;
     }
     endpoint = "http://localhost:" + port;
+  }
+
+  public void configureLocalEndpoint(UpstartTestBuilder testBuilder) {
+    testBuilder.overrideConfig("upstart.aws.dynamodb.endpoint", endpoint);
   }
 
   public DynamoDbClient client() {

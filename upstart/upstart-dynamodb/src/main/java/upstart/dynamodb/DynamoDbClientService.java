@@ -8,7 +8,6 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedAsyncClient;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient;
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClientBuilder;
-import software.amazon.awssdk.services.dynamodb.model.DescribeTableRequest;
 import software.amazon.awssdk.services.dynamodb.model.DescribeTableResponse;
 import software.amazon.awssdk.services.dynamodb.model.DynamoDbException;
 import software.amazon.awssdk.services.dynamodb.model.ResourceInUseException;
@@ -17,7 +16,7 @@ import software.amazon.awssdk.services.dynamodb.model.TableStatus;
 import upstart.aws.Aws;
 import upstart.aws.AwsAsyncClientFactory;
 import upstart.aws.BaseAwsAsyncClientService;
-import upstart.util.concurrent.services.IdleService;
+import upstart.managedservices.ServiceLifecycle;
 import upstart.util.concurrent.services.ThreadPoolService;
 import upstart.util.concurrent.BlockingBoundedActor;
 import upstart.util.concurrent.CompletableFutures;
@@ -35,12 +34,14 @@ import java.util.concurrent.TimeUnit;
 import static com.google.common.base.Preconditions.checkState;
 
 @Singleton
+@ServiceLifecycle(ServiceLifecycle.Phase.Infrastructure)
 public class DynamoDbClientService extends BaseAwsAsyncClientService<DynamoDbAsyncClient, DynamoDbAsyncClientBuilder> {
   private static final Logger LOG = LoggerFactory.getLogger(DynamoDbClientService.class);
+  public static final int MAX_ITEMS_PER_DYNAMODB_BATCH = 25;
   private final Executor directExecutor = MoreExecutors.directExecutor();
   private final DynamoDbConfig config;
   private final BlockingBoundedActor tableCreationActor = new BlockingBoundedActor(10);
-  private DynamoDbEnhancedAsyncClient db;
+  private DynamoDbEnhancedAsyncClient enhancedClient;
 
 
   @Inject
@@ -61,12 +62,12 @@ public class DynamoDbClientService extends BaseAwsAsyncClientService<DynamoDbAsy
   @Override
   protected void startUp() throws Exception {
     super.startUp();
-    db = DynamoDbEnhancedAsyncClient.builder().dynamoDbClient(client()).build();
+    enhancedClient = DynamoDbEnhancedAsyncClient.builder().dynamoDbClient(client()).build();
   }
 
   public <T> CompletableFuture<DynamoDbAsyncTable<T>> ensureTableCreated(String tableName, TableSchema<T> tableSchema) {
     return tableCreationActor.requestAsync(() -> {
-      DynamoDbAsyncTable<T> table = db.table(tableName, tableSchema);
+      DynamoDbAsyncTable<T> table = enhancedClient.table(tableName, tableSchema);
       // TODO: dynamo doesn't support concurrent DDL operations, but what exception is thrown if a different table is creating?
       LOG.debug("Initiating table creation: {}", tableName);
       return CompletableFutures.recover(
@@ -88,6 +89,10 @@ public class DynamoDbClientService extends BaseAwsAsyncClientService<DynamoDbAsy
 
   public CompletableFuture<DescribeTableResponse> describeTable(String tableName) {
     return client().describeTable(b -> b.tableName(tableName));
+  }
+
+  public DynamoDbEnhancedAsyncClient enhancedClient() {
+    return enhancedClient;
   }
 
   private CompletableFuture<?> pollTableStatus(String tableName, Executor pollDelayExecutor) {
@@ -112,6 +117,7 @@ public class DynamoDbClientService extends BaseAwsAsyncClientService<DynamoDbAsy
   }
 
   @Singleton
+  @ServiceLifecycle(ServiceLifecycle.Phase.Infrastructure)
   static class DynamoThreadPoolService extends ThreadPoolService {
 
     protected DynamoThreadPoolService() {

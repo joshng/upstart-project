@@ -7,6 +7,7 @@ import io.upstartproject.avrocodec.RecordConverterApi;
 import io.upstartproject.avrocodec.SpecificRecordConverter;
 import io.upstartproject.avrocodec.UnpackableRecord;
 import org.apache.avro.specific.SpecificRecordBase;
+import upstart.managedservices.ServiceTransformer;
 
 import javax.inject.Inject;
 import java.util.concurrent.CompletableFuture;

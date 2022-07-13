@@ -120,6 +120,11 @@
       </dependency>
       <dependency>
         <groupId>io.upstartproject</groupId>
+        <artifactId>dynamodb-schema-repo</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.upstartproject</groupId>
         <artifactId>upstart-jdbi</artifactId>
         <version>${project.version}</version>
       </dependency>
@@ -259,6 +264,12 @@
         <artifactId>failsafe</artifactId>
         <version>2.3.2</version>
       </dependency>
+      <dependency>
+        <groupId>dev.failsafe</groupId>
+        <artifactId>failsafe</artifactId>
+        <version>3.2.1</version>
+      </dependency>
+
 
       <dependency>
         <groupId>net.bytebuddy</groupId>

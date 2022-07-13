@@ -5,6 +5,7 @@ import upstart.util.collect.Optionals;
 import upstart.util.exceptions.FallibleSupplier;
 import upstart.util.exceptions.ThrowingConsumer;
 import upstart.util.exceptions.ThrowingRunnable;
+import upstart.util.functions.TriFunction;
 
 import java.util.List;
 import java.util.Optional;
@@ -194,8 +195,16 @@ public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Th
     return thenApply(ignored -> supplier.get());
   }
 
+  public <U, V, W> Promise<W> thenCombine2(CompletableFuture<U> other1, CompletableFuture<V> other2, TriFunction<? super T, ? super U, ? super V, W> combiner, Function<V, W> mapper) {
+    return Promise.of(allOf(this, other1, other2)).thenApply(t -> combiner.apply(join(), other1.join(), other2.join()));
+  }
+
   public <E extends Throwable> Promise<T> recover(Class<E> exceptionType, Function<? super E, ? extends T> recovery) {
     return (Promise<T>) CompletableFutures.recover(this, exceptionType, recovery);
+  }
+
+  public <E extends Throwable> Promise<T> recoverCompose(Class<E> exceptionType, Function<? super E, ? extends CompletionStage<? extends T>> recovery) {
+    return CompletableFutures.recoverCompose(this, exceptionType, recovery);
   }
 
   public <U> Promise<U> thenGetAsync(FallibleSupplier<U, ?> supplier, Executor executor) {

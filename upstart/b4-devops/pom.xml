@@ -46,7 +46,7 @@
       </exclusions>
     </dependency>
     <dependency>
-      <groupId>net.jodah</groupId>
+      <groupId>dev.failsafe</groupId>
       <artifactId>failsafe</artifactId>
     </dependency>
   </dependencies>

@@ -1,11 +1,15 @@
 package upstart.javalin.annotations;
 
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.google.common.base.Defaults;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ObjectArrays;
 import com.google.common.primitives.Primitives;
 import io.javalin.Javalin;
+import io.javalin.http.BadRequestResponse;
 import io.javalin.http.ContentType;
 import io.javalin.http.Context;
 import io.javalin.http.Handler;
@@ -20,15 +24,19 @@ import io.javalin.plugin.openapi.dsl.OpenApiUpdater;
 import io.javalin.plugin.openapi.dsl.OpenApiUpdaterKt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import upstart.javalin.UnprocessableEntityResponse;
 import upstart.proxy.Proxies;
-import upstart.util.reflect.Modifiers;
 import upstart.util.collect.PairStream;
-import upstart.util.reflect.Reflect;
 import upstart.util.concurrent.LazyReference;
 import upstart.util.concurrent.ThreadLocalReference;
+import upstart.util.exceptions.Exceptions;
+import upstart.util.reflect.Modifiers;
+import upstart.util.reflect.Reflect;
 import upstart.util.strings.MoreStrings;
 
+import javax.annotation.Nullable;
 import java.io.InputStream;
+import java.lang.reflect.Executable;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -48,6 +56,7 @@ import static com.google.common.base.Preconditions.checkState;
 
 public class AnnotatedEndpointHandler<T> {
   private static final Logger LOG = LoggerFactory.getLogger(AnnotatedEndpointHandler.class);
+  public static final String OBJECT_MAPPER_ATTRIBUTE = "ObjectMapper";
   private final Map<Method, Endpoint> endpoints;
   private final Class<T> type;
   private final LazyReference<RouteProxyInterceptor> routeProxy = LazyReference.from(RouteProxyInterceptor::new);
@@ -123,7 +132,8 @@ public class AnnotatedEndpointHandler<T> {
       OpenApiContent[] openApiContent;
       if (returnType == void.class) {
         openApiContent = openApiResponse.content();
-        responder = ((c, o) -> { });
+        responder = ((c, o) -> {
+        });
       } else if (InputStream.class.isAssignableFrom(returnType)) {
         // TODO: is this correct?
         openApiContent = openApiContent(byte[].class, ContentType.OCTET_STREAM, openApiResponse);
@@ -170,7 +180,13 @@ public class AnnotatedEndpointHandler<T> {
     }
 
     public void register(Javalin javalin, Object target) {
-      LOG.info("Registered route {}[{}] => {}.{}(...)", handlerType, path, method.getDeclaringClass().getSimpleName(), method.getName());
+      LOG.info(
+              "Registered route {}[{}] => {}.{}(...)",
+              handlerType,
+              path,
+              method.getDeclaringClass().getSimpleName(),
+              method.getName()
+      );
       Handler handler = OpenApiBuilder.documented(documentation, (Handler) ctx -> invoke(target, ctx));
       javalin.addHandler(handlerType, path, handler, securityConstraints.roleArray());
     }
@@ -205,9 +221,9 @@ public class AnnotatedEndpointHandler<T> {
       if (paramType == Context.class) {
         return ParamResolver.nonUrlParam(parameter, Optional.empty(), ctx -> ctx);
       } else if (parameter.isAnnotationPresent(PathParam.class)) {
-        return pathParamResolver(parameter);
+        return UrlParamStrategy.Path.resolver(parameter);
       } else if (parameter.isAnnotationPresent(QueryParam.class)) {
-        return queryParamResolver(parameter);
+        return UrlParamStrategy.Query.resolver(parameter);
       } else if (parameter.isAnnotationPresent(Session.class)) {
         String name = paramName(parameter.getAnnotation(Session.class).value(), parameter);
         return ParamResolver.nonUrlParam(parameter, Optional.empty(), ctx -> ctx.sessionAttribute(name));
@@ -221,41 +237,41 @@ public class AnnotatedEndpointHandler<T> {
         } else if (paramType == InputStream.class) {
           return ParamResolver.nonUrlParam(parameter, Optional.of(byte[].class), Context::bodyAsInputStream);
         } else {
-          return ParamResolver.nonUrlParam(parameter, Optional.of(paramType), ctx -> ctx.bodyAsClass(paramType));
+          return ParamResolver.nonUrlParam(parameter, Optional.of(paramType), ctx -> {
+            try {
+              return objectMapper(ctx).readValue(ctx.bodyAsInputStream(), paramType);
+            } catch (Exception e) {
+              if (LOG.isDebugEnabled()) {
+                Executable exe = parameter.getDeclaringExecutable();
+                String method = exe.getDeclaringClass().getName() + "." + exe.getName();
+                LOG.debug("Failed to parse body for parameter {}({})", method, parameter, e);
+              }
+
+              if (e instanceof JsonMappingException jme) {
+                throw new UnprocessableEntityResponse(jme);
+              } else {
+                throw Exceptions.throwUnchecked(e);
+              }
+            }
+          });
         }
       }
     }
 
-    private ParamResolver pathParamResolver(Parameter parameter) {
-      Class<?> paramType = parameter.getType();
-      String name = paramName(parameter.getAnnotation(PathParam.class).value(), parameter);
-      return ParamResolver.of(
-              name,
-              ParamResolver.UrlParamStrategy.Path,
-              Optional.of(paramType),
-              paramType == String.class
-                      ? ctx -> ctx.pathParam(name)
-                      : ctx -> ctx.pathParamAsClass(name, paramType).get()
-      );
+    private static ObjectMapper objectMapper(Context ctx) {
+      return ctx.appAttribute(OBJECT_MAPPER_ATTRIBUTE);
     }
 
-    private ParamResolver queryParamResolver(Parameter parameter) {
-      Class<?> paramType = parameter.getType();
-      String name = paramName(parameter.getAnnotation(QueryParam.class).value(), parameter);
-      return ParamResolver.of(
-              name,
-              ParamResolver.UrlParamStrategy.Query,
-              Optional.of(paramType),
-              paramType == String.class
-                      ? ctx -> ctx.queryParam(name)
-                      : ctx -> ctx.queryParamAsClass(name, paramType).get()
-      );
-    }
-
-    private String paramName(String annotatedName, Parameter param) {
+    private static String paramName(String annotatedName, Parameter param) {
       if (annotatedName.isEmpty()) {
         String name = param.getName();
-        checkState(param.isNamePresent(), "Parameter-name unavailable for %s parameter %s (method %s)", param.getType().getSimpleName(), name, method);
+        checkState(
+                param.isNamePresent(),
+                "Parameter-name unavailable for %s parameter %s (method %s)",
+                param.getType().getSimpleName(),
+                name,
+                param.getDeclaringExecutable().getName()
+        );
         return MoreStrings.toLowerSnakeCase(name);
       } else {
         return annotatedName;
@@ -263,33 +279,35 @@ public class AnnotatedEndpointHandler<T> {
     }
 
     private static class ParamResolver implements OpenApiUpdater<OpenApiDocumentation> {
-      private static final OpenApiUpdater<OpenApiDocumentation> NO_DOCUMENTATION = ignored -> {};
+      private static final OpenApiUpdater<OpenApiDocumentation> NO_DOCUMENTATION = ignored -> {
+      };
 
       private final String paramName;
-      private final UrlParamStrategy paramStrategy;
+      private final RouteParamFormatter paramFormatter;
       private final OpenApiUpdater<OpenApiDocumentation> documentation;
-      private final Function<Context, Object> resolver;
+      private final Function<Context, ?> resolver;
 
       ParamResolver(
               String paramName,
-              UrlParamStrategy paramStrategy,
-              Optional<Class<?>> documentedType,
-              Function<Context, Object> resolver
+              RouteParamFormatter paramFormatter,
+              Function<Context, ?> resolver,
+              OpenApiUpdater<OpenApiDocumentation> documentation
       ) {
         this.paramName = paramName;
-        this.paramStrategy = paramStrategy;
-        this.documentation = documentedType
-                .map(type -> paramStrategy.apiUpdater(paramName, type))
-                .orElse(NO_DOCUMENTATION);
+        this.paramFormatter = paramFormatter;
+        this.documentation = documentation;
         this.resolver = resolver;
       }
 
-      public static ParamResolver nonUrlParam(Parameter parameter, Optional<Class<?>> documentedType, Function<Context, Object> resolver) {
-        return of(parameter.getName(), UrlParamStrategy.None, documentedType, resolver);
-      }
-
-      public static ParamResolver of(String name, UrlParamStrategy type, Optional<Class<?>> documentedType, Function<Context, Object> resolver) {
-        return new ParamResolver(name, type, documentedType, resolver);
+      public static ParamResolver nonUrlParam(
+              Parameter parameter,
+              Optional<Class<?>> bodyType,
+              Function<Context, Object> resolver
+      ) {
+        OpenApiUpdater<OpenApiDocumentation> documentation = bodyType
+                .map(type -> (OpenApiUpdater<OpenApiDocumentation>) doc -> doc.body(type, ContentType.JSON))
+                .orElse(NO_DOCUMENTATION);
+        return new ParamResolver(parameter.getName(), RouteParamFormatter.NonUrl, resolver, documentation);
       }
 
       public Object resolve(Context context) {
@@ -297,38 +315,82 @@ public class AnnotatedEndpointHandler<T> {
       }
 
       public void applyToUrl(UrlBuilder urlBuilder, Object value) {
-        paramStrategy.applyToUrl(urlBuilder, paramName, value);
+        paramFormatter.applyToUrl(urlBuilder, paramName, value);
       }
 
       @Override
       public void applyUpdates(OpenApiDocumentation documentation) {
         this.documentation.applyUpdates(documentation);
       }
+    }
 
-      public enum UrlParamStrategy {
-        Path,
-        Query,
-        None;
+    private interface RouteParamFormatter {
+      RouteParamFormatter NonUrl = (urlBuilder, paramName, value) -> checkArgument(
+              value == null || value.equals(Defaults.defaultValue(value.getClass())),
+              "Non-null/default value passed to HttpRoutes proxy-method for parameter '%s'",
+              paramName
+      );
 
-        public OpenApiUpdater<OpenApiDocumentation> apiUpdater(String name, Class<?> paramType) {
-          return switch (this) {
-            case Path -> doc -> doc.pathParam(name, paramType);
-            case Query -> doc -> doc.queryParam(name, paramType);
-            case None -> doc -> doc.body(paramType, ContentType.JSON);
-          };
+      void applyToUrl(UrlBuilder urlBuilder, String paramName, Object value);
+    }
+
+    private enum UrlParamStrategy implements RouteParamFormatter {
+      Path,
+      Query;
+
+      ParamResolver resolver(Parameter parameter) {
+        String name = paramName(extractParamName(parameter), parameter);
+        // TODO: does this handle Optionals correctly? need to unwrap the optional for the OpenApi type?
+        boolean nullable = parameter.isAnnotationPresent(Nullable.class);
+        Function<Context, String> stringExtractor = nullable
+                ? ctx -> getString(ctx, name)
+                : ctx -> checkNull(name, getString(ctx, name));
+
+        Function<Context, ?> resolver;
+        if (parameter.getType() == String.class) {
+          resolver = stringExtractor;
+        } else {
+          var javaType = TypeFactory.defaultInstance().constructType(parameter.getType());
+          resolver = ctx -> objectMapper(ctx).convertValue(stringExtractor.apply(ctx), javaType);
         }
+        return new ParamResolver(name, this, resolver, apiUpdater(name, parameter.getType()));
+      }
 
-        public void applyToUrl(UrlBuilder urlBuilder, String paramName, Object value) {
-          switch (this) {
-            case Path -> urlBuilder.withPathParam(paramName, value);
-            case Query -> urlBuilder.withQueryParam(paramName, value);
-            case None -> checkArgument(
-                    value == null || value.equals(Defaults.defaultValue(value.getClass())),
-                    "Non-null/default value passed to HttpRoutes proxy-method for parameter '%s'",
-                    paramName
-            );
-          }
+      private static <T> T checkNull(String name, T value) {
+        if (value != null) {
+          return value;
+        } else {
+          throw new BadRequestResponse("Missing required parameter '" + name + "'");
         }
+      }
+
+      @Override
+      public void applyToUrl(UrlBuilder urlBuilder, String paramName, Object value) {
+        switch (this) {
+          case Path -> urlBuilder.withPathParam(paramName, value);
+          case Query -> urlBuilder.withQueryParam(paramName, value);
+        }
+      }
+
+      private String getString(Context context, String paramName) {
+        return switch (this) {
+          case Path -> context.pathParam(paramName);
+          case Query -> context.queryParam(paramName);
+        };
+      }
+
+      private String extractParamName(Parameter parameter) {
+        return switch (this) {
+          case Path -> parameter.getAnnotation(PathParam.class).value();
+          case Query -> parameter.getAnnotation(QueryParam.class).value();
+        };
+      }
+
+      private OpenApiUpdater<OpenApiDocumentation> apiUpdater(String name, Class<?> paramType) {
+        return switch (this) {
+          case Path -> doc -> doc.pathParam(name, paramType);
+          case Query -> doc -> doc.queryParam(name, paramType);
+        };
       }
     }
   }

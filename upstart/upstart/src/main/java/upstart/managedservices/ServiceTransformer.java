@@ -1,4 +1,4 @@
-package io.upstartproject.avrocodec.upstart;
+package upstart.managedservices;
 
 import com.google.common.util.concurrent.Service;
 import upstart.util.concurrent.services.ComposableService;

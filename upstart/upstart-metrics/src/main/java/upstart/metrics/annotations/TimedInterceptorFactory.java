@@ -31,7 +31,7 @@ public class TimedInterceptorFactory implements MethodInterceptorFactory {
     if (interceptedMethod.getAnnotation(Timed.class).async()) {
       checkState(
               CompletionStage.class.isAssignableFrom(interceptedMethod.getReturnType()),
-              "Timed(async) methods must return CompletionStage<?>"
+              "Timed(async) methods must return CompletionStage<?>: %s", interceptedMethod
       );
       return new AsyncTimedMethodInterceptor(timer);
     } else {

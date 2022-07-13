@@ -142,15 +142,15 @@ public class CompletableFutures {
     return ListPromise.allAsList(array);
   }
 
-  public static <T, U> CompletableFuture<U> foldLeft(CompletionStage<U> identity, Stream<T> items, BiFunction<? super U, ? super T, ? extends CompletionStage<U>> combiner) {
+  public static <T, U> Promise<U> foldLeft(CompletionStage<U> identity, Stream<T> items, BiFunction<? super U, ? super T, ? extends CompletionStage<U>> combiner) {
     return foldLeft(identity, items.iterator(), combiner);
   }
 
-  public static <T, U> CompletableFuture<U> foldLeft(CompletionStage<U> identity, Iterator<T> items, BiFunction<? super U, ? super T, ? extends CompletionStage<U>> combiner) {
+  public static <T, U> Promise<U> foldLeft(CompletionStage<U> identity, Iterator<T> items, BiFunction<? super U, ? super T, ? extends CompletionStage<U>> combiner) {
     return foldLeft(identity, items, new SameThreadTrampolineExecutor(), combiner);
   }
 
-  public static <T, U> CompletableFuture<U> foldLeft(CompletionStage<U> identity, Iterator<T> items, Executor executor, BiFunction<? super U, ? super T, ? extends CompletionStage<U>> combiner) {
+  public static <T, U> Promise<U> foldLeft(CompletionStage<U> identity, Iterator<T> items, Executor executor, BiFunction<? super U, ? super T, ? extends CompletionStage<U>> combiner) {
     if (items.hasNext()) {
       // a naive implementation might traverse the entire stream, building a chain of futures that complete in sequence.
       // however, that may consume a lot of memory if the stream is generated dynamically, so we instead extract each
@@ -174,7 +174,7 @@ public class CompletableFutures {
         }
       }, executor));
     } else {
-      return identity.toCompletableFuture();
+      return Promise.of(identity);
     }
   }
 
@@ -210,7 +210,7 @@ public class CompletableFutures {
     }
   }
 
-  public static <T> CompletableFuture<Void> applyInSequence(Stream<T> items, Function<? super T, ? extends CompletionStage<?>> task) {
+  public static <T> Promise<Void> applyInSequence(Stream<T> items, Function<? super T, ? extends CompletionStage<?>> task) {
     return foldLeft(nullFuture(), items, (ignored, item) -> task.apply(item).thenApply(ignored2 -> null));
   }
 

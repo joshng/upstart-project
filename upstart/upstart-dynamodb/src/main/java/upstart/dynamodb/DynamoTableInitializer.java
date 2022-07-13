@@ -5,9 +5,11 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import reactor.core.publisher.Flux;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbAsyncTable;
+import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedAsyncClient;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
-import software.amazon.awssdk.enhanced.dynamodb.model.Page;
 import software.amazon.awssdk.enhanced.dynamodb.model.PagePublisher;
+import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient;
+import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClientBuilder;
 import software.amazon.awssdk.services.dynamodb.model.DescribeTableResponse;
 import software.amazon.awssdk.services.dynamodb.model.TableStatus;
 import upstart.healthchecks.HealthCheck;
@@ -23,7 +25,7 @@ public abstract class DynamoTableInitializer<T> extends AsyncService implements 
 
   private final String tableNameSuffix;
   private final TableSchema<T> tableSchema;
-  private final DynamoDbClientService db;
+  private final DynamoDbClientService dbService;
   private final DynamoDbNamespace namespace;
   private final String tableName;
   protected volatile DynamoDbAsyncTable<T> table;
@@ -32,12 +34,12 @@ public abstract class DynamoTableInitializer<T> extends AsyncService implements 
   public DynamoTableInitializer(
           String tableNameSuffix,
           Class<T> mappedClass,
-          DynamoDbClientService db,
+          DynamoDbClientService dbService,
           DynamoDbNamespace namespace
   ) {
     this.tableNameSuffix = tableNameSuffix;
     tableSchema = getTableSchema(mappedClass);
-    this.db = db;
+    this.dbService = dbService;
     this.namespace = namespace;
     tableName = namespace.tableName(tableNameSuffix);
   }
@@ -52,7 +54,7 @@ public abstract class DynamoTableInitializer<T> extends AsyncService implements 
   }
 
   public CompletableFuture<DescribeTableResponse> describeTable() {
-    return db.describeTable(tableName);
+    return dbService.describeTable(tableName);
   }
 
   protected DynamoDbAsyncTable<T> table() {
@@ -61,7 +63,7 @@ public abstract class DynamoTableInitializer<T> extends AsyncService implements 
 
   @Override
   protected CompletableFuture<?> startUp() throws Exception {
-    return db.ensureTableCreated(tableName, tableSchema)
+    return dbService.ensureTableCreated(tableName, tableSchema)
             .thenAccept(table -> this.table = table);
   }
 
@@ -71,9 +73,7 @@ public abstract class DynamoTableInitializer<T> extends AsyncService implements 
   }
 
   public static <B> Flux<B> consumeItems(PagePublisher<B> pagePublisher) {
-    return Flux.from(pagePublisher)
-            .map(Page::items)
-            .flatMap(Flux::fromIterable);
+    return Flux.from(pagePublisher.items());
   }
 
   public String tableName() {
@@ -89,5 +89,25 @@ public abstract class DynamoTableInitializer<T> extends AsyncService implements 
                     tableName(),
                     tableStatus
             ));
+  }
+
+  protected DynamoDbEnhancedAsyncClient enhancedClient() {
+    return dbService.enhancedClient();
+  }
+
+  public DynamoDbAsyncClient client() {
+    return dbService.client();
+  }
+
+  public DynamoDbAsyncClientBuilder asyncClientBuilder() {
+    return dbService.asyncClientBuilder();
+  }
+
+  public <T> CompletableFuture<DynamoDbAsyncTable<T>> ensureTableCreated(String tableName, TableSchema<T> tableSchema) {
+    return dbService.ensureTableCreated(tableName, tableSchema);
+  }
+
+  public CompletableFuture<DescribeTableResponse> describeTable(String tableName) {
+    return dbService.describeTable(tableName);
   }
 }
