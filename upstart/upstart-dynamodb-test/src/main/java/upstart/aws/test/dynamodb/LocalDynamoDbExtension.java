@@ -47,7 +47,7 @@ public class LocalDynamoDbExtension extends SingletonExtension<DynamoDbFixture> 
           ParameterContext parameterContext, ExtensionContext extensionContext
   ) throws ParameterResolutionException {
     Class<?> type = parameterContext.getParameter().getType();
-    return type == DynamoDbClient.class || type == DynamoDbTable.class;
+    return type == DynamoDbClient.class || type == DynamoDbTable.class || type == DynamoDbFixture.class;
   }
 
   @Override
@@ -55,13 +55,19 @@ public class LocalDynamoDbExtension extends SingletonExtension<DynamoDbFixture> 
           ParameterContext parameterContext, ExtensionContext extensionContext
   ) throws ParameterResolutionException {
     var fixture = getOrCreateContext(extensionContext);
-    if (parameterContext.getParameter().getType() == DynamoDbTable.class) {
+    Class<?> paramType = parameterContext.getParameter().getType();
+    if (paramType == DynamoDbTable.class) {
       return Optional.ofNullable(parameterContext.getParameter().getAnnotation(Named.class))
               .map(named -> {
                 var beanType = (Class<?>) Reflect.getFirstGenericType(parameterContext.getParameter().getParameterizedType());
                 return fixture.enhancedClient().table(named.value(), DynamoTableInitializer.getTableSchema(beanType));
               }).orElseThrow(() -> new IllegalArgumentException("DynamoDbTable<> parameter is missing @Named annotation: " + parameterContext.getParameter().getName()));
+    } else if (paramType == DynamoDbClient.class) {
+      return fixture.client();
+    } else if (paramType == DynamoDbFixture.class) {
+      return fixture;
+    } else {
+      throw new IllegalArgumentException("Unsupported parameter type: " + paramType);
     }
-    return fixture.client();
   }
 }

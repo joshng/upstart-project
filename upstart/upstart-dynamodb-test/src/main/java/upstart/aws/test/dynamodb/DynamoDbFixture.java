@@ -48,10 +48,7 @@ public class DynamoDbFixture extends IdleService {
   protected void startUp() throws Exception {
     String sqlite4javaPath = System.getProperty(SQLITE_4_JAVA_LIBRARY_PATH);
     if (sqlite4javaPath == null) {
-      System.setProperty(
-              SQLITE_4_JAVA_LIBRARY_PATH,
-              UpstartEnvironment.loadAmbientConfigValue(LocalDynamoConfig.class).sqliteNativeLibs()
-      );
+      System.setProperty(SQLITE_4_JAVA_LIBRARY_PATH, "/tmp/sqlite4java/native-libs");
     }
 
     port = AvailablePortAllocator.allocatePort();
@@ -63,7 +60,7 @@ public class DynamoDbFixture extends IdleService {
             new String[]{"-inMemory", "-port", Integer.toString(port)});
       server.start();
     } catch (Exception e) {
-      System.out.print(outputCaptor.getCapturedString());
+      if (outputCaptor != null) System.out.print(outputCaptor.getCapturedString());
       throw e;
     }
     endpoint = "http://localhost:" + port;
@@ -90,10 +87,5 @@ public class DynamoDbFixture extends IdleService {
               server.join();
             })
     )).throwRuntimeIfAny();
-  }
-
-  @ConfigPath("upstart.dynamodb-test")
-  interface LocalDynamoConfig {
-    String sqliteNativeLibs();
   }
 }
