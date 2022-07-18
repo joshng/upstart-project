@@ -18,9 +18,11 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -147,13 +149,13 @@ public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Th
 
   public static <T> Promise<T> completeAsync(Callable<? extends CompletionStage<? extends T>> completionSupplier, Executor executor) {
     return Promise.thatCompletes(promise -> CompletableFuture.runAsync(
-            AsyncContext.current().wrapRunnable(() -> promise.tryCompleteWith(completionSupplier)), executor)
+            AsyncContext.snapshot().wrapRunnable(() -> promise.tryCompleteWith(completionSupplier)), executor)
     );
   }
 
   public static <T> Promise<T> callAsync(Callable<? extends T> callable, Executor executor) {
     return Promise.thatCompletes(promise -> CompletableFuture.runAsync(
-            AsyncContext.current().wrapRunnable(() -> promise.tryComplete(callable)), executor)
+            AsyncContext.snapshot().wrapRunnable(() -> promise.tryComplete(callable)), executor)
     );
   }
 
@@ -331,7 +333,7 @@ public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Th
   }
 
   public CompletableFuture<AsyncContext> completionContext() {
-    return completion.thenApply(Contextualized::context);
+    return completion.thenApply(Contextualized::asyncLocalContext);
   }
 
   @Override
@@ -366,10 +368,59 @@ public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Th
 
   @Override
   public T join() {
-    AsyncContext.apply(completion.join().context());
-    return super.join();
+    try {
+      return super.join();
+    } finally {
+      applyCompletionContext();
+    }
   }
 
+  @Override
+  public T get() throws InterruptedException, ExecutionException {
+    boolean haveResult = true;
+    try {
+      return super.get();
+    } catch (InterruptedException e) {
+      haveResult = false;
+      Thread.currentThread().interrupt();
+      throw e;
+    } finally {
+      if (haveResult) applyCompletionContext();
+    }
+  }
+
+  @Override
+  public T get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+    boolean haveResult = true;
+    try {
+      return super.get(timeout, unit);
+    } catch (TimeoutException e) {
+      haveResult = false;
+      throw e;
+    } finally {
+      if (haveResult) applyCompletionContext();
+    }
+  }
+
+  private static final Object NO_VALUE = new Object();
+  @SuppressWarnings("unchecked")
+  @Override
+  public T getNow(T valueIfAbsent) {
+    boolean haveResult = true;
+    T result;
+    try {
+      result = super.getNow((T) NO_VALUE); // if this throws, then haveResult = true
+      haveResult = result != NO_VALUE;
+      return haveResult ? result : valueIfAbsent;
+    } finally {
+      // only apply the context if the caller will observe the actual result
+      if (haveResult) applyCompletionContext();
+    }
+  }
+
+  private void applyCompletionContext() {
+    if (completion.isDone()) completion.join().contextSnapshot().applyToCurrent();
+  }
 
   ///////////////////// CompletionStage /////////////////////
   @Override
@@ -675,7 +726,7 @@ public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Th
 
     @SuppressWarnings("unchecked")
     public <T, P extends Promise<T>> P canceledInstance() {
-      AsyncContext context = AsyncContext.current();
+      AsyncContext.Snapshot context = AsyncContext.snapshot();
       return (P) (context.isEmpty()
               ? canceledInstance
               : newPromise(ContextualizedFuture.completed(new Contextualized<>(Try.failure(new CancellationException()), context))));

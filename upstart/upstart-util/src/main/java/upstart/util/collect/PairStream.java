@@ -1,5 +1,6 @@
 package upstart.util.collect;
 
+import com.google.common.base.Equivalence;
 import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSetMultimap;
@@ -221,6 +222,22 @@ public class PairStream<K, V> implements Stream<Map.Entry<K, V>> {
 
   public ListMultimap<K, V> toImmutableListMultimap() {
     return stream.collect(ImmutableListMultimap.toImmutableListMultimap(Entries.getKey(), Entries.getValue()));
+  }
+
+  public PersistentMap<K, V> toPersistentMap() {
+    return toPersistentMap(PersistentMap.empty());
+  }
+
+  public PersistentMap<K, V> toPersistentMap(TriFunction<? super K, ? super V, ? super V, ? extends V> mergeFunction) {
+    return toPersistentMap(PersistentMap.empty(), mergeFunction);
+  }
+
+  public PersistentMap<K, V> toPersistentMap(PersistentMap<K, V> startingMap) {
+    return stream.collect(startingMap.entryCollector());
+  }
+
+  public PersistentMap<K, V> toPersistentMap(PersistentMap<K, V> startingMap, TriFunction<? super K, ? super V, ? super V, ? extends V> mergeFunction) {
+    return stream.collect(startingMap.entryCollector(mergeFunction));
   }
 
   @Override

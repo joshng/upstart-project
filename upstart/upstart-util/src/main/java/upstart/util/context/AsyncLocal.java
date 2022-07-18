@@ -4,13 +4,12 @@ import upstart.util.concurrent.MutableReference;
 import upstart.util.concurrent.Promise;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.function.BinaryOperator;
 
 public abstract class AsyncLocal<T> implements MutableReference<T> {
   private final String name;
 
-  private AsyncLocal(String name) {
+  protected AsyncLocal(String name) {
     this.name = name;
   }
 

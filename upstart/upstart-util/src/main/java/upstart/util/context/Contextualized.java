@@ -3,7 +3,6 @@ package upstart.util.context;
 import upstart.util.collect.Entries;
 import upstart.util.concurrent.Promise;
 import upstart.util.exceptions.Try;
-import upstart.util.reflect.Reflect;
 
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
@@ -16,20 +15,24 @@ import java.util.function.Supplier;
 
 public class Contextualized<T> implements TransientContext {
   private final Try<T> value;
-  private final AsyncContext context;
+  private final AsyncContext.Snapshot snapshot;
 
-  public Contextualized(Try<? extends T> value, AsyncContext context) {
+  public Contextualized(Try<? extends T> value, AsyncContext snapshot) {
+    this(value, AsyncContext.snapshot());
+  }
+
+  public Contextualized(Try<? extends T> value, AsyncContext.Snapshot contextSnapshot) {
     //noinspection unchecked
     this.value = (Try<T>) value;
-    this.context = context;
+    this.snapshot = contextSnapshot;
   }
 
   public static <T> Contextualized<T> value(T value) {
-    return of(value, AsyncContext.current());
+    return of(value, AsyncContext.snapshot());
   }
 
   public static <T> Contextualized<T> ofTry(Try<? extends T> value) {
-    return new Contextualized<>(value, AsyncContext.current());
+    return new Contextualized<>(value, AsyncContext.snapshot());
   }
 
   public static <T> Contextualized<T> failure(Throwable failure) {
@@ -40,7 +43,7 @@ public class Contextualized<T> implements TransientContext {
     return ofTry(Try.failure(new CancellationException()));
   }
 
-  public static <T> Contextualized<T> of(T value, AsyncContext context) {
+  public static <T> Contextualized<T> of(T value, AsyncContext.Snapshot context) {
     return new Contextualized<>(Try.success(value), context);
   }
 
@@ -95,34 +98,34 @@ public class Contextualized<T> implements TransientContext {
     return value;
   }
 
-  public AsyncContext context() {
-    return context;
+  public AsyncContext.Snapshot contextSnapshot() {
+    return snapshot;
   }
 
-  public Contextualized<T> plusCurrent() {
-    return mergeFrom(AsyncContext.current());
+  public AsyncContext asyncLocalContext() {
+    return snapshot.asyncLocalContext();
   }
 
-  public Contextualized<T> mergeFrom(AsyncContext context) {
-    return context.isEmpty() || context == this.context
+  public Contextualized<T> mergeFrom(AsyncContext.Snapshot context) {
+    return context.isEmpty() || context == this.snapshot
             ? this
-            : new Contextualized<>(value, this.context.mergeFrom(context));
+            : new Contextualized<>(value, this.snapshot.mergeFrom(context));
   }
 
-  public Contextualized<T> withFallback(AsyncContext current) {
-    return current.isEmpty() || current == context ? this : new Contextualized<>(value, current.mergeFrom(context));
+  public Contextualized<T> withFallback(AsyncContext.Snapshot current) {
+    return current.isEmpty() || current == snapshot ? this : new Contextualized<>(value, current.mergeFrom(snapshot));
   }
 
   public static Contextualized<Void> mergeContexts(Contextualized<Void> a, Contextualized<Void> b) {
     return b.value().isFailure()
-            ? b.mergeFrom(a.context())
-            : a.mergeFrom(b.context());
+            ? b.mergeFrom(a.contextSnapshot())
+            : a.mergeFrom(b.contextSnapshot());
   }
 
 
   @Override
   public State open() {
-    return context.open();
+    return snapshot.open();
   }
 
   public <U> Contextualized<U> map(Function<? super T, ? extends U> fn) {
@@ -168,7 +171,7 @@ public class Contextualized<T> implements TransientContext {
     CompletionStage<T> completion = cf.value().get();
     return completion instanceof Promise<T> promise
             ? promise.contextualizedFuture()
-            : completion.thenApply(result -> Contextualized.of(result, AsyncContext.current().mergeFrom(cf.context())));
+            : completion.thenApply(result -> Contextualized.of(result, AsyncContext.snapshot().mergeFrom(cf.contextSnapshot())));
   }
 
   public void accept(BiConsumer<? super T, ? super Throwable> action) {

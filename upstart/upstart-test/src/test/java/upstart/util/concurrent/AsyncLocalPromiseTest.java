@@ -2,7 +2,9 @@ package upstart.util.concurrent;
 
 import com.google.common.base.Stopwatch;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.pcollections.HashTreePSet;
 import org.pcollections.PSet;
@@ -10,8 +12,10 @@ import upstart.test.ThreadPauseHelper;
 import upstart.test.truth.MoreTruth;
 import upstart.util.context.AsyncContext;
 import upstart.util.context.AsyncLocal;
+import upstart.util.context.AsyncContextManager;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -276,5 +280,50 @@ class AsyncLocalPromiseTest {
 //    System.out.printf("per Promise: %fms%n", ((double)bestPromise) / (reps * nanosPerMilli));
 //    System.out.printf("per CompFuture: %fms%n", ((double)bestCf) / (reps * nanosPerMilli));
 //    System.out.printf("xN: %f%n", slowdown);
+  }
+
+
+  class WithCustomContextManager {
+    final ThreadLocalReference<String> threadLocal = new ThreadLocalReference<>();
+
+    private final AsyncContextManager<String> contextManager = new AsyncContextManager<>() {
+      @Override
+      public Optional<String> captureSnapshot() {
+        return threadLocal.getOptional();
+      }
+
+      @Override
+      public void restoreSnapshot(String value) {
+        threadLocal.set(value);
+      }
+
+      @Override
+      public void remove() {
+        threadLocal.remove();
+      }
+    };
+
+    @BeforeEach
+    void setUp() {
+      threadLocal.set(null);
+
+      AsyncContext.registerContextManager(contextManager);
+    }
+
+    @AfterEach
+    void tearDown() {
+      AsyncContext.unregisterContextManager(contextManager);
+    }
+
+    @Test
+    void customContextManager() throws InterruptedException {
+      threadLocal.set("start");
+      assertThat(Promise.callAsync(() -> threadLocal.updateAndGet(s -> s + " middle"), executor)
+                         .thenApplyAsync(s -> threadLocal.updateAndGet(s2 -> s2 + " end"), executor)
+      ).doneWithin(Deadline.withinSeconds(5))
+              .havingResultThat().isEqualTo("start middle end");
+
+      assertThat(threadLocal.get()).isEqualTo("start middle end");
+    }
   }
 }
