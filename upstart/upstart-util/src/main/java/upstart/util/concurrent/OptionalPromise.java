@@ -27,6 +27,10 @@ public class OptionalPromise<T> extends ExtendedPromise<Optional<T>, OptionalPro
     return OPTIONAL_PROMISE_FACTORY.emptyInstance();
   }
 
+  public static <T> OptionalPromise<T> canceled() {
+    return OPTIONAL_PROMISE_FACTORY.canceledInstance();
+  }
+
   public static <T> OptionalPromise<T> completed(@Nonnull Optional<T> optional) {
     return optional.isEmpty() ? empty() : new OptionalPromise<T>().fulfill(optional);
   }
@@ -59,29 +63,24 @@ public class OptionalPromise<T> extends ExtendedPromise<Optional<T>, OptionalPro
   }
 
   public <O> OptionalPromise<O> thenMap(Function<? super T, ? extends O> mapper) {
-    return asOptionalPromise(() -> thenApply((Function<? super Optional<T>, ? extends Optional<O>>) value -> value.map(
-            mapper)));
+    return asOptionalPromise(() -> thenApply(optional -> optional.map(mapper)));
   }
 
   public <O> OptionalPromise<O> thenMapCompose(Function<? super T, ? extends CompletionStage<O>> mapper) {
-    return asOptionalPromise(() -> thenCompose((Function<? super Optional<T>, ? extends CompletionStage<Optional<O>>>) value -> toFutureOptional(
-            value.map(mapper))));
+    return asOptionalPromise(() -> thenCompose(value -> toFutureOptional(value.map(mapper))));
   }
 
   public <O> OptionalPromise<O> thenFlatMapCompose(Function<? super T, ? extends CompletionStage<Optional<O>>> mapper) {
-    return asOptionalPromise(() -> thenCompose((Function<? super Optional<T>, ? extends CompletionStage<Optional<O>>>) value -> value.<CompletionStage<Optional<O>>>map(
-                    mapper)
+    return asOptionalPromise(() -> thenCompose(value -> value.<CompletionStage<Optional<O>>>map(mapper)
             .orElse(OptionalPromise.empty())));
   }
 
   public <O> OptionalPromise<O> thenFlatMap(Function<? super T, ? extends Optional<O>> mapper) {
-    return asOptionalPromise(() -> thenApply((Function<? super Optional<T>, ? extends Optional<O>>) value -> value.flatMap(
-            mapper)));
+    return asOptionalPromise(() -> thenApply(value -> value.flatMap(mapper)));
   }
 
   public OptionalPromise<T> thenFilter(Predicate<? super T> filter) {
-    return asOptionalPromise(() -> thenApply((Function<? super Optional<T>, ? extends Optional<T>>) value -> value.filter(
-            filter)));
+    return asOptionalPromise(() -> thenApply(value -> value.filter(filter)));
   }
 
   public OptionalPromise<T> thenIfPresent(Consumer<? super T> consumer) {
@@ -118,39 +117,4 @@ public class OptionalPromise<T> extends ExtendedPromise<Optional<T>, OptionalPro
     return OPTIONAL_PROMISE_FACTORY;
   }
 
-  private static class EmptyPromise extends OptionalPromise<Object> {
-    private EmptyPromise() {
-      complete(Optional.empty());
-    }
-
-    @Override
-    public <O> OptionalPromise<O> thenMap(Function<? super Object, ? extends O> mapper) {
-      return empty();
-    }
-
-    @Override
-    public <O> OptionalPromise<O> thenMapCompose(Function<? super Object, ? extends CompletionStage<O>> mapper) {
-      return empty();
-    }
-
-    @Override
-    public <O> OptionalPromise<O> thenFlatMapCompose(Function<? super Object, ? extends CompletionStage<Optional<O>>> mapper) {
-      return empty();
-    }
-
-    @Override
-    public <O> OptionalPromise<O> thenFlatMap(Function<? super Object, ? extends Optional<O>> mapper) {
-      return empty();
-    }
-
-    @Override
-    public OptionalPromise<Object> thenFilter(Predicate<? super Object> filter) {
-      return this;
-    }
-
-    @Override
-    public OptionalPromise<Object> thenIfPresent(Consumer<? super Object> consumer) {
-      return this;
-    }
-  }
 }

@@ -37,7 +37,7 @@ import java.util.stream.Stream;
  */
 public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Throwable> {
   private static final ThreadLocalReference<PromiseFactory> INCOMPLETE_PROMISE = new ThreadLocalReference<>();
-  static final PromiseFactory PROMISE_FACTORY = PromiseFactory.of(null, Promise::new);
+  private static final PromiseFactory PROMISE_FACTORY = PromiseFactory.of(null, Promise::new);
   private final CompletableFuture<Contextualized<T>> completion;
 
   public Promise() {
@@ -103,6 +103,10 @@ public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Th
 
   public static <T> Promise<T> nullPromise() {
     return PROMISE_FACTORY.emptyInstance();
+  }
+
+  public static <T> Promise<T> canceledPromise() {
+    return PROMISE_FACTORY.canceledInstance();
   }
 
   public static <T> OptionalPromise<T> completed(Optional<T> optional) {
@@ -250,16 +254,24 @@ public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Th
     return thenApply(__ -> value);
   }
 
-  public <U> Promise<U> thenGet(Supplier<U> supplier) {
-    return thenApply(ignored -> supplier.get());
-  }
-
   public <E extends Throwable> Promise<T> recover(Class<E> exceptionType, Function<? super E, ? extends T> recovery) {
     return (Promise<T>) CompletableFutures.recover(this, exceptionType, recovery);
   }
 
+  public <U> Promise<U> thenGet(Supplier<U> supplier) {
+    return thenApply(ignored -> supplier.get());
+  }
+
   public <U> Promise<U> thenGetAsync(Supplier<U> supplier, Executor executor) {
     return thenApplyAsync(ignored -> supplier.get(), executor);
+  }
+
+  public <U> OptionalPromise<U> thenGetOptional(Supplier<Optional<U>> supplier, Executor executor) {
+    return thenApplyOptional(ignored -> supplier.get());
+  }
+
+  public <U> OptionalPromise<U> thenGetOptionalAsync(Supplier<Optional<U>> supplier, Executor executor) {
+    return thenApplyOptional(ignored -> supplier.get());
   }
 
   public <U> Promise<U> thenComposeGet(Supplier<? extends CompletionStage<U>> supplier) {
@@ -332,8 +344,8 @@ public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Th
     return thenCompose(__ -> supplier.get());
   }
 
-  public CompletableFuture<AsyncContext> completionContext() {
-    return completion.thenApply(Contextualized::asyncLocalContext);
+  public Promise<AsyncContext> completionContext() {
+    return Promise.of(completion.thenApply(Contextualized::contextSnapshot));
   }
 
   @Override
@@ -403,6 +415,7 @@ public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Th
   }
 
   private static final Object NO_VALUE = new Object();
+
   @SuppressWarnings("unchecked")
   @Override
   public T getNow(T valueIfAbsent) {
@@ -665,7 +678,7 @@ public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Th
 
   @Override
   public void obtrudeException(Throwable ex) {
-    completion.obtrudeException(ex);
+    completion.obtrudeValue(Contextualized.failure(ex));
     super.obtrudeException(ex);
   }
 
@@ -720,13 +733,13 @@ public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Th
 
     @SuppressWarnings("unchecked")
     public <T, P extends Promise<T>> P emptyInstance() {
-      AsyncContext context = AsyncContext.current();
+      AsyncContext context = AsyncContext.snapshot();
       return (P) (context.isEmpty() ? emptyInstance : newPromise(ContextualizedFuture.of(emptyValue, context)));
     }
 
     @SuppressWarnings("unchecked")
     public <T, P extends Promise<T>> P canceledInstance() {
-      AsyncContext.Snapshot context = AsyncContext.snapshot();
+      AsyncContext context = AsyncContext.snapshot();
       return (P) (context.isEmpty()
               ? canceledInstance
               : newPromise(ContextualizedFuture.completed(new Contextualized<>(Try.failure(new CancellationException()), context))));

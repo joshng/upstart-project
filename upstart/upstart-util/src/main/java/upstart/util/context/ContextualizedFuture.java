@@ -13,7 +13,7 @@ public class ContextualizedFuture<T> extends CompletableFuture<Contextualized<T>
   }
 
   private ContextualizedFuture(Consumer<BiConsumer<? super T, ? super Throwable>> whenComplete) {
-    AsyncContext.Snapshot creationContext = AsyncContext.snapshot();
+    AsyncContext creationContext = AsyncContext.snapshot();
     whenComplete.accept((v, e) -> complete(new Contextualized<>(
             Try.of(v, e),
             creationContext.mergeFrom(AsyncContext.snapshot())

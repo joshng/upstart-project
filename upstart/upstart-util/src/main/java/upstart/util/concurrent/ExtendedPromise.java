@@ -79,11 +79,11 @@ public abstract class ExtendedPromise<T, P extends ExtendedPromise<T, P>> extend
   }
 
   public <E extends Throwable> P recover(Class<E> exceptionType, Function<? super E, ? extends T> recovery) {
-    return sameTypeSubsequent(() -> super.recover(exceptionType, recovery));
+    return (P) super.recover(exceptionType, recovery);
   }
 
   public P onCancel(Runnable callback) {
-    return sameTypeSubsequent(() -> CompletableFutures.whenCancelled(this, callback));
+    return (P) CompletableFutures.whenCancelled(this, callback);
   }
 
   @Override

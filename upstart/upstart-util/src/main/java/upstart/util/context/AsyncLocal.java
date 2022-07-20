@@ -1,9 +1,9 @@
 package upstart.util.context;
 
 import upstart.util.concurrent.MutableReference;
+import upstart.util.concurrent.OptionalPromise;
 import upstart.util.concurrent.Promise;
 
-import java.util.concurrent.CompletableFuture;
 import java.util.function.BinaryOperator;
 
 public abstract class AsyncLocal<T> implements MutableReference<T> {
@@ -50,20 +50,23 @@ public abstract class AsyncLocal<T> implements MutableReference<T> {
   protected abstract T merge(T a, T b);
     @Override
   public void set(T value) {
-    AsyncContext.putCurrentValue(this, value);
+    AsyncLocalContextManager.putCurrentValue(this, value);
   }
 
   @Override
   public T get() {
-    return AsyncContext.getCurrentValue(this);
+    return AsyncLocalContextManager.getCurrentValue(this);
   }
 
   public void remove() {
-    AsyncContext.removeCurrentValue(this);
+    AsyncLocalContextManager.removeCurrentValue(this);
   }
 
-  public CompletableFuture<T> getFromCompletion(Promise<?> future) {
-    return future.completionContext().thenApply(ctx -> ctx.getOrNull(this));
+  public OptionalPromise<T> getFromCompletion(Promise<?> future) {
+      // TODO: could extract via the AsyncLocalContextManager's state directly
+    // TODO: using the snapshot-context could expose unwanted local context
+    return future.completionContext()
+            .thenApplyOptional(snapshot -> AsyncLocalContextManager.getFromContext(snapshot, this));
   }
 
   @Override

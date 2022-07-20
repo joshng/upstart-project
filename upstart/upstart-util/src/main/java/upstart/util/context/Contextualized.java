@@ -15,13 +15,9 @@ import java.util.function.Supplier;
 
 public class Contextualized<T> implements TransientContext {
   private final Try<T> value;
-  private final AsyncContext.Snapshot snapshot;
+  private final AsyncContext snapshot;
 
-  public Contextualized(Try<? extends T> value, AsyncContext snapshot) {
-    this(value, AsyncContext.snapshot());
-  }
-
-  public Contextualized(Try<? extends T> value, AsyncContext.Snapshot contextSnapshot) {
+  public Contextualized(Try<? extends T> value, AsyncContext contextSnapshot) {
     //noinspection unchecked
     this.value = (Try<T>) value;
     this.snapshot = contextSnapshot;
@@ -43,7 +39,7 @@ public class Contextualized<T> implements TransientContext {
     return ofTry(Try.failure(new CancellationException()));
   }
 
-  public static <T> Contextualized<T> of(T value, AsyncContext.Snapshot context) {
+  public static <T> Contextualized<T> of(T value, AsyncContext context) {
     return new Contextualized<>(Try.success(value), context);
   }
 
@@ -98,21 +94,17 @@ public class Contextualized<T> implements TransientContext {
     return value;
   }
 
-  public AsyncContext.Snapshot contextSnapshot() {
+  public AsyncContext contextSnapshot() {
     return snapshot;
   }
 
-  public AsyncContext asyncLocalContext() {
-    return snapshot.asyncLocalContext();
-  }
-
-  public Contextualized<T> mergeFrom(AsyncContext.Snapshot context) {
+  public Contextualized<T> mergeFrom(AsyncContext context) {
     return context.isEmpty() || context == this.snapshot
             ? this
             : new Contextualized<>(value, this.snapshot.mergeFrom(context));
   }
 
-  public Contextualized<T> withFallback(AsyncContext.Snapshot current) {
+  public Contextualized<T> withFallback(AsyncContext current) {
     return current.isEmpty() || current == snapshot ? this : new Contextualized<>(value, current.mergeFrom(snapshot));
   }
 

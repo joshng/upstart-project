@@ -5,14 +5,15 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.pcollections.HashTreePSet;
 import org.pcollections.PSet;
 import upstart.test.ThreadPauseHelper;
 import upstart.test.truth.MoreTruth;
 import upstart.util.context.AsyncContext;
-import upstart.util.context.AsyncLocal;
 import upstart.util.context.AsyncContextManager;
+import upstart.util.context.AsyncLocal;
 
 import java.util.List;
 import java.util.Optional;
@@ -24,6 +25,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 
+import static com.google.common.truth.OptionalSubject.optionals;
 import static com.google.common.truth.Truth.assertThat;
 import static com.google.common.truth.Truth.assertWithMessage;
 import static upstart.test.truth.CompletableFutureSubject.assertThat;
@@ -145,9 +147,10 @@ class AsyncLocalPromiseTest {
     }, executor);
     p1.complete("foo");
     assertThat(p1).havingResultThat().isEqualTo("foo");
-    assertThat(state1.getFromCompletion(p1)).havingResultThat().isEqualTo("bar");
+    assertThat(state1.getFromCompletion(p1)).havingResultThat(optionals()).hasValue("bar");
     assertThat(p2).doneWithin(Deadline.withinSeconds(5)).completedExceptionallyWith(ArithmeticException.class);
-    assertThat(state1.getFromCompletion(p2)).havingResultThat().isEqualTo("baz");
+    assertThat(state1.getFromCompletion(p2)).havingResultThat(optionals()).hasValue("baz");
+    assertThat(state1.get()).isEqualTo("baz");
   }
 
 
@@ -166,7 +169,7 @@ class AsyncLocalPromiseTest {
     state2.set("y");
     p1.complete("foo");
     assertThat(p2).doneWithin(Deadline.withinSeconds(5)).havingResultThat().isEqualTo("abc");
-    assertThat(state2.getFromCompletion(p2)).havingResultThat().isEqualTo("x");
+    assertThat(state2.getFromCompletion(p2)).havingResultThat(optionals()).hasValue("x");
 
     assertThat(state2.get()).isEqualTo("x"); // we joined p2 when we observed its result
   }
@@ -190,8 +193,8 @@ class AsyncLocalPromiseTest {
     p1.complete("foo");
     assertThat(p2).doneWithin(Deadline.withinSeconds(5)).completedExceptionallyWith(ArithmeticException.class);
     assertThat(state2.get()).isEqualTo("x"); // we joined p2 when we observed its result
-    assertThat(state1.getFromCompletion(p2)).havingResultThat().isEqualTo("abc");
-    assertThat(state2.getFromCompletion(p2)).havingResultThat().isEqualTo("x");
+    assertThat(state1.getFromCompletion(p2)).havingResultThat(optionals()).hasValue("abc");
+    assertThat(state2.getFromCompletion(p2)).havingResultThat(optionals()).hasValue("x");
 
   }
 
@@ -282,7 +285,7 @@ class AsyncLocalPromiseTest {
 //    System.out.printf("xN: %f%n", slowdown);
   }
 
-
+  @Nested
   class WithCustomContextManager {
     final ThreadLocalReference<String> threadLocal = new ThreadLocalReference<>();
 
@@ -294,6 +297,11 @@ class AsyncLocalPromiseTest {
 
       @Override
       public void restoreSnapshot(String value) {
+        threadLocal.set(value);
+      }
+
+      @Override
+      public void mergeFromSnapshot(String value) {
         threadLocal.set(value);
       }
 
