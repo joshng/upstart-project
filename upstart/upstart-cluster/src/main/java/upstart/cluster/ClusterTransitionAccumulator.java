@@ -1,6 +1,7 @@
 package upstart.cluster;
 
 import upstart.util.concurrent.BatchAccumulator;
+import upstart.util.concurrent.Deadline;
 import upstart.util.concurrent.Scheduler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,6 +11,8 @@ import javax.inject.Singleton;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
+
+import static upstart.util.concurrent.BatchAccumulator.AccumulationResult.accepted;
 
 @Singleton
 public class ClusterTransitionAccumulator implements ClusterTransitionListener {
@@ -34,22 +37,22 @@ public class ClusterTransitionAccumulator implements ClusterTransitionListener {
 
   @Override
   public void onNodesJoined(List<ClusterNodeId> nodeIds) {
-    Duration delay = accumulator.accumulate(nodeIds, (transition, nodes) -> {
+    Deadline delay = accumulator.accumulate(nodeIds, (nodes, transition) -> {
       for (ClusterNodeId node : nodes) {
         transition.nodeJoined(node);
       }
-      return Optional.empty();
+      return accepted();
     });
-    LOG.info("Discovered new node(s), waiting at least {}s to process: {}", delay.toMillis() / 1000, nodeIds);
+    LOG.info("Discovered new node(s), waiting at least {}s to process: {}", delay.remaining().toSeconds(), nodeIds);
   }
 
   @Override
   public void onNodeLeft(ClusterNodeId nodeId) {
-    Duration delay = accumulator.accumulate(nodeId, (transition, node) -> {
+    Deadline delay = accumulator.accumulate(nodeId, (node, transition) -> {
       transition.nodeDeparted(node);
-      return Optional.empty();
+      return accepted();
     });
-    LOG.info("Discovered departed node, waiting at least {}s to process: {}", delay.toMillis() / 1000, nodeId);
+    LOG.info("Discovered departed node, waiting at least {}s to process: {}", delay.remaining().toSeconds(), nodeId);
   }
 }
 
