@@ -98,6 +98,14 @@ public class Reflect {
     return accessible;
   }
 
+  public static String describeMethodWithAnnotations(Method method) {
+    StringBuilder builder = new StringBuilder();
+    for (Annotation annotation : method.getAnnotations()) {
+      builder.append('@').append(annotation.annotationType().getSimpleName()).append(' ');
+    }
+    return builder.append(method.toGenericString()).toString();
+  }
+
   public enum LineageOrder {
     SubclassBeforeSuperclass,
     SuperclassBeforeSubclass

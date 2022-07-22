@@ -5,6 +5,7 @@ import com.google.common.collect.Streams;
 import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.Callable;
 import java.util.function.BinaryOperator;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -59,5 +60,13 @@ public class Optionals {
 
   public static <T> Optional<T> getWithinBounds(List<T> list, int index) {
     return onlyIfFrom(index >= 0 && index < list.size(), () -> list.get(index));
+  }
+
+  public static <T> Optional<T> exceptionAsOptional(Callable<T> callable) {
+    try {
+      return Optional.of(callable.call());
+    } catch (Exception e) {
+      return Optional.empty();
+    }
   }
 }

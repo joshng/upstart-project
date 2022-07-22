@@ -26,6 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import upstart.javalin.UnprocessableEntityResponse;
 import upstart.proxy.Proxies;
+import upstart.util.collect.Optionals;
 import upstart.util.collect.PairStream;
 import upstart.util.concurrent.LazyReference;
 import upstart.util.concurrent.ThreadLocalReference;
@@ -347,13 +348,21 @@ public class AnnotatedEndpointHandler<T> {
                 : ctx -> checkNull(name, getString(ctx, name));
 
         Function<Context, ?> resolver;
-        if (parameter.getType() == String.class) {
+        Class<?> type = parameter.getType();
+        if (type == String.class) {
           resolver = stringExtractor;
         } else {
-          var javaType = TypeFactory.defaultInstance().constructType(parameter.getType());
-          resolver = ctx -> objectMapper(ctx).convertValue(stringExtractor.apply(ctx), javaType);
+          var javaType = TypeFactory.defaultInstance().constructType(parameter.getParameterizedType());
+          resolver = ctx -> {
+            try {
+              return objectMapper(ctx).convertValue(stringExtractor.apply(ctx), javaType);
+            } catch (IllegalArgumentException e) {
+              // TODO: consider having param-resolvers return a validation-result, to support reporting multiple errors
+              throw new BadRequestResponse("Bad request", Map.of(name, e.getMessage()));
+            }
+          };
         }
-        return new ParamResolver(name, this, resolver, apiUpdater(name, parameter.getType()));
+        return new ParamResolver(name, this, resolver, apiUpdater(name, type));
       }
 
       private static <T> T checkNull(String name, T value) {

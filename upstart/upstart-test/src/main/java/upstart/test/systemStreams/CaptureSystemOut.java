@@ -1,6 +1,7 @@
 package upstart.test.systemStreams;
 
 import org.junit.jupiter.api.extension.ExtendWith;
+import upstart.test.SetupPhase;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -17,5 +18,10 @@ import java.lang.annotation.Target;
 @Target({ElementType.TYPE, ElementType.METHOD})
 @ExtendWith(SystemOutCaptureExtension.class)
 public @interface CaptureSystemOut {
-  boolean autoStart() default true;
+  /**
+   * The phase of the test where the capture should start. If this is {@link SetupPhase#None}, capture will not
+   * be started automatically; in that case, you must call {@link SystemOutCaptor#startCapture()} at the appropriate
+   * time yourself.
+   */
+  SetupPhase value() default SetupPhase.BeforeTestExecution;
 }

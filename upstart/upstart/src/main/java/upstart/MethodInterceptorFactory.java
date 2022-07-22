@@ -9,13 +9,13 @@ import com.google.inject.matcher.Matchers;
 import upstart.config.UpstartModule;
 import upstart.guice.BindingResolver;
 import upstart.guice.GuiceDependencyGraph;
+import upstart.proxy.StackTraces;
 import upstart.util.reflect.Modifiers;
 import upstart.util.reflect.Reflect;
 import org.aopalliance.intercept.MethodInterceptor;
 import org.aopalliance.intercept.MethodInvocation;
 
 import javax.inject.Inject;
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
@@ -115,8 +115,8 @@ public interface MethodInterceptorFactory {
       if (interceptor == null) {
         throw new IllegalStateException(String.format("Missing interceptor registration. Interception on guice-managed \"just-in-time\" bindings is error-prone,\n"
                         +"avoid this problem with bind(%s.class) or similar:\n  %s",
-                method.getDeclaringClass().getSimpleName(),
-                describeMethod(method)));
+                                                      method.getDeclaringClass().getSimpleName(),
+                                                      Reflect.describeMethodWithAnnotations(method)));
       }
       return interceptor;
     }
@@ -147,18 +147,11 @@ public interface MethodInterceptorFactory {
 
     private static boolean checkValidInterception(Method method) {
       if (!(Modifiers.Protected.matches(method) || Modifiers.Public.matches(method)) || Modifiers.Final.matches(method)) {
-        String description = describeMethod(method);
-        throw new IllegalStateException("Interceptors cannot be supported on private, package-private or final methods: " + description);
+        String description = "Interceptors cannot be supported on private, package-private or final methods: "
+                + Reflect.describeMethodWithAnnotations(method);
+        throw StackTraces.throwWithPrependedStackTrace(method, new IllegalStateException(description));
       }
       return true;
-    }
-
-    private static String describeMethod(Method method) {
-      StringBuilder builder = new StringBuilder();
-      for (Annotation annotation : method.getAnnotations()) {
-        builder.append('@').append(annotation.annotationType().getSimpleName()).append(' ');
-      }
-      return builder.append(method.toGenericString()).toString();
     }
   }
 }
