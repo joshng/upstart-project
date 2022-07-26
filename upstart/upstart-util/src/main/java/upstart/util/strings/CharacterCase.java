@@ -10,6 +10,11 @@ public enum CharacterCase implements UnaryOperator<String> {
     }
 
     @Override
+    public char apply(char c) {
+      return Character.toUpperCase(c);
+    }
+
+    @Override
     public String apply(String s) {
       return s.toUpperCase();
     }
@@ -21,10 +26,17 @@ public enum CharacterCase implements UnaryOperator<String> {
     }
 
     @Override
+    public char apply(char c) {
+      return Character.toLowerCase(c);
+    }
+
+    @Override
     public String apply(String s) {
       return s.toLowerCase();
     }
   };
 
   public abstract String apply(Locale locale, String s);
+
+  public abstract char apply(char c);
 }

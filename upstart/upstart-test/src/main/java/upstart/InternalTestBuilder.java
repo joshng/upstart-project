@@ -75,9 +75,7 @@ public class InternalTestBuilder implements UpstartTestBuilder {
     this.configBuilder = configBuilder;
     injectorBuilderTask = new FutureTask<>(() -> {
       callbackSuccessTracker.setNoMoreJobs();
-      HojackConfigProvider configProvider = UpstartEnvironment.ambientEnvironment().configProvider()
-              .withConfigMapper(configBuilder.configMapper())
-              .withOverrideConfig(configBuilder.getOverrideConfig());
+      HojackConfigProvider configProvider = configBuilder.buildConfigProvider();
       installModule(new UpstartService.Builder.UpstartCoreModule());
       for (String testModule : configProvider.getStringList("upstart.test.installModules")) {
         overrideBindings(Reflect.newInstance(testModule, Module.class));

@@ -6,6 +6,7 @@ import com.google.inject.Module;
 import upstart.InternalTestBuilder;
 import upstart.UpstartStaticInitializer;
 import upstart.config.EnvironmentConfigExtension;
+import upstart.config.EnvironmentConfigFixture;
 import upstart.config.UpstartEnvironment;
 import upstart.util.collect.MoreStreams;
 import upstart.util.reflect.MultiMethodInvoker;
@@ -54,6 +55,10 @@ public class UpstartExtension extends SingletonParameterResolver<UpstartTestBuil
 
   public static Optional<? extends UpstartTestBuilder> getOptionalTestBuilder(ExtensionContext extensionContext) {
     return getOrCreateOptionalContext(UpstartTestBuilder.class, extensionContext);
+  }
+
+  public static void applyOptionalEnvironmentValues(ExtensionContext extensionContext, EnvironmentConfigFixture fixture) {
+    getOptionalTestBuilder(extensionContext).ifPresent(fixture::applyEnvironmentValues);
   }
 
   public static UpstartTestBuilder getRequiredTestBuilder(ExtensionContext extensionContext) {

@@ -31,7 +31,7 @@ public class LocalDynamoDbExtension extends SingletonExtension<DynamoDbFixture> 
   @Override
   public void beforeEach(ExtensionContext extensionContext) throws Exception {
     DynamoDbFixture fixture = getOrCreateContext(extensionContext);
-    UpstartExtension.getOptionalTestBuilder(extensionContext).ifPresent(fixture::configureLocalEndpoint);
+    UpstartExtension.applyOptionalEnvironmentValues(extensionContext, fixture);
   }
 
   @Override

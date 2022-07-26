@@ -8,12 +8,12 @@ import static com.google.common.truth.Truth.assertThat;
 class CrockfordBase32EncodingTest {
   @Test
   void roundTrips() {
-    BaseEncoding subject = CrockfordBase32.lowerCaseInstance();
+    CrockfordBase32Encoding subject = CrockfordBase32.upperCaseInstance();
     String encoded = subject.lowerCase().upperCase().encode("hello".getBytes());
     assertThat(encoded).isEqualTo("D1JPRV3F");
-    String decoded = new String(subject.lowerCase().decode(encoded));
+    String decoded = new String(subject.decode(encoded));
     assertThat(decoded).isEqualTo("hello");
     String confused = "D1JPRu3F"; // crockford32 is case-insensitive, and treats 'u' as 'V'
-    assertThat(new String(subject.decode(confused))).isEqualTo("hello");
+    assertThat(new String(subject.lowerCase().humanLenient().decode(confused))).isEqualTo("hello");
   }
 }

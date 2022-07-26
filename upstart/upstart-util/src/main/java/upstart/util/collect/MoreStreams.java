@@ -51,7 +51,7 @@ public class MoreStreams {
     return Stream.concat(Stream.of(firstItem), stream);
   }
 
-  public static <I, O extends I> Stream<O> filter(Stream<I> inputs, Class<O> filterClass) {
+  public static <I, O> Stream<O> filter(Stream<I> inputs, Class<O> filterClass) {
     return inputs.filter(filterClass::isInstance).map(filterClass::cast);
   }
 
