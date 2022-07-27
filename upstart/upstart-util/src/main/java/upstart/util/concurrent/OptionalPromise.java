@@ -123,10 +123,13 @@ public class OptionalPromise<T> extends ExtendedPromise<Optional<T>, OptionalPro
             .orElseGet(asyncSupplier));
   }
 
-  public OptionalPromise<T> or(Supplier<? extends CompletionStage<Optional<T>>> supplier) {
-    return asOptionalPromise(() -> baseCompose(value -> value.<CompletionStage<Optional<T>>>map(OptionalPromise::of).orElseGet(supplier)));
+  public OptionalPromise<T> or(Supplier<? extends Optional<? extends T>> supplier) {
+    return thenApplyOptional(value -> value.or(supplier));
   }
 
+  public OptionalPromise<T> orCompose(Supplier<? extends CompletionStage<Optional<T>>> supplier) {
+    return thenComposeOptional(value -> value.<CompletionStage<Optional<T>>>map(OptionalPromise::of).orElseGet(supplier));
+  }
 
   public <I, O> OptionalPromise<O> thenMapCombine(CompletionStage<I> other, BiFunction<? super T, ? super I, O> mapper) {
     return asOptionalPromise(() -> thenCombine(other, (v1, v2) -> v1.map(v -> mapper.apply(v, v2))));

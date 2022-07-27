@@ -1,6 +1,5 @@
 package io.upstartproject.avrocodec.dynamodb;
 
-import com.google.common.truth.Truth;
 import io.upstartproject.avro.MessageEnvelope;
 import io.upstartproject.avrocodec.AvroCodec;
 import io.upstartproject.avrocodec.SchemaDescriptor;
@@ -14,7 +13,6 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
 import upstart.aws.test.dynamodb.LocalDynamoDbTest;
 import upstart.config.UpstartModule;
 import upstart.log4j.test.SuppressLogs;
-import upstart.test.CompletableFutureSubject;
 import upstart.test.ThreadPauseHelper;
 import upstart.test.UpstartServiceTest;
 import upstart.test.UpstartTestBuilder;
@@ -32,7 +30,7 @@ import java.util.stream.Stream;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.awaitility.Awaitility.await;
-import static upstart.test.CompletableFutureSubject.assertThat;
+import static upstart.test.truth.CompletableFutureSubject.assertThat;
 
 @LocalDynamoDbTest
 @UpstartServiceTest
@@ -57,7 +55,7 @@ class DynamoDbSchemaRepoTest extends UpstartModule {
 
   @Nested
   class WithInterceptedRepo {
-    private final ThreadPauseHelper pauseHelper = new ThreadPauseHelper();
+    private final ThreadPauseHelper pauseHelper = new ThreadPauseHelper(Deadline.withinSeconds(5));
     private DynamoDbTable<DynamoDbSchemaRepo.SchemaTable.SchemaDocument> schemaTable;
     private CompletableFuture<Void> racingInsertion;
 
