@@ -33,7 +33,7 @@ public class ProjectSkeletonFunction implements B4Function<ProjectSkeletonFuncti
 
   @Override
   public void run(SkeletonConfig config, B4TaskContext context) throws Exception {
-    context.effect("building skeleton maven project")
+    context.effect("Building skeleton maven project for docker caching: " + config.skeletonDir().toString())
             .run(() -> config.buildSkeleton(context));
   }
 

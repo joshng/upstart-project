@@ -1,5 +1,6 @@
 package upstart.javalin.annotations;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -146,10 +147,12 @@ public class HttpRegistry {
   }
 
   private static class AnnotatedWebInitializer implements JavalinWebInitializer {
+    private final ObjectMapper objectMapper;
     private final Set<AnnotatedEndpointInitializer<?>> endpointInitializers;
 
     @Inject
-    AnnotatedWebInitializer(Set<AnnotatedEndpointInitializer<?>> endpointInitializers) {
+    AnnotatedWebInitializer(@Web ObjectMapper objectMapper, Set<AnnotatedEndpointInitializer<?>> endpointInitializers) {
+      this.objectMapper = objectMapper;
       this.endpointInitializers = endpointInitializers;
     }
 
@@ -162,6 +165,7 @@ public class HttpRegistry {
         for (AnnotatedEndpointInitializer<?> endpointInitializer : endpointInitializers) {
           endpointInitializer.installHandlers(javalin);
         }
+        javalin.attribute(AnnotatedEndpointHandler.OBJECT_MAPPER_ATTRIBUTE, objectMapper);
       });
     }
 

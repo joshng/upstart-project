@@ -8,6 +8,8 @@ import upstart.util.context.Contextualized;
 import upstart.util.context.ContextualizedFuture;
 import upstart.util.exceptions.ThrowingConsumer;
 import upstart.util.exceptions.ThrowingRunnable;
+import upstart.util.functions.TriFunction;
+
 import upstart.util.exceptions.Try;
 import upstart.util.reflect.Reflect;
 
@@ -256,6 +258,10 @@ public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Th
 
   public <E extends Throwable> Promise<T> recover(Class<E> exceptionType, Function<? super E, ? extends T> recovery) {
     return (Promise<T>) CompletableFutures.recover(this, exceptionType, recovery);
+  }
+
+  public <E extends Throwable> Promise<T> recoverCompose(Class<E> exceptionType, Function<? super E, ? extends CompletionStage<? extends T>> recovery) {
+    return CompletableFutures.recoverCompose(this, exceptionType, recovery);
   }
 
   public <U> Promise<U> thenGet(Supplier<U> supplier) {

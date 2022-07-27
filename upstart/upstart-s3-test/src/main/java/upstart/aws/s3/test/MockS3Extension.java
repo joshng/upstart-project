@@ -29,8 +29,7 @@ public class MockS3Extension extends SingletonParameterResolver<MockS3> implemen
     System.setProperty("fs.s3a.endpoint", mockS3.getEndpointUri().toString());
     System.setProperty("fs.s3a.aws.credentials.provider", "org.apache.hadoop.fs.s3a.AnonymousAWSCredentialsProvider");
 
-    UpstartExtension.getOptionalTestBuilder(extensionContext)
-            .ifPresent(mockS3::setupTest);
+    UpstartExtension.applyOptionalEnvironmentValues(extensionContext, mockS3);
 
     return mockS3;
   }

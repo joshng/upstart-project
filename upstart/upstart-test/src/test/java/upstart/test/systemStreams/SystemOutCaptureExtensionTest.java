@@ -2,6 +2,7 @@ package upstart.test.systemStreams;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import upstart.test.SetupPhase;
 
 import static com.google.common.truth.Truth.assertWithMessage;
 
@@ -21,13 +22,13 @@ class SystemOutCaptureExtensionTest {
     assertWithMessage("captured output").that(captor.getCapturedString()).isEqualTo(output);
   }
 
-  @CaptureSystemOut(autoStart = false)
+  @CaptureSystemOut(SetupPhase.None)
   @Test
   void autoStartDisabledByMethodAnnotation() {
     assertNotCapturing();
   }
 
-  @CaptureSystemOut(autoStart = false)
+  @CaptureSystemOut(SetupPhase.None)
   @Nested
   class InnerTest {
     @Test

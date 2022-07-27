@@ -204,7 +204,7 @@ public class B4TaskContext {
   }
 
   public Effect effect(String... tokens) {
-    return effect(invocation.effectiveVerbosity(), tokens);
+    return effect(B4Function.Verbosity.Info, tokens);
   }
 
   public Effect effect(B4Function.Verbosity verbosity, String... tokens) {
@@ -226,7 +226,6 @@ public class B4TaskContext {
       if (!isDryRun) {
         say(verbosity, message);
         T result = block.getOrThrow();
-        say("DONE:", message);
         return result;
       } else {
         say(DRYRUN_LOG_MARKER, message);

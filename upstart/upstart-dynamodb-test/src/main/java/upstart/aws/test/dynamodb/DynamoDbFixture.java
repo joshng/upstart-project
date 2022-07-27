@@ -5,12 +5,13 @@ import com.amazonaws.services.dynamodbv2.local.server.DynamoDBProxyServer;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
-import upstart.config.UpstartEnvironment;
-import upstart.config.annotations.ConfigPath;
-import upstart.util.concurrent.services.IdleService;
+import upstart.config.EnvironmentConfigFixture;
+import upstart.config.TestConfigBuilder;
 import upstart.test.AvailablePortAllocator;
+import upstart.test.UpstartTestBuilder;
 import upstart.test.systemStreams.SystemOutCaptor;
 import upstart.util.concurrent.LazyReference;
+import upstart.util.concurrent.services.IdleService;
 import upstart.util.exceptions.MultiException;
 
 import javax.annotation.Nonnull;
@@ -18,7 +19,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.stream.Stream;
 
-public class DynamoDbFixture extends IdleService {
+public class DynamoDbFixture extends IdleService implements EnvironmentConfigFixture {
 
   public static final String SQLITE_4_JAVA_LIBRARY_PATH = "sqlite4java.library.path";
   private int port;
@@ -64,6 +65,11 @@ public class DynamoDbFixture extends IdleService {
       throw e;
     }
     endpoint = "http://localhost:" + port;
+  }
+
+  @Override
+  public void applyEnvironmentValues(TestConfigBuilder<?> config) {
+    config.overrideConfig("upstart.aws.dynamodb.endpoint", endpoint);
   }
 
   public DynamoDbClient client() {

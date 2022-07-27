@@ -9,6 +9,7 @@ import io.upstartproject.avrocodec.SchemaFingerprint;
 import io.upstartproject.avrocodec.SpecificRecordPacker;
 import org.apache.avro.Schema;
 import org.apache.avro.specific.SpecificRecordBase;
+import upstart.managedservices.ServiceTransformer;
 
 import javax.inject.Inject;
 

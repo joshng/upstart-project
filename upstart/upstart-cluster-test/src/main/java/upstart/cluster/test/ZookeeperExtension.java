@@ -20,7 +20,7 @@ public class ZookeeperExtension extends SingletonParameterResolver<ZookeeperFixt
     public void beforeEach(ExtensionContext context) throws Exception {
         ZookeeperFixture fixture = getOrCreateContext(context);
         fixture.start();
-        UpstartExtension.getOptionalTestBuilder(context).ifPresent(fixture::setupUpstartClusterConfig);
+        UpstartExtension.applyOptionalEnvironmentValues(context, fixture);
     }
 
     @Override

@@ -472,7 +472,7 @@ public class AvroCodec extends AbstractService {
 
     return refreshed.thenApply(ignored -> typesByFullName.asMap().values().stream()
             .flatMap(RecordTypeFamily::getAllVersions)
-            .collect(Collectors.toUnmodifiableList())
+            .toList()
     );
   }
 

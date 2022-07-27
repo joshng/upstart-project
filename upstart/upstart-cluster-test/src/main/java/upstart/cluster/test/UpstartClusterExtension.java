@@ -30,7 +30,7 @@ public class UpstartClusterExtension extends SingletonParameterResolver<UpstartT
   @Override
   public void beforeEach(ExtensionContext context) throws Exception {
     UpstartTestClusterBuilder configurator = getOrCreateContext(context);
-    ZookeeperFixture.getInstance(context).setupUpstartClusterConfig(configurator.allNodes());
+    ZookeeperFixture.getInstance(context).applyEnvironmentValues(configurator.allNodes());
   }
 
   @Override

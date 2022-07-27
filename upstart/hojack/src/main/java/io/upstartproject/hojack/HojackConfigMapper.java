@@ -174,6 +174,7 @@ public class HojackConfigMapper implements ConfigMapper {
         return objectMapper.convertValue(configObject, javaType);
       } catch (IllegalArgumentException e) {
         if (e.getCause() instanceof MismatchedInputException mismatch
+                && mismatch.getTargetType() != null
                 && Collection.class.isAssignableFrom(mismatch.getTargetType())
                 && configObject instanceof Map map
         ) {

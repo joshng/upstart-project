@@ -4,6 +4,8 @@ import akka.actor.ActorSystem;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import upstart.aws.Aws;
 import upstart.aws.s3.S3Key;
+import upstart.config.EnvironmentConfigFixture;
+import upstart.config.TestConfigBuilder;
 import upstart.test.UpstartTestBuilder;
 import upstart.util.collect.MoreStreams;
 import upstart.util.collect.Optionals;
@@ -44,7 +46,7 @@ import java.util.stream.Stream;
 
 import static org.awaitility.Awaitility.await;
 
-public class MockS3 {
+public class MockS3 implements EnvironmentConfigFixture {
   public static final String REGION = "us-west-2";
   private final Provider realProvider;
   private final S3Mock s3Mock;
@@ -170,14 +172,14 @@ public class MockS3 {
     return new OperationLog();
   }
 
-  public UpstartTestBuilder setupTest(UpstartTestBuilder testBuilder) {
-    return testBuilder
-            .overrideConfig(Aws.Service.S3.configPath, Map.of(
-                            "endpoint", endpointUri,
-                            "region", getRegion(),
-                            "credentialsProviderType", "Anonymous"
-                    )
-            );
+  @Override
+  public void applyEnvironmentValues(TestConfigBuilder<?> config) {
+    config.overrideConfig(Aws.Service.S3.configPath, Map.of(
+                                  "endpoint", endpointUri,
+                                  "region", getRegion(),
+                                  "credentialsProviderType", "Anonymous"
+                          )
+    );
   }
 
   void shutdown() {

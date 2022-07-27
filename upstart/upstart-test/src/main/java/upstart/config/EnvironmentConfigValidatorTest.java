@@ -2,24 +2,22 @@ package upstart.config;
 
 import com.google.common.util.concurrent.Service;
 import com.google.inject.Module;
-import org.slf4j.LoggerFactory;
-import upstart.UpstartService;
-import upstart.log.UpstartLogConfig;
-import upstart.test.UpstartExtension;
-import upstart.util.concurrent.LazyReference;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigValueFactory;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.slf4j.LoggerFactory;
+import upstart.UpstartService;
+import upstart.log.UpstartLogConfig;
+import upstart.test.UpstartExtension;
+import upstart.util.concurrent.LazyReference;
 
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.truth.Truth.assertThat;
 import static com.google.common.truth.Truth.assertWithMessage;
 import static upstart.config.UpstartEnvironment.UPSTART_ENVIRONMENT;
 

@@ -17,7 +17,6 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 
 @DeserializedImmutable
-@JsonDeserialize(as = ImmutableConsoleLog4jAppenderConfig.class)
 @JsonTypeName("console")
 public abstract class ConsoleLog4jAppenderConfig implements Log4jAppenderConfig {
   abstract LayoutConfig layout();
@@ -36,9 +35,7 @@ public abstract class ConsoleLog4jAppenderConfig implements Log4jAppenderConfig 
   interface LayoutConfig {
     Layout configureLayout(UpstartLogConfig config);
   }
-
-  @Value.Immutable(singleton = true)
-  @JsonDeserialize(as = ImmutableJsonLayoutConfig.class)
+  @DeserializedImmutable
   @JsonTypeName("json")
   static abstract class JsonLayoutConfig implements LayoutConfig {
     @Override
@@ -49,8 +46,7 @@ public abstract class ConsoleLog4jAppenderConfig implements Log4jAppenderConfig 
     }
   }
 
-  @Value.Immutable
-  @JsonDeserialize(as = ImmutablePatternLayoutConfig.class)
+  @DeserializedImmutable
   @JsonTypeName("pattern")
   static abstract class PatternLayoutConfig implements LayoutConfig {
     abstract String pattern();

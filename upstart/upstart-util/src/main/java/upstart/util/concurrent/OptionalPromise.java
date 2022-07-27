@@ -7,6 +7,7 @@ import javax.annotation.Nullable;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -42,14 +43,23 @@ public class OptionalPromise<T> extends ExtendedPromise<Optional<T>, OptionalPro
   public static <T> OptionalPromise<T> ofNullable(@Nullable T value) {
     return value == null ? empty() : of(value);
   }
-  public static <T> OptionalPromise<T> ofFutureNullable(CompletableFuture<T> future) {
+  public static <T> OptionalPromise<T> ofFutureNullable(CompletionStage<T> future) {
     return Promise.of(future).thenApplyOptional(Optional::ofNullable);
   }
 
-  public static <T> OptionalPromise<T> ofFutureOptional(CompletableFuture<Optional<T>> future) {
-    return future instanceof OptionalPromise<T> already
+  public static <I, O> OptionalPromise<O> mapToPromise(Optional<I> input, Function<? super I, ? extends CompletionStage<O>> mapper) {
+    return input.map(mapper).map(OptionalPromise::ofFutureNullable).orElse(empty());
+  }
+
+  public static <I, O> OptionalPromise<O> flatMapToPromise(Optional<I> input, Function<? super I, ? extends CompletionStage<Optional<O>>> mapper) {
+    return input.map(mapper).map(OptionalPromise::ofFutureOptional).orElse(empty());
+  }
+
+  public static <T> OptionalPromise<T> ofFutureOptional(CompletionStage<Optional<T>> stage) {
+    CompletableFuture<Optional<T>> future;
+    return stage instanceof OptionalPromise<T> already
             ? already
-            : CompletableFutures.isCompletedNormally(future)
+            : CompletableFutures.isCompletedNormally(future = stage.toCompletableFuture())
                     ? completed(future.join())
                     : new OptionalPromise<T>().completeWith(future);
   }
@@ -65,6 +75,7 @@ public class OptionalPromise<T> extends ExtendedPromise<Optional<T>, OptionalPro
   public <O> OptionalPromise<O> thenMap(Function<? super T, ? extends O> mapper) {
     return asOptionalPromise(() -> thenApply(optional -> optional.map(mapper)));
   }
+
 
   public <O> OptionalPromise<O> thenMapCompose(Function<? super T, ? extends CompletionStage<O>> mapper) {
     return asOptionalPromise(() -> thenCompose(value -> toFutureOptional(value.map(mapper))));
@@ -110,6 +121,41 @@ public class OptionalPromise<T> extends ExtendedPromise<Optional<T>, OptionalPro
     return thenCompose(optional -> optional
             .<CompletionStage<T>>map(CompletableFuture::completedFuture)
             .orElseGet(asyncSupplier));
+  }
+
+  public OptionalPromise<T> or(Supplier<? extends CompletionStage<Optional<T>>> supplier) {
+    return asOptionalPromise(() -> baseCompose(value -> value.<CompletionStage<Optional<T>>>map(OptionalPromise::of).orElseGet(supplier)));
+  }
+
+
+  public <I, O> OptionalPromise<O> thenMapCombine(CompletionStage<I> other, BiFunction<? super T, ? super I, O> mapper) {
+    return asOptionalPromise(() -> thenCombine(other, (v1, v2) -> v1.map(v -> mapper.apply(v, v2))));
+  }
+
+  public <I, O> OptionalPromise<O> thenMapCombinedFuture(
+          CompletionStage<I> other,
+          BiFunction<? super T, ? super I, ? extends CompletionStage<O>> mapper
+  ) {
+    return ofFutureOptional(CompletableFutures.sequence(thenCombine(
+            other,
+            (v1, v2) -> toFutureOptional(v1.map(v -> mapper.apply(v, v2)))
+    )));
+  }
+
+  public <I, O> OptionalPromise<O> thenFlatMapCombine(
+          CompletionStage<I> other,
+          BiFunction<? super T, ? super I, ? extends Optional<O>> mapper
+  ) {
+    return asOptionalPromise(() -> thenCombine(other, (v1, v2) -> v1.flatMap(v -> mapper.apply(v, v2))));
+  }
+
+  public <I, O> OptionalPromise<O> thenFlatMapCombinedFuture(
+          CompletionStage<I> other,
+          BiFunction<? super T, ? super I, ? extends CompletionStage<Optional<O>>> mapper
+  ) {
+    return ofFutureOptional(CompletableFutures
+                                    .sequence(thenCombine(other, (v1, v2) -> v1
+                                            .<CompletionStage<Optional<O>>>map(v -> mapper.apply(v, v2)).orElse(empty()))));
   }
 
   @Override

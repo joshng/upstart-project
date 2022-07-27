@@ -17,6 +17,7 @@
     <module>avro-schemas-parent</module>
     <module>kafka-schema-repo</module>
     <module>s3-schema-repo</module>
+    <module>dynamodb-schema-repo</module>
   </modules>
 
   <dependencyManagement>

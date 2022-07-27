@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Streams;
+import dev.failsafe.Failsafe;
+import dev.failsafe.RetryPolicy;
 import upstart.b4.B4Function;
 import upstart.b4.B4TaskContext;
 import upstart.commandExecutor.CommandPolicy;
@@ -21,8 +23,6 @@ import io.fabric8.kubernetes.api.model.batch.Job;
 import io.fabric8.kubernetes.api.model.batch.JobCondition;
 import io.fabric8.kubernetes.api.model.batch.JobStatus;
 import io.fabric8.kubernetes.client.KubernetesClient;
-import net.jodah.failsafe.Failsafe;
-import net.jodah.failsafe.RetryPolicy;
 import org.immutables.value.Value;
 
 import javax.inject.Inject;
@@ -214,11 +214,11 @@ public class KubeApplyFunction implements B4Function<KubeApplyFunction.KubeApply
             Streams.stream(config.job().map(j -> new JobReadiness(j)))
     ).collect(Collectors.toList());
 
-    RetryPolicy<Boolean> kubeRetryPolicy = new RetryPolicy<Boolean>()
+    RetryPolicy<Boolean> kubeRetryPolicy = RetryPolicy.<Boolean>builder()
             .withMaxAttempts(15)
             .handleIf(t -> !(t instanceof PermanentFailureException))
             .onFailedAttempt(t -> context.sayFormatted("Could not perform readiness check: %s", t.getLastFailure().getMessage()))
-            .withBackoff(1, 60, ChronoUnit.SECONDS);
+            .withBackoff(1, 60, ChronoUnit.SECONDS).build();
 
     while (!readinessTests.isEmpty()) {
       context.sleepOrCancel(READINESS_POLL_INTERVAL);
