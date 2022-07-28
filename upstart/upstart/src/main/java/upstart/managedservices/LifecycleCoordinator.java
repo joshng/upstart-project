@@ -107,7 +107,7 @@ public class LifecycleCoordinator extends NotifyingService {
     }
 
     failWith(readyToStop
-            .thenCompose(__ -> STOP.apply(underlyingService))
+            .thenCompose(__ -> STOP_QUIETLY.apply(underlyingService))
             .thenAccept(state -> {
               switch (state) {
                 case TERMINATED:

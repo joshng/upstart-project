@@ -3,7 +3,6 @@ package upstart.util.concurrent.services;
 
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.common.util.concurrent.Service;
-import upstart.util.functions.AsyncFunction;
 import upstart.util.reflect.Reflect;
 
 import java.util.concurrent.CompletableFuture;
@@ -14,8 +13,6 @@ import java.util.concurrent.TimeoutException;
 
 public abstract class BaseComposableService<S extends Service> implements ComposableService {
 
-  public static final AsyncFunction<ComposableService, State> STOP = input -> input.stop()
-          .exceptionally(e -> State.FAILED);
   private final S delegate;
   protected final Class<? extends BaseComposableService> unenhancedClass = Reflect.getUnenhancedClass(getClass());
   private final String unenhancedClassName = unenhancedClass.getSimpleName();

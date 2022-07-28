@@ -8,7 +8,6 @@ import upstart.config.EnvironmentConfigFixture;
 import upstart.config.HojackConfigProvider;
 import upstart.util.collect.MoreStreams;
 import upstart.util.concurrent.CompletableFutures;
-import upstart.util.concurrent.services.BaseComposableService;
 import upstart.util.concurrent.services.ComposableService;
 
 import java.util.Arrays;
@@ -34,7 +33,7 @@ public class UpstartApplicationSandbox {
     try {
       app.configureSupervisor(UpstartService.builder(configProvider).installModule(app).buildServiceSupervisor()).startAndAwaitTermination();
     } finally {
-      CompletableFutures.allOf(fixtureServices.stream().map(BaseComposableService.STOP)).join();
+      CompletableFutures.allOf(fixtureServices.stream().map(ComposableService.STOP_QUIETLY)).join();
     }
   }
 }

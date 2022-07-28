@@ -8,7 +8,6 @@ import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import upstart.config.EnvironmentConfigFixture;
 import upstart.config.TestConfigBuilder;
 import upstart.test.AvailablePortAllocator;
-import upstart.test.UpstartTestBuilder;
 import upstart.test.systemStreams.SystemOutCaptor;
 import upstart.util.concurrent.LazyReference;
 import upstart.util.concurrent.services.IdleService;

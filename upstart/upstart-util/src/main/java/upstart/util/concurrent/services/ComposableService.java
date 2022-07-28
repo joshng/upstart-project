@@ -2,6 +2,7 @@ package upstart.util.concurrent.services;
 
 import com.google.common.util.concurrent.Service;
 import upstart.util.collect.Optionals;
+import upstart.util.functions.AsyncFunction;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -21,6 +22,9 @@ import java.util.concurrent.CompletableFuture;
  * @see ScheduledService
  */
 public interface ComposableService extends Service {
+  AsyncFunction<ComposableService, State> STOP_QUIETLY = input -> input.stop()
+          .exceptionally(e -> State.FAILED);
+
   static ComposableService enhance(Service service) {
     return Optionals.asInstance(service, ComposableService.class)
             .orElseGet(() -> new AdapterService(service));
