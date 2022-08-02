@@ -109,7 +109,7 @@ public abstract class TargetName extends StringIdentifier {
   @Value.Derived
   @Value.Auxiliary
   public String displayName() {
-    return value().equals(ROOT_VALUE) ? "[no namespace]" : value().substring(1);
+    return value().equals(ROOT_VALUE) ? "[basic commands]" : value().substring(1);
   }
 
   @Value.Lazy

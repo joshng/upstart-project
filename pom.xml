@@ -270,6 +270,12 @@
         <version>3.2.1</version>
       </dependency>
 
+      <dependency>
+        <groupId>info.picocli</groupId>
+        <artifactId>picocli</artifactId>
+        <version>4.1.1</version>
+      </dependency>
+
 
       <dependency>
         <groupId>net.bytebuddy</groupId>

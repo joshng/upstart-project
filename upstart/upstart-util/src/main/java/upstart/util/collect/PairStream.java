@@ -9,9 +9,11 @@ import com.google.common.collect.MultimapBuilder;
 import com.google.common.collect.Multimaps;
 import com.google.common.collect.SetMultimap;
 import com.google.common.collect.Streams;
+import upstart.util.concurrent.SimpleReference;
 import upstart.util.reflect.Reflect;
 import upstart.util.functions.TriFunction;
 
+import java.util.AbstractMap;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
@@ -57,6 +59,10 @@ public class PairStream<K, V> implements Stream<Map.Entry<K, V>> {
     return of(Streams.stream(stream));
   }
 
+  public static <K, V> PairStream<K, V> empty() {
+    return of(Stream.empty());
+  }
+
   public static <K, V> PairStream<K, V> zip(Stream<K> keys, Stream<V> values) {
     return of(Streams.zip(keys, values, Pair::of));
   }
@@ -71,6 +77,12 @@ public class PairStream<K, V> implements Stream<Map.Entry<K, V>> {
 
   public static <K, V> PairStream<K, V> withMappedValues(Stream<K> keys, Function<? super K, V> valueMapper) {
     return of(keys.map(k -> Pair.of(k, valueMapper.apply(k))));
+  }
+
+  public static <T> PairStream<T, T> consecutivePairs(Stream<T> stream) {
+    SimpleReference<T> prev = new SimpleReference<>();
+    return of(stream.sequential().map(t -> new AbstractMap.SimpleImmutableEntry<>(prev.getAndSet(t), t)))
+            .skip(1);
   }
 
   public static <K, V> PairStream<K, V> cartesianProduct(Stream<K> keys, Supplier<Stream<V>> values) {

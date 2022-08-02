@@ -16,17 +16,12 @@ import java.util.stream.Stream;
 
 public abstract class SingletonExtension<T> {
 //  private static final TypeToken<SingletonExtension> TYPE_TOKEN = TypeToken.of(SingletonExtension.class);
-  private static final Type CONTEXT_TYPE;
+  private static final Type CONTEXT_TYPE = SingletonExtension.class.getTypeParameters()[0];
   protected final Class<T> contextClass;
-  static {
-    try {
-      CONTEXT_TYPE = SingletonExtension.class.getDeclaredMethod("createContext", ExtensionContext.class).getGenericReturnType();
-    } catch (NoSuchMethodException e) {
-      throw new AssertionError(e);
-    }
-  }
 
-  private static final LoadingCache<Class<? extends SingletonExtension<?>>, TypeToken<?>> PARAMETER_TYPES = CacheBuilder.newBuilder().build(CacheLoader.from(SingletonExtension::parameterType));
+  private static final LoadingCache<Class<?>, TypeToken<?>> PARAMETER_TYPES = CacheBuilder.newBuilder().build(CacheLoader.from(
+          extensionClass -> TypeToken.of(extensionClass).resolveType(CONTEXT_TYPE))
+  );
 
   public SingletonExtension(Class<T> contextClass) {
     this.contextClass = contextClass;
@@ -70,13 +65,9 @@ public abstract class SingletonExtension<T> {
             .map(ExtendWith::value)
             .flatMap(Stream::of)
             .filter(SingletonExtension.class::isAssignableFrom)
-            .filter(extClass -> parameterType(extClass).isSubtypeOf(contextClass))
+            .filter(extClass -> PARAMETER_TYPES.getUnchecked(extClass).isSubtypeOf(contextClass))
             .map(Reflect::<Class<? extends SingletonExtension<T>>>blindCast)
             .findFirst()
             .map(extensionClass -> getOrCreateContextFrom(extensionClass, extensionContext));
-  }
-
-  private static <T> TypeToken<T> parameterType(Class<?> extensionClass) {
-    return (TypeToken<T>) TypeToken.of(extensionClass).resolveType(CONTEXT_TYPE);
   }
 }

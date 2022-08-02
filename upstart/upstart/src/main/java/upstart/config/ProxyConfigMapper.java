@@ -80,23 +80,19 @@ public class ProxyConfigMapper {
   private static final Map<Class<?>, TypeMapperFactory> TYPE_MAPPER_FACTORIES = new ConcurrentHashMap<>();
 
   static {
-    try {
-      Type[] mapParamTypes = Map.class.getMethod("put", Object.class, Object.class).getGenericParameterTypes();
-      MAP_KEY_TYPE = mapParamTypes[0];
-      MAP_VALUE_TYPE = mapParamTypes[1];
-      COLLECTION_VALUE_TYPE = Collection.class.getMethod("add", Object.class).getGenericParameterTypes()[0];
-      OPTIONAL_VALUE_TYPE = Optional.class.getMethod("get").getGenericReturnType();
-      TYPE_MAPPER_FACTORIES.put(List.class, TypeMapperFactory.LIST);
-      TYPE_MAPPER_FACTORIES.put(ImmutableList.class, TypeMapperFactory.LIST);
-      TYPE_MAPPER_FACTORIES.put(Set.class, TypeMapperFactory.SET);
-      TYPE_MAPPER_FACTORIES.put(ImmutableSet.class, TypeMapperFactory.SET);
-      TYPE_MAPPER_FACTORIES.put(Optional.class, TypeMapperFactory.OPTIONAL);
-      TYPE_MAPPER_FACTORIES.put(Map.class, TypeMapperFactory.MAP);
-      TYPE_MAPPER_FACTORIES.put(ImmutableMap.class, TypeMapperFactory.MAP);
-      TYPE_MAPPER_FACTORIES.put(Class.class, TypeMapperFactory.CLASS);
-    } catch (NoSuchMethodException e) {
-      throw new AssertionError(e);
-    }
+    Type[] mapParamTypes = Map.class.getTypeParameters();
+    MAP_KEY_TYPE = mapParamTypes[0];
+    MAP_VALUE_TYPE = mapParamTypes[1];
+    COLLECTION_VALUE_TYPE = Collection.class.getTypeParameters()[0];
+    OPTIONAL_VALUE_TYPE = Optional.class.getTypeParameters()[0];
+    TYPE_MAPPER_FACTORIES.put(List.class, TypeMapperFactory.LIST);
+    TYPE_MAPPER_FACTORIES.put(ImmutableList.class, TypeMapperFactory.LIST);
+    TYPE_MAPPER_FACTORIES.put(Set.class, TypeMapperFactory.SET);
+    TYPE_MAPPER_FACTORIES.put(ImmutableSet.class, TypeMapperFactory.SET);
+    TYPE_MAPPER_FACTORIES.put(Optional.class, TypeMapperFactory.OPTIONAL);
+    TYPE_MAPPER_FACTORIES.put(Map.class, TypeMapperFactory.MAP);
+    TYPE_MAPPER_FACTORIES.put(ImmutableMap.class, TypeMapperFactory.MAP);
+    TYPE_MAPPER_FACTORIES.put(Class.class, TypeMapperFactory.CLASS);
   }
 
   private final ObjectMapper objectMapper;
@@ -367,6 +363,7 @@ public class ProxyConfigMapper {
       try {
         return buildMethod.invoke(fromMethod.invoke(builderMethod.invoke(null), proxy));
       } catch (InvocationTargetException e) {
+        // unwrap to protect type-specific catch-logic up the stack
         Throwables.propagateIfPossible(e.getTargetException(), Exception.class);
         throw e;
       }

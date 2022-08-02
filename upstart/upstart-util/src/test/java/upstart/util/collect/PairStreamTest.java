@@ -70,6 +70,12 @@ class PairStreamTest {
     assertThat(subject().values()).containsExactly(1, 2).inOrder();
   }
 
+  @Test
+  void consecutivePairs() {
+    assertThat(PairStream.consecutivePairs(naturalNumbers(0, 4)))
+            .containsExactly(Pair.of(0, 1), Pair.of(1, 2), Pair.of(2, 3)).inOrder();
+  }
+
   private static Stream<Integer> naturalNumbers(int first, int size) {
     return MoreStreams.generate(first, x -> x + 1).limit(size);
   }
