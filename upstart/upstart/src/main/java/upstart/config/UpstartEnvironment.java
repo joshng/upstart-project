@@ -44,6 +44,7 @@ public abstract class UpstartEnvironment {
           "upstart.localhost.hostname", LocalHost.getLocalHostname(),
           "upstart.localhost.ipAddress", LocalHost.getLocalIpAddress()
   ));
+  public static final String UPSTART_DEV_CONFIG = "UPSTART_DEV_CONFIG";
 
   /**
    *
@@ -146,13 +147,13 @@ public abstract class UpstartEnvironment {
 
   private static Config loadDevConfig() {
     return Optionals.or(
-            Ambiance.ambientValue("UPSTART_DEV_CONFIG").map(File::new),
+            Ambiance.ambientValue(UPSTART_DEV_CONFIG).map(File::new),
             UpstartEnvironment::findDevConfigFile
     ).map(ConfigFactory::parseFileAnySyntax)
             .orElse(null);
   }
 
-  private static Optional<File> findDevConfigFile() {
+  public static Optional<File> findDevConfigFile() {
     String username = System.getProperty("user.name");
     Path configDir = Paths.get("dev-configs");
     Path cwd = Paths.get(".").toAbsolutePath();
