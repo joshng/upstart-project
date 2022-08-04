@@ -1,17 +1,29 @@
 package upstart.dynamodb;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
+
 import javax.inject.Inject;
 
 public class DynamoDbNamespace {
-  private final DynamoDbConfig context;
+  private final String namespace;
 
   @Inject
   public DynamoDbNamespace(DynamoDbConfig context) {
-    this.context = context;
+    this(context.namespace());
+  }
+
+  @JsonCreator
+  public DynamoDbNamespace(String namespace) {
+    this.namespace = namespace;
   }
 
   public String tableName(String suffix) {
-    return context.namespace() + '.' + suffix;
+    return namespace + '.' + suffix;
   }
 
+  @JsonValue
+  public String namespace() {
+    return namespace;
+  }
 }
