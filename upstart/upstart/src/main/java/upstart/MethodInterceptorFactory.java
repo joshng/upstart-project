@@ -125,7 +125,7 @@ public interface MethodInterceptorFactory {
     public Stream<Key<?>> computeDependencies(BindingResolver.ResolvedBinding<?> target) {
 
       Class<?> targetType = target.rawBindingType();
-      if (!classMatcher.matches(targetType)) return Stream.empty();
+      if (targetType.getPackage() == null || !classMatcher.matches(targetType)) return Stream.empty();
       Set<Method> methods = interceptedMethods(targetType).collect(Collectors.toSet());
       if (methods.isEmpty()) return Stream.empty();
 

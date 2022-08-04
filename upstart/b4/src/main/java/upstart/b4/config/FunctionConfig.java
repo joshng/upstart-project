@@ -3,7 +3,6 @@ package upstart.b4.config;
 import com.google.common.reflect.TypeToken;
 import com.google.inject.Module;
 import upstart.b4.B4Function;
-import upstart.b4.B4TaskContext;
 import upstart.b4.TargetName;
 import upstart.b4.TargetSpec;
 import upstart.util.Nothing;
@@ -17,7 +16,7 @@ import java.util.function.Predicate;
 public abstract class FunctionConfig {
   public static final String IMPLEMENTATION_FIELD = "impl";
   static final Predicate<Type> CONFIGURED_TYPE = type -> type != Nothing.class; // && type != Object.class;
-  private static final Type GENERIC_CONFIG_TYPE = findConfigType();
+  private static final Type GENERIC_CONFIG_TYPE = B4Function.class.getTypeParameters()[0];
 
   public abstract Class<? extends B4Function<?>> impl();
 
@@ -37,14 +36,5 @@ public abstract class FunctionConfig {
             .configType(configType())
             .moduleClass(module())
             .build();
-  }
-
-  private static Type findConfigType() {
-    try {
-      return B4Function.class.getDeclaredMethod("run", Object.class, B4TaskContext.class)
-              .getGenericParameterTypes()[0];
-    } catch (NoSuchMethodException e) {
-      throw new AssertionError(e);
-    }
   }
 }

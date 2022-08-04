@@ -33,17 +33,8 @@ import java.util.stream.Stream;
  */
 public class CodahaleMetricsAdapter implements MetricRegistryListener {
   private static final Logger LOG = LoggerFactory.getLogger(CodahaleMetricsAdapter.class);
-  private static final Type GAUGE_VALUE_TYPE;
+  private static final Type GAUGE_VALUE_TYPE = Gauge.class.getTypeParameters()[0];
   private static final Optional<String> COUNT_CLASSIFIER = Optional.of("Count");
-
-
-  static {
-    try {
-      GAUGE_VALUE_TYPE = Gauge.class.getMethod("getValue").getGenericReturnType();
-    } catch (NoSuchMethodException e) {
-      throw new RuntimeException(e);
-    }
-  }
 
   private final MetricReporter metricConsumer;
   private final Clock clock;

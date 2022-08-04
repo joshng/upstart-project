@@ -9,13 +9,14 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public class UrlBuilder {
-  private static final Pattern TOKEN_PATTERN = Pattern.compile("\\{(.+)}");
+  private static final Pattern TOKEN_PATTERN = Pattern.compile("\\{(.+?)}");
   private static final Joiner.MapJoiner QUERY_PARAM_JOINER = Joiner.on('&').withKeyValueSeparator('=');
   private final String urlTemplate;
   private Map<String, String> pathParams = null;
@@ -23,6 +24,10 @@ public class UrlBuilder {
 
   public UrlBuilder(String urlTemplate) {
     this.urlTemplate = urlTemplate;
+  }
+
+  public List<String> findRequiredPathParamNames() {
+    return TOKEN_PATTERN.matcher(urlTemplate).results().map(match -> match.group(1)).toList();
   }
 
   public UrlBuilder withPathParam(String placeholder, Object value) {
