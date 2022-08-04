@@ -29,9 +29,10 @@ import java.util.Optional;
  *   <li>dev-configs/${USERNAME}.conf (only if UpstartDeploymentStage=dev)</li>
  *   <li>upstart-environments/${UPSTART_ENVIRONMENT}.conf</li>
  *   <li>System properties</li>
+ *   <li>upstart-stages/${UPSTART_DEPLOYMENT_STAGE}.conf</li>
  *   <li>upstart-application.conf</li>
- *   <li>application.conf</li>
  *   <li>upstart-defaults.conf</li>
+ *   <li>application.conf</li>
  *   <li>reference.conf</li>
  *   <li>upstart-defaults/${ConfigPath}.conf for each binding loaded with {@link UpstartModule#bindConfig}</li>
  * </ol>
@@ -40,6 +41,7 @@ import java.util.Optional;
 public abstract class UpstartEnvironment {
   public static final String UPSTART_ENVIRONMENT = "UPSTART_ENVIRONMENT";
   public static final String UPSTART_OVERRIDES = "UPSTART_OVERRIDES";
+  public static final String UPSTART_DEPLOYMENT_STAGE = "UPSTART_DEPLOYMENT_STAGE";
   private static final Config HOSTNAME_CONFIG = ConfigFactory.parseMap(ImmutableMap.of(
           "upstart.localhost.hostname", LocalHost.getLocalHostname(),
           "upstart.localhost.ipAddress", LocalHost.getLocalIpAddress()
@@ -106,16 +108,17 @@ public abstract class UpstartEnvironment {
 
     ConfigParseOptions classLoaderOptions = ConfigParseOptions.defaults().setClassLoader(classLoader());
 
-    Config environmentConfig = ConfigFactory.parseResourcesAnySyntax("upstart-environments/" + name(), classLoaderOptions.setAllowMissing(false));
+    Config environmentConfig = ConfigFactory.parseResourcesAnySyntax("upstart-environments/" + name(), classLoaderOptions);
 
     return HOSTNAME_CONFIG
             .withFallback(contextConfig())
             .withFallback(overrideConfig)
             .withFallback(environmentConfig)
             .withFallback(ConfigFactory.systemProperties())
+            .withFallback(ConfigFactory.parseResourcesAnySyntax("upstart-stages/" + deploymentStage(), classLoaderOptions))
             .withFallback(ConfigFactory.parseResourcesAnySyntax("upstart-application", classLoaderOptions))
-            .withFallback(ConfigFactory.defaultApplication(classLoaderOptions))
             .withFallback(ConfigFactory.parseResourcesAnySyntax("upstart-defaults", classLoaderOptions))
+            .withFallback(ConfigFactory.defaultApplication(classLoaderOptions))
             .withFallback(ConfigFactory.defaultReference(classLoaderOptions.getClassLoader()));
   }
 

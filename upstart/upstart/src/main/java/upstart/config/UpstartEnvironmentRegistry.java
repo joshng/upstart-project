@@ -35,11 +35,13 @@ public abstract class UpstartEnvironmentRegistry {
           .orElse(DEFAULT_REGISTRY_RESOURCE_NAME);
 
   private final LoadingCache<String, UpstartEnvironment> environmentCache = CacheBuilder.newBuilder()
-          .build(new CacheLoader<String, UpstartEnvironment>() {
+          .build(new CacheLoader<>() {
             @Override
             public UpstartEnvironment load(String name) {
-              checkArgument(appEnvConfig().hasPath(name), "Unrecognized upstart environment name: '%s'. (Environments must be registered in %s)", name, REGISTRY_RESOURCE_NAME);
-              UpstartDeploymentStage stage = appEnvConfig().getEnum(UpstartDeploymentStage.class, name);
+              UpstartDeploymentStage stage = appEnvConfig().hasPath(name)
+                      ? appEnvConfig().getEnum(UpstartDeploymentStage.class, name)
+                      : UpstartDeploymentStage.valueOf(Ambiance.ambientValue(UpstartEnvironment.UPSTART_DEPLOYMENT_STAGE).orElseThrow(
+                              () -> new IllegalStateException("Missing environment value: " + UpstartEnvironment.UPSTART_DEPLOYMENT_STAGE + " for environment '" + name + "'")));
               return ImmutableUpstartEnvironment.builder()
                       .name(name)
                       .classLoader(classLoader())
@@ -61,7 +63,7 @@ public abstract class UpstartEnvironmentRegistry {
 
   @Value.Derived
   @Value.Auxiliary
-  public List<UpstartEnvironment> allEnvironments() {
+  public List<UpstartEnvironment> allRegisteredEnvironments() {
     return appEnvConfig().entrySet().stream()
             .map(Map.Entry::getKey)
             .map(this::environment)

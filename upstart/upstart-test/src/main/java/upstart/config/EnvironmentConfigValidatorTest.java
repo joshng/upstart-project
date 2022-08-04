@@ -62,10 +62,10 @@ public abstract class EnvironmentConfigValidatorTest extends UpstartModule {
     UpstartExtension.ensureInitialized();
   }
 
-  private static final LazyReference<List<UpstartEnvironment>> PROD_LIKE_ENVIRONMENTS = new LazyReference<List<UpstartEnvironment>>() {
+  private static final LazyReference<List<UpstartEnvironment>> PROD_LIKE_ENVIRONMENTS = new LazyReference<>() {
     @Override
     protected List<UpstartEnvironment> supplyValue() {
-      return UpstartEnvironmentRegistry.defaultClassLoaderRegistry().allEnvironments().stream()
+      return UpstartEnvironmentRegistry.defaultClassLoaderRegistry().allRegisteredEnvironments().stream()
               .filter(env -> env.deploymentStage().isProductionLike())
               .sorted(Comparator.comparing(UpstartEnvironment::name))
               .collect(Collectors.toList());
