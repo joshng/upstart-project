@@ -110,7 +110,7 @@ public class FileModificationWatchService extends ExecutionThreadService {
     }
 
     default CompletableFuture<Void> publish() {
-      return callback().apply(path());
+      return callback().apply(path()).toCompletableFuture();
     }
   }
 

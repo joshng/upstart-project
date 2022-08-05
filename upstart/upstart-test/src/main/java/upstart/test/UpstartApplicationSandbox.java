@@ -12,6 +12,7 @@ import upstart.util.concurrent.services.ComposableService;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CompletionStage;
 
 public class UpstartApplicationSandbox {
   public static void startAndAwaitTerminated(UpstartApplication app, EnvironmentConfigFixture... configFixtures) {
@@ -33,7 +34,7 @@ public class UpstartApplicationSandbox {
     try {
       app.configureSupervisor(UpstartService.builder(configProvider).installModule(app).buildServiceSupervisor()).startAndAwaitTermination();
     } finally {
-      CompletableFutures.allOf(fixtureServices.stream().map(ComposableService.STOP_QUIETLY)).join();
+      CompletableFutures.allOf(fixtureServices.stream().map(ComposableService.STOP_QUIETLY).map(CompletionStage::toCompletableFuture)).join();
     }
   }
 }

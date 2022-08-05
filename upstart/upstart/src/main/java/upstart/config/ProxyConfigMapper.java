@@ -179,9 +179,9 @@ public class ProxyConfigMapper {
     static CompletableFuture<MethodMapper> forMethod(Method method) {
       Reflect.setAccessible(method);
       CompletableFuture<TypeMapper> typeMapper = ProxyConfigMapper.typeMapper(method.getGenericReturnType());
-      Optional<String> adustedPath = Optionals.or(
-              Optional.ofNullable(method.getAnnotation(ConfigPath.class)).map(ConfigPath::value),
-              () -> Optional.ofNullable(method.getAnnotation(JsonProperty.class)).map(JsonProperty::value));
+      Optional<String> adustedPath = Optional.ofNullable(method.getAnnotation(ConfigPath.class))
+              .map(ConfigPath::value)
+              .or(() -> Optional.ofNullable(method.getAnnotation(JsonProperty.class)).map(JsonProperty::value));
       String path = adustedPath.orElse(method.getName());
       return typeMapper.thenApply(mapper -> ImmutableMethodMapper.of(method, path, mapper));
     }

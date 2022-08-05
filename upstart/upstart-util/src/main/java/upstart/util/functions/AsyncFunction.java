@@ -3,10 +3,11 @@ package upstart.util.functions;
 import upstart.util.concurrent.CompletableFutures;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 
 @FunctionalInterface
-public interface AsyncFunction<I, O> extends Function<I, CompletableFuture<O>> {
+public interface AsyncFunction<I, O> extends Function<I, CompletionStage<O>> {
   static <I, O> AsyncFunction<I, O> asyncFunction(AsyncFunction<I, O> fn) {
     return fn;
   }

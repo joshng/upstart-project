@@ -7,13 +7,16 @@ import java.util.UUID;
 
 public class RandomId {
   private static final int UUID_BYTE_LENGTH = 2 * Long.BYTES;
-  private static final BaseEncoding RANDOM_ID_ENCODING = BaseEncoding.base64Url().omitPadding();
+  private static final BaseEncoding RANDOM_ID_ENCODING = CrockfordBase32.lowerCaseInstance();
 
   private RandomId() { }
 
   public static String newRandomId() {
-    return RANDOM_ID_ENCODING.encode(toBytes(UUID.randomUUID()));
-//    return new CrockfordBase32(false).encodeToString(toBytes(UUID.randomUUID()));
+    return newRandomId(RANDOM_ID_ENCODING);
+  }
+
+  public static String newRandomId(BaseEncoding encoding) {
+    return encoding.encode(toBytes(UUID.randomUUID()));
   }
 
   private static byte[] toBytes(UUID identifier) {

@@ -3,6 +3,7 @@ package upstart.util.context;
 import upstart.util.collect.Entries;
 import upstart.util.concurrent.Promise;
 import upstart.util.exceptions.Try;
+import upstart.util.functions.AsyncFunction;
 
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
@@ -43,22 +44,22 @@ public class Contextualized<T> implements TransientContext {
     return new Contextualized<>(Try.success(value), context);
   }
 
-  public static <T, U> Function<Contextualized<T>, Contextualized<U>> liftFunction(Function<? super T, ? extends U> fn) {
+  public static <T, U> ContextualFunction<T, U> liftFunction(Function<? super T, ? extends U> fn) {
     return ctx -> ctx.map(fn);
   }
 
-  public static <T> Function<Contextualized<T>, Contextualized<Void>> liftRunnable(Runnable fn) {
+  public static <T> ContextualFunction<T, Void> liftRunnable(Runnable fn) {
     return liftFunction(ignored -> {
       fn.run();
       return null;
     });
   }
 
-  public static <I, T> Function<Contextualized<I>, Contextualized<T>> liftSupplier(Supplier<T> fn) {
+  public static <I, T> ContextualFunction<I, T> liftSupplier(Supplier<T> fn) {
     return liftFunction(ignored -> fn.get());
   }
 
-  public static <T> Function<Contextualized<T>, Contextualized<Void>> liftConsumer(Consumer<? super T> fn) {
+  public static <T> ContextualFunction<T, Void> liftConsumer(Consumer<? super T> fn) {
     return ctx -> ctx.map(value -> {
       fn.accept(value);
       return null;
@@ -71,14 +72,7 @@ public class Contextualized<T> implements TransientContext {
     return (ctx1, ctx2) -> ctx1.combine(ctx2, fn);
   }
 
-  public static <T, U> BiFunction<T, U, Void> liftBiConsumer(BiConsumer<? super T, ? super U> action) {
-    return (t, u) -> {
-      action.accept(t, u);
-      return null;
-    };
-  }
-
-  public static <T, U> Function<Contextualized<T>, CompletionStage<Contextualized<U>>> liftAsyncFunction(Function<? super T, ? extends CompletionStage<U>> fn) {
+  public static <T, U> ContextualAsyncFunction<T, U> liftAsyncFunction(Function<? super T, ? extends CompletionStage<U>> fn) {
     return ctx -> ctx.mapAysnc(fn);
   }
 
@@ -168,5 +162,12 @@ public class Contextualized<T> implements TransientContext {
 
   public void accept(BiConsumer<? super T, ? super Throwable> action) {
     runInContext(() -> value.accept(action));
+  }
+
+  public interface ContextualFunction<I, O> extends Function<Contextualized<I>, Contextualized<O>> {
+
+  }
+  public interface ContextualAsyncFunction<I, O> extends AsyncFunction<Contextualized<I>, Contextualized<O>> {
+
   }
 }

@@ -8,6 +8,7 @@ import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.function.BinaryOperator;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
@@ -35,12 +36,6 @@ public class Optionals {
     optional.ifPresentOrElse(ifPresent, orElse);
   }
 
-  // this is an instance-method on the JDK Optional class in java 9, but missing in java 8
-  @SuppressWarnings("unchecked")
-  public static <T> Optional<T> or(Optional<? extends T> optional, Supplier<? extends Optional<? extends T>> alternativeSupplier) {
-    return (Optional<T>) (optional.isPresent() ? optional : alternativeSupplier.get());
-  }
-
   @SuppressWarnings("unchecked")
   public static <T> Optional<T> or(Optional<? extends T> optional, Optional<? extends T> alternative) {
     return (Optional<T>) (optional.isPresent() ? optional : alternative);
@@ -48,7 +43,7 @@ public class Optionals {
 
   @SuppressWarnings("unchecked")
   public static <T> Optional<T> merge(Optional<? extends T> first, Optional<? extends T> second, BinaryOperator<T> merge) {
-    return first.map(aa -> second.map(bb -> Optional.of(merge.apply(aa, bb))).orElse((Optional<T>) first)).orElse((Optional<T>) second);
+    return first.map(aa -> second.map(bb -> merge.apply(aa, bb)).or(() -> first)).orElse((Optional<T>) second);
   }
 
   /**
@@ -68,5 +63,13 @@ public class Optionals {
     } catch (Exception e) {
       return Optional.empty();
     }
+  }
+
+  public static <I, O> Function<Optional<? extends I>, Optional<O>> liftFunction(Function<I ,O> f) {
+    return optional -> optional.map(f);
+  }
+
+  public static <I, O> Function<Optional<? extends I>, Optional<O>> liftOptionalFunction(Function<I, Optional<O>> f) {
+    return optional -> optional.flatMap(f);
   }
 }

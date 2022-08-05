@@ -15,10 +15,10 @@ import static java.lang.annotation.ElementType.TYPE;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
- * Annotation for structures contained within {@link ConfigPath}-bound values.<p/>
+ * Annotation for immutable structures that will be deserialized, including those contained within
+ * {@link ConfigPath}-bound values.<p/>
  *
- * Use of this annotation should only be necessary if the name of the concrete type to be deserialized
- * differs from the default pattern applied by {@link Value.Style#typeImmutable} (ie, {@code "Immutable*"})
+ * used by {@link upstart.json.ImmutablesModule}
  */
 @Target({TYPE, METHOD})
 @Retention(RUNTIME)

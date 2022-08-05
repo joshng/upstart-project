@@ -11,7 +11,6 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 public abstract class ExtendedPromise<T, P extends ExtendedPromise<T, P>> extends Promise<T> implements SelfType<P> {
   public ExtendedPromise() {
@@ -21,29 +20,27 @@ public abstract class ExtendedPromise<T, P extends ExtendedPromise<T, P>> extend
     super(completion);
   }
 
-  protected abstract Promise.PromiseFactory factory();
-
   public P tryComplete(Callable<? extends T> completion) {
-    return self(super.tryComplete(completion));
+    return selfType(super.tryComplete(completion));
   }
 
   public P tryComplete(T value, ThrowingRunnable completion) {
-    return self(super.tryComplete(value, completion));
+    return selfType(super.tryComplete(value, completion));
   }
 
   public P consumeFailure(ThrowingRunnable runnable) {
-    return self(super.consumeFailure(runnable));
+    return selfType(super.consumeFailure(runnable));
   }
 
   /**
    * Complete this Future with the result of the Future returned by the given {@link Callable} (or any exception that it throws).
    */
   public P tryCompleteWith(Callable<? extends CompletionStage<? extends T>> completion) {
-    return self(super.tryCompleteWith(completion));
+    return selfType(super.tryCompleteWith(completion));
   }
 
   public P fulfill(T result) {
-    return self(super.fulfill(result));
+    return selfType(super.fulfill(result));
   }
 
   /**
@@ -52,7 +49,7 @@ public abstract class ExtendedPromise<T, P extends ExtendedPromise<T, P>> extend
    * @return self() Promise (which could potentially still be completed via other means)
    */
   public P completeWith(CompletionStage<? extends T> completion) {
-    return self(super.completeWith(completion));
+    return selfType(super.completeWith(completion));
   }
 
   /**
@@ -62,53 +59,40 @@ public abstract class ExtendedPromise<T, P extends ExtendedPromise<T, P>> extend
    * @return this Promise
    */
   public P failWith(CompletionStage<? extends T> completion) {
-    return self(super.failWith(completion));
-  }
-
-  /**
-   * Arranges to run the given {@link Runnable} when this Promise is completed (regardless of whether the completion
-   * is normal or exceptional).<p/>
-   * <p>
-   * Note that this uses {@link #whenComplete} to invoke the sideEffect, which implies that the returned {@link Promise}
-   * will not reflect any exception that may be thrown by the sideEffect;
-   *
-   * @return a Promise which completes after this Promise is done, and the sideEffect has executed.
-   */
-  public P uponCompletion(Runnable sideEffect) {
-    return sameTypeSubsequent(() -> super.uponCompletion(sideEffect));
+    return selfType(super.failWith(completion));
   }
 
   public <E extends Throwable> P recover(Class<E> exceptionType, Function<? super E, ? extends T> recovery) {
-    return (P) super.recover(exceptionType, recovery);
+    return selfType(super.recover(exceptionType, recovery));
   }
 
   public P onCancel(Runnable callback) {
-    return (P) CompletableFutures.whenCancelled(this, callback);
+    return selfType(super.onCancel(callback));
   }
 
   @Override
   public P whenComplete(BiConsumer<? super T, ? super Throwable> action) {
-    return sameTypeSubsequent(() -> super.whenComplete(action));
+    return selfType(super.whenComplete(action));
   }
 
   @Override
   public P whenCompleteAsync(BiConsumer<? super T, ? super Throwable> action) {
-    return sameTypeSubsequent(() -> super.whenCompleteAsync(action));
+    return selfType(super.whenCompleteAsync(action));
   }
 
   @Override
   public P whenCompleteAsync(BiConsumer<? super T, ? super Throwable> action, Executor executor) {
-    return sameTypeSubsequent(() -> super.whenCompleteAsync(action, executor));
+    return selfType(super.whenCompleteAsync(action, executor));
   }
 
   @Override
   public P exceptionally(Function<Throwable, ? extends T> fn) {
-    return sameTypeSubsequent(() -> super.exceptionally(fn));
+    return selfType(super.exceptionally(fn));
   }
 
   @Override
   public P orTimeout(long timeout, TimeUnit unit) {
-    return self(super.orTimeout(timeout, unit));
+    return selfType(super.orTimeout(timeout, unit));
   }
 
   @Override
@@ -116,12 +100,9 @@ public abstract class ExtendedPromise<T, P extends ExtendedPromise<T, P>> extend
     return self();
   }
 
-  protected P sameTypeSubsequent(Supplier<CompletableFuture<T>> superCall) {
-    return returningSubsequent(factory(), superCall);
-  }
 
-  private P self(CompletableFuture<T> future) {
-    assert future == this;
-    return self();
+  @SuppressWarnings("unchecked")
+  private P selfType(CompletableFuture<?> future) {
+    return (P) future;
   }
 }

@@ -143,7 +143,15 @@ public class AnnotatedEndpointHandler<T> {
         // TODO: deal with further generics, arrays, etc
         Class<?> futureType = Reflect.getFirstGenericType(method.getGenericReturnType());
         openApiContent = openApiContent(futureType, ContentType.JSON, openApiResponse);
-        responder = (Context context, CompletionStage<?> o) -> context.future(o.toCompletableFuture());
+        responder = (Context context, CompletionStage<?> o) -> context.future(
+                o.toCompletableFuture()
+                        .whenComplete((ignored, e) -> {
+                          // javalin responds with 200 if the future is completed with an Error!?
+                          if (e != null && !(e instanceof Exception)) {
+                            LOG.error("Unexpected error", e);
+                            context.status(500);
+                          }
+                        }));
       } else {
         openApiContent = openApiContent(returnType, ContentType.JSON, openApiResponse);
         responder = Context::json;

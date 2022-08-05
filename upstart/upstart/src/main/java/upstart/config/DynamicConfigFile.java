@@ -68,7 +68,7 @@ public class DynamicConfigFile<T> implements Supplier<T> {
 
   private CompletableFuture<Void> refresh(Path path) {
     T newConfig = value = reload();
-    return CompletableFutures.allOf(consumers.stream().map(c -> c.apply(newConfig)));
+    return CompletableFutures.allOf(consumers.stream().map(c -> c.apply(newConfig).toCompletableFuture()));
   }
 
   private Config reloadConfig() {

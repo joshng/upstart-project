@@ -1,6 +1,7 @@
 package upstart.util.concurrent;
 
 import com.google.common.base.Stopwatch;
+import com.google.common.truth.OptionalSubject;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -197,6 +198,24 @@ class AsyncLocalPromiseTest {
     assertThat(state1.getFromCompletion(p2)).havingResultThat(optionals()).hasValue("abc");
     assertThat(state2.getFromCompletion(p2)).havingResultThat(optionals()).hasValue("x");
 
+  }
+
+  @Test
+  void mapCompose() throws InterruptedException {
+    Promise<String> p1 = new Promise<>();
+    OptionalPromise<String> p2 = p1.thenApplyOptional(Optional::ofNullable);
+    OptionalPromise<String> result = p2.thenMapCompose(v -> CompletableFuture.completedFuture(v + "bar"));
+    p1.complete("foo");
+    assertThat(result).doneWithin(Deadline.withinSeconds(5)).havingResultThat(OptionalSubject.optionals()).hasValue("foobar");
+  }
+
+  @Test
+  void flatMapCompose() throws InterruptedException {
+    Promise<String> p1 = new Promise<>();
+    OptionalPromise<String> p2 = p1.thenApplyOptional(Optional::ofNullable);
+    OptionalPromise<String> result = p2.thenFlatMapCompose(v -> Promise.of(CompletableFuture.completedFuture(Optional.of(v + "bar"))));
+    p1.complete("foo");
+    assertThat(result).doneWithin(Deadline.withinSeconds(5)).havingResultThat(OptionalSubject.optionals()).hasValue("foobar");
   }
 
   static ThreadLocalReference<Integer> threadValue = new ThreadLocalReference<>();

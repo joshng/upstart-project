@@ -15,7 +15,9 @@ import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 public class OptionalPromise<T> extends ExtendedPromise<Optional<T>, OptionalPromise<T>> {
-  static final PromiseFactory OPTIONAL_PROMISE_FACTORY = PromiseFactory.of(Optional.empty(), OptionalPromise::new);
+  static final PromiseFactory OPTIONAL_PROMISE_FACTORY = PromiseFactory.of(
+          OptionalPromise.class,
+          Optional.empty(), OptionalPromise::new);
 
   public OptionalPromise() {
   }
@@ -47,11 +49,11 @@ public class OptionalPromise<T> extends ExtendedPromise<Optional<T>, OptionalPro
     return Promise.of(future).thenApplyOptional(Optional::ofNullable);
   }
 
-  public static <I, O> OptionalPromise<O> mapToPromise(Optional<I> input, Function<? super I, ? extends CompletionStage<O>> mapper) {
+  public static <I, O> OptionalPromise<O> mapToFuture(Optional<I> input, Function<? super I, ? extends CompletionStage<O>> mapper) {
     return input.map(mapper).map(OptionalPromise::ofFutureNullable).orElse(empty());
   }
 
-  public static <I, O> OptionalPromise<O> flatMapToPromise(Optional<I> input, Function<? super I, ? extends CompletionStage<Optional<O>>> mapper) {
+  public static <I, O> OptionalPromise<O> mapToFutureOptional(Optional<I> input, Function<? super I, ? extends CompletionStage<Optional<O>>> mapper) {
     return input.map(mapper).map(OptionalPromise::ofFutureOptional).orElse(empty());
   }
 
@@ -73,25 +75,23 @@ public class OptionalPromise<T> extends ExtendedPromise<Optional<T>, OptionalPro
   }
 
   public <O> OptionalPromise<O> thenMap(Function<? super T, ? extends O> mapper) {
-    return asOptionalPromise(() -> thenApply(optional -> optional.map(mapper)));
-  }
-
-
-  public <O> OptionalPromise<O> thenMapCompose(Function<? super T, ? extends CompletionStage<O>> mapper) {
-    return asOptionalPromise(() -> thenCompose(value -> toFutureOptional(value.map(mapper))));
-  }
-
-  public <O> OptionalPromise<O> thenFlatMapCompose(Function<? super T, ? extends CompletionStage<Optional<O>>> mapper) {
-    return asOptionalPromise(() -> thenCompose(value -> value.<CompletionStage<Optional<O>>>map(mapper)
-            .orElse(OptionalPromise.empty())));
+    return thenApplyPromise(OPTIONAL_PROMISE_FACTORY, Contextualized.liftFunction(optional -> optional.map(mapper)));
   }
 
   public <O> OptionalPromise<O> thenFlatMap(Function<? super T, ? extends Optional<O>> mapper) {
-    return asOptionalPromise(() -> thenApply(value -> value.flatMap(mapper)));
+    return thenApplyPromise(OPTIONAL_PROMISE_FACTORY, Contextualized.liftFunction(value -> value.flatMap(mapper)));
+  }
+
+  public <O> OptionalPromise<O> thenMapCompose(Function<? super T, ? extends CompletionStage<O>> mapper) {
+    return thenComposePromise(OPTIONAL_PROMISE_FACTORY, Contextualized.liftAsyncFunction(optional -> mapToFuture(optional, mapper)));
+  }
+
+  public <O> OptionalPromise<O> thenFlatMapCompose(Function<? super T, ? extends CompletionStage<Optional<O>>> mapper) {
+    return thenComposePromise(OPTIONAL_PROMISE_FACTORY, Contextualized.liftAsyncFunction(optional -> mapToFutureOptional(optional, mapper)));
   }
 
   public OptionalPromise<T> thenFilter(Predicate<? super T> filter) {
-    return asOptionalPromise(() -> thenApply(value -> value.filter(filter)));
+    return thenApplyPromise(OPTIONAL_PROMISE_FACTORY, Contextualized.liftFunction(value -> value.filter(filter)));
   }
 
   public OptionalPromise<T> thenIfPresent(Consumer<? super T> consumer) {
@@ -132,7 +132,7 @@ public class OptionalPromise<T> extends ExtendedPromise<Optional<T>, OptionalPro
   }
 
   public <I, O> OptionalPromise<O> thenMapCombine(CompletionStage<I> other, BiFunction<? super T, ? super I, O> mapper) {
-    return asOptionalPromise(() -> thenCombine(other, (v1, v2) -> v1.map(v -> mapper.apply(v, v2))));
+    return thenCombinePromise(OPTIONAL_PROMISE_FACTORY, other, Contextualized.liftBiFunction((v1, v2) -> v1.map(v -> mapper.apply(v, v2))));
   }
 
   public <I, O> OptionalPromise<O> thenMapCombinedFuture(
@@ -149,10 +149,10 @@ public class OptionalPromise<T> extends ExtendedPromise<Optional<T>, OptionalPro
           CompletionStage<I> other,
           BiFunction<? super T, ? super I, ? extends Optional<O>> mapper
   ) {
-    return asOptionalPromise(() -> thenCombine(other, (v1, v2) -> v1.flatMap(v -> mapper.apply(v, v2))));
+    return thenCombinePromise(OPTIONAL_PROMISE_FACTORY, other, Contextualized.liftBiFunction((v1, v2) -> v1.flatMap(v -> mapper.apply(v, v2))));
   }
 
-  public <I, O> OptionalPromise<O> thenFlatMapCombinedFuture(
+  public <I, O> OptionalPromise<O> thenFlatMapCombinedCompose(
           CompletionStage<I> other,
           BiFunction<? super T, ? super I, ? extends CompletionStage<Optional<O>>> mapper
   ) {
@@ -162,8 +162,7 @@ public class OptionalPromise<T> extends ExtendedPromise<Optional<T>, OptionalPro
   }
 
   @Override
-  protected Promise.PromiseFactory factory() {
+  protected PromiseFactory sameTypeSubsequentFactory() {
     return OPTIONAL_PROMISE_FACTORY;
   }
-
 }

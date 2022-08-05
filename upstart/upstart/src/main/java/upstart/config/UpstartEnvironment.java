@@ -149,10 +149,9 @@ public abstract class UpstartEnvironment {
   }
 
   private static Config loadDevConfig() {
-    return Optionals.or(
-            Ambiance.ambientValue(UPSTART_DEV_CONFIG).map(File::new),
-            UpstartEnvironment::findDevConfigFile
-    ).map(ConfigFactory::parseFileAnySyntax)
+    return Ambiance.ambientValue(UPSTART_DEV_CONFIG).map(File::new)
+            .or(UpstartEnvironment::findDevConfigFile)
+            .map(ConfigFactory::parseFileAnySyntax)
             .orElse(null);
   }
 

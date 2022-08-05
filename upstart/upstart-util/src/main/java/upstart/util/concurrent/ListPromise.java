@@ -1,7 +1,6 @@
 package upstart.util.concurrent;
 
 import com.google.common.collect.Iterables;
-import upstart.util.Nothing;
 import upstart.util.collect.MoreStreams;
 import upstart.util.context.Contextualized;
 
@@ -10,7 +9,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -18,7 +16,7 @@ import java.util.stream.Collector;
 import java.util.stream.Stream;
 
 public class ListPromise<T> extends ExtendedPromise<List<T>, ListPromise<T>> {
-  static final PromiseFactory LIST_PROMISE_FACTORY = PromiseFactory.of(List.of(), ListPromise::new);
+  static final PromiseFactory LIST_PROMISE_FACTORY = PromiseFactory.of(ListPromise.class, List.of(), ListPromise::new);
 
   public ListPromise() {
   }
@@ -76,30 +74,29 @@ public class ListPromise<T> extends ExtendedPromise<List<T>, ListPromise<T>> {
   }
 
   public <O> ListPromise<O> thenMap(Function<? super T, O> mapper) {
-    return asListPromise(() -> thenApply(value -> value.stream().map(mapper).toList()));
+    return thenApplyPromise(LIST_PROMISE_FACTORY, Contextualized.liftFunction(value -> value.stream().map(mapper).toList()));
   }
 
   public <O> ListPromise<O> thenFlatMap(Function<? super T, ? extends Stream<O>> mapper) {
-    return asListPromise(() -> thenApply(value -> value.stream().flatMap(mapper).toList()));
+    return thenApplyPromise(LIST_PROMISE_FACTORY, Contextualized.liftFunction(value -> value.stream().flatMap(mapper).toList()));
   }
 
   public <O> ListPromise<O> thenMapCompose(Function<? super T, ? extends CompletableFuture<O>> mapper) {
-    return asListPromise(() -> thenCompose(value -> allAsList(value.stream().map(mapper))));
+    return thenComposePromise(LIST_PROMISE_FACTORY, Contextualized.liftAsyncFunction(value -> allAsList(value.stream().map(mapper))));
   }
 
   public <O> ListPromise<O> thenFlatMapCompose(Function<? super T, ? extends CompletableFuture<List<O>>> mapper) {
-    return asListPromise(() -> thenCompose(value -> allAsList(value.stream().map(mapper))
+    return thenComposePromise(LIST_PROMISE_FACTORY, Contextualized.liftAsyncFunction(value -> allAsList(value.stream().map(mapper))
             .thenApply(lists -> lists.stream().flatMap(List::stream).toList())));
   }
 
   public ListPromise<T> thenFilter(Predicate<? super T> filter) {
-    return asListPromise(() -> thenApply(value -> value.stream().filter(filter).toList()));
+    return thenApplyPromise(LIST_PROMISE_FACTORY, Contextualized.liftFunction(value -> value.stream().filter(filter).toList()));
   }
 
   public <V> ListPromise<V> thenFilter(Class<V> filterClass) {
-    return asListPromise(() -> thenApply(value -> value.stream()
-            .filter(filterClass::isInstance).map(filterClass::cast).toList())
-    );
+    return thenApplyPromise(LIST_PROMISE_FACTORY, Contextualized.liftFunction(value -> value.stream()
+            .filter(filterClass::isInstance).map(filterClass::cast).toList()));
   }
 
   public <O> Promise<O> thenFoldLeft(O identity, BiFunction<? super O, ? super T, ? extends O> folder) {
@@ -107,7 +104,7 @@ public class ListPromise<T> extends ExtendedPromise<List<T>, ListPromise<T>> {
   }
 
   @Override
-  protected Promise.PromiseFactory factory() {
+  protected PromiseFactory sameTypeSubsequentFactory() {
     return LIST_PROMISE_FACTORY;
   }
 }
