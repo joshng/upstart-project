@@ -2,17 +2,13 @@ package io.upstartproject.avrocodec;
 
 import com.google.common.annotations.Beta;
 import com.google.common.base.MoreObjects;
+import com.google.common.base.Supplier;
 import com.google.common.base.Throwables;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Streams;
-import com.google.common.util.concurrent.AbstractService;
 import io.upstartproject.avro.PackedRecord;
-import upstart.util.collect.Optionals;
-import upstart.util.collect.PairStream;
-import upstart.util.annotations.Identifier;
 import upstart.util.annotations.Tuple;
 import upstart.util.concurrent.CompletableFutures;
 import upstart.util.concurrent.Promise;
@@ -20,8 +16,6 @@ import upstart.util.concurrent.ShutdownException;
 import upstart.util.exceptions.UncheckedIO;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaCompatibility;
-import org.apache.avro.file.DataFileReader;
-import org.apache.avro.file.DataFileStream;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
@@ -32,7 +26,6 @@ import org.apache.avro.io.DecoderFactory;
 import org.apache.avro.io.Encoder;
 import org.apache.avro.io.EncoderFactory;
 import org.apache.avro.specific.SpecificData;
-import org.apache.avro.specific.SpecificDatumReader;
 import org.apache.avro.specific.SpecificDatumWriter;
 import org.apache.avro.specific.SpecificRecordBase;
 import org.immutables.value.Value;
@@ -40,44 +33,35 @@ import org.reflections.Reflections;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayInputStream;
-import java.io.Closeable;
-import java.io.File;
+import javax.inject.Singleton;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
-import static upstart.util.exceptions.Fallible.fallible;
 
 /**
- * Provides support for {@link #ensureRegistered registering} schemas with the configured {@link SchemaRepo},
+ * Provides support for {@link #ensureRegistered registering} schemas with the configured {@link SchemaRegistry},
  * as well as utilities for writing ("packing") and reading ("unpacking") avro records into and out of {@link PackedRecord}
  * instances.
  * <p/>
- * Instances of this class are thread-safe, and should be cached/reused for the lifetime of the process. Each instance must
- * be started with {@link #startAsync}, and the startup should be confirmed via {@link #awaitRunning} (or {@link #addListener})
- * before further interactions. Similarly, instances should be {@link #stopAsync stopped} at system shutdown.
+ * Instances of this class are thread-safe, and should be cached/reused for the lifetime of the process.
  * <p/>
  * The schemas and {@link PackedRecord#getFingerprint fingerprints} found in records processed by this class are required
- * to have been {@link #ensureRegistered registered} with the underlying {@link SchemaRepo} before working with them.
+ * to have been {@link #ensureRegistered registered} with the underlying {@link SchemaRegistry} before working with them.
  * <p/>
  * <h2>Writing Records</h2>
  * Usually, a process that will write {@link PackedRecord} data out-of-process should register all emitted schemas
@@ -89,35 +73,29 @@ import static upstart.util.exceptions.Fallible.fallible;
  *
  * <h3>Schema Compatibility</h3>
  * Note that schema compatibility-checks are performed for each schema which is registered: every schema which is newly
- * added to the {@link SchemaRepo} must be forward- and backward-compatible with any schema that was previously
+ * added to the {@link SchemaRegistry} must be forward- and backward-compatible with any schema that was previously
  * registered with the same {@link Schema#getFullName full-name} (ie, package + name).
  * <p/>
  * If a proposed schema fails this validation (because another conflicting schema was already registered with the same name),
  * the {@link CompletableFuture}s returned from {@link #getPreRegisteredPacker(Schema)} (SchemaFingerprint)}
- * or {@link #getOrRegisterPacker(Schema)} will complete exceptionally with a {@link SchemaConflictException} describing
+ * or {@link #getOrRegisterPacker(Schema)} will complete exceptionally with a {@link AvroSchemaConflictException} describing
  * the problem.
  *
  * <h2>Reading Records</h2>
  *
- * Reading a record that was serialized as a {@link PackedRecord} might potentially involve an asynchronous process,
- * because the {@link PackedRecord#getFingerprint fingerprint} may correspond to a newly-added schema which must first
- * be retrieved from a remote {@link SchemaRepo} via RPC.
- * <br/>
- * Therefore, {@link #toUnpackable(PackedRecord)} returns a {@link CompletableFuture} that completes when the record's
- * schema fingerprint has been resolved, allowing the record to be {@link UnpackableRecord unpackable}.
+ * See {@link AvroDecoder} for a description of the process for reading records.
  *
  * @see EnvelopeCodec
- * @see #recordUnpacker
  * @see UnpackableRecord
  * @see SchemaNormalization2
  * @see SchemaCompatibility
  * @see RecordTypeFamily
- * @see SchemaConflictException
+ * @see AvroSchemaConflictException
  */
-public class AvroCodec extends AbstractService {
+@Singleton
+public class AvroPublisher {
   private final Logger LOG = LoggerFactory.getLogger(getClass());
   private static final DatumWriter<PackedRecord> PACKED_RECORD_WRITER = new SpecificDatumWriter<>(PackedRecord.getClassSchema());
-  private static final SpecificDatumReader<PackedRecord> PACKED_RECORD_READER = new SpecificDatumReader<>(PackedRecord.getClassSchema());
   private static final String SCHEMA_PUBLISHED_PROPERTY = "published";
 
   private static final LoadingCache<ClassLoader, SpecificData> SPECIFIC_DATA_BY_CLASSLOADER = CacheBuilder.newBuilder()
@@ -133,7 +111,7 @@ public class AvroCodec extends AbstractService {
             @Override
             public Set<Class<? extends SpecificRecordBase>> load(PackageKey key) {
               // TODO: Reflections is not thread-safe ... consider switching to ClassGraph for this https://github.com/classgraph/classgraph
-              synchronized (AvroCodec.class) {
+              synchronized (AvroPublisher.class) {
                 return new Reflections(key.packageName(), key.classLoader()).getSubTypesOf(SpecificRecordBase.class);
               }
             }
@@ -144,18 +122,34 @@ public class AvroCodec extends AbstractService {
   private final LoadingCache<SchemaDescriptor, CompletableFuture<RecordPacker>> knownPackersBySchema = CacheBuilder.newBuilder()
           .build(CacheLoader.from(this::register));
 
-  private final LoadingCache<SchemaFingerprint, Promise<RecordPacker>> knownPackersByFingerprint = CacheBuilder.newBuilder().build(CacheLoader.from(Promise::new));
+  private final LoadingCache<SchemaFingerprint, Promise<RecordPacker>> knownPackersByFingerprint = CacheBuilder.newBuilder()
+          .build(CacheLoader.from((Supplier<Promise<RecordPacker>>) Promise::new));
 
-  private final LoadingCache<String, RecordTypeFamily> typesByFullName = CacheBuilder.newBuilder()
-          .build(CacheLoader.from(RecordTypeFamily::new));
-
-  private final SchemaRepo schemaRepo;
+  private final AvroTaxonomy taxonomy;
 
   /**
-   * Constructs an AvroCodec backed by the given {@link SchemaRepo}
+   * Constructs an AvroCodec backed by the given {@link SchemaRegistry}
    */
-  public AvroCodec(SchemaRepo schemaRepo) {
-    this.schemaRepo = schemaRepo;
+  public AvroPublisher(AvroTaxonomy taxonomy) {
+    this.taxonomy = taxonomy;
+    taxonomy.setListener(new AvroTaxonomy.TaxonomyListener() {
+      @Override
+      public void onSchemaAdded(SchemaDescriptor schema, RecordTypeFamily.RegistrationResult registrationResult) {
+        AvroPublisher.this.onSchemaAdded(schema, registrationResult);
+      }
+
+      @Override
+      public void onSchemaRemoved(SchemaFingerprint fingerprint) {
+        AvroPublisher.this.onSchemaRemoved(fingerprint);
+      }
+
+      @Override
+      public void onShutdown() {
+        knownPackersByFingerprint.asMap().forEach((fingerprint, promise) -> {
+          if (!promise.isDone()) promise.completeExceptionally(new ShutdownException("AvroCodec was shut down while awaiting schema: " + fingerprint.hexValue()));
+        });
+      }
+    });
   }
 
   public static boolean isMarkedForPublication(Schema schema) {
@@ -186,13 +180,6 @@ public class AvroCodec extends AbstractService {
   }
 
   /**
-   * Reads an avro-serialized {@link PackedRecord} from the given {@link InputStream}
-   */
-  public static PackedRecord readPackedRecord(InputStream in) {
-    return UncheckedIO.getUnchecked(() -> PACKED_RECORD_READER.read(null, binaryDecoder(in)));
-  }
-
-  /**
    * Serializes the PackedRecord as an avro byte array. Using this method directly is rarely necessary;
    * {@link RecordPacker#makePackable(GenericRecord)}.{@link PackableRecord#serialize() serialize()} is usually preferable.
    * @see RecordPacker#makePackable
@@ -219,82 +206,15 @@ public class AvroCodec extends AbstractService {
     return EncoderFactory.get().binaryEncoder(out, null);
   }
 
-  /**
-   * Prepares the given data for unpacking. If necessary, resolves the given {@code fingerprint} from the
-   * {@link AvroCodec} first.
-   * @return a {@link CompletableFuture} which holds the {@link UnpackableRecord}, when the {@code fingerprint} has been
-   * resolved (which may require RPC to the {@link AvroCodec} for an unrecognized fingerprint).
-   */
-  public CompletableFuture<UnpackableRecord> toUnpackable(long fingerprint, ByteBuffer data) {
-    return toUnpackable(new PackedRecord(fingerprint,  data));
-  }
-
-  /**
-   * Prepares the given {@link PackedRecord} for unpacking. If necessary, resolves the given {@link PackedRecord#getFingerprint fingerprint}
-   * from the {@link AvroCodec} first.
-   * @return a {@link CompletableFuture} which holds an {@link UnpackableRecord}, when the {@code fingerprint} has been
-   * resolved (which may require RPC to the {@link AvroCodec} for an unrecognized fingerprint).
-   */
-  public CompletableFuture<UnpackableRecord> toUnpackable(PackedRecord record) {
-    return findRegisteredPacker(SchemaFingerprint.of(record.getFingerprint()))
-            .thenApply(writerPacker -> new UnpackableRecord(record, writerPacker));
-  }
-
-
-  public CompletableFuture<UnpackableRecord> readUnpackableRecord(InputStream in) {
-    return toUnpackable(readPackedRecord(in));
-  }
-
-  public CompletableFuture<UnpackableRecord> readUnpackableRecord(byte[] bytes) {
-    return readUnpackableRecord(new ByteArrayInputStream(bytes));
-  }
-
-  public Stream<CompletableFuture<UnpackableRecord>> readPackedRecordFile(InputStream in) throws IOException {
-    return readPackedRecords(new DataFileStream<>(in, PACKED_RECORD_READER));
-  }
-
-  public Stream<CompletableFuture<UnpackableRecord>> readPackedRecordFile(File file) throws IOException {
-    return readPackedRecords(new DataFileReader<>(file, PACKED_RECORD_READER));
-  }
-
-  private <R extends Iterator<PackedRecord> & Closeable> Stream<CompletableFuture<UnpackableRecord>> readPackedRecords(R reader) {
-    return Streams.stream(reader)
-            .map(this::toUnpackable)
-            .onClose(fallible(reader::close));
-  }
 
   @Beta
   public CompletableFuture<GenericRecord> convertFromJson(String typeName, InputStream json) {
-    return schemaRepo.refresh().thenApply(__ -> UncheckedIO.getUnchecked(() -> {
-      Schema schema = findTypeFamily(typeName).requireLatestSchema().schema();
+    return taxonomy.refresh().thenApply(__ -> UncheckedIO.getUnchecked(() -> {
+      Schema schema = taxonomy.findTypeFamily(typeName).requireLatestSchema().schema();
       return new GenericDatumReader<GenericRecord>(schema).read(null, DecoderFactory.get().jsonDecoder(schema, json));
     }));
   }
 
-  /**
-   * Prepares a {@link SpecificRecordUnpacker} for deserializing compatible {@link PackedRecord}s into instances of the
-   * given {@code recordClass}.
-   * <p/>
-   * Note that the given {@code recordClass} does NOT need to exactly match the schema of the records it unpacks
-   * (or even be in the same {@link AvroCodec.RecordTypeFamily}); it merely needs to be <em>compatible</em>:
-   * <ul>
-   *   <li>Fields declared by the {@code recordClass} must have types compatible with the corresponding fields in the
-   *   writen record's schema</li>
-   *   <li>Any fields declared by the {@code recordClass} which do not appear in the written record's schema must provide
-   *   {@code default} values</li>
-   * </ul>
-   * Constructing use-case-centric {@link SpecificRecordBase} schemas can improve performance, by skipping deserialization
-   * of undesired content.
-   * <p/>
-   * See https://docs.confluent.io/current/schema-registry/docs/avro.html#forward-compatibility for more about compatibility.
-   */
-  public <T extends SpecificRecordBase> SpecificRecordUnpacker<T> recordUnpacker(Class<T> recordClass) {
-    return new SpecificRecordUnpacker<>(recordClass);
-  }
-
-  public <T extends SpecificRecordBase> SpecificRecordConverter<T> recordConverter(Class<T> recordClass) {
-    return new SpecificRecordConverter<>(findTypeFamily(recordClass), recordUnpacker(recordClass));
-  }
 
   public CompletableFuture<List<SpecificRecordPacker<?>>> registerSpecificPackers(PackageKey packageKey) {
     return registerSpecificRecordSchemas(packageKey)
@@ -305,7 +225,6 @@ public class AvroCodec extends AbstractService {
   }
 
   public CompletableFuture<List<Schema>> registerSpecificRecordSchemas(PackageKey packageKey) {
-    checkRunning();
 
     List<Schema> publishedSchemas = packageKey.findPublishedSchemas();
 
@@ -321,7 +240,6 @@ public class AvroCodec extends AbstractService {
   }
 
   private CompletableFuture<Void> ensureRegistration(Stream<SchemaDescriptor> schemas) {
-    checkRunning();
 
     CompletableFuture<Void> result = CompletableFutures.allOf(schemas.sequential().map(knownPackersBySchema::getUnchecked));
 
@@ -338,10 +256,9 @@ public class AvroCodec extends AbstractService {
   }
 
   private void insert(List<SchemaDescriptor> newSchemas) {
-    schemaRepo.insert(newSchemas)
+    taxonomy.insert(newSchemas)
             .whenComplete((__, e) -> {
               if (e != null) {
-                notifyFailed(e);
                 for (SchemaDescriptor newSchema : newSchemas) {
                   knownPackersByFingerprint.getUnchecked(newSchema.fingerprint()).completeExceptionally(e);
                 }
@@ -349,30 +266,14 @@ public class AvroCodec extends AbstractService {
             });
   }
 
-  public Stream<RecordTypeFamily> getAllRegisteredRecordTypes() {
-    checkRunning();
-    return typesByFullName.asMap().values().stream();
-  }
-
-  public RecordTypeFamily findTypeFamily(Class<? extends SpecificRecordBase> recordClass) {
-    return findTypeFamily(recordClass.getName());
-  }
-
-  public RecordTypeFamily findTypeFamily(String fullName) {
-    checkRunning();
-    RecordTypeFamily family = typesByFullName.getIfPresent(fullName);
-    checkArgument(family != null, "Unrecognized record-type name", fullName);
-    return family;
-  }
 
   /**
    * Gets the {@link RecordPacker} for the provided schema, which is required to have been registered beforehand.
    *
    * @throws IllegalStateException if the provided schema was not previously registered
-   * @throws SchemaConflictException if the provided schema conflicted with another registered schema in the {@link SchemaRepo}
+   * @throws AvroSchemaConflictException if the provided schema conflicted with another registered schema in the {@link SchemaRegistry}
    */
   public RecordPacker getPreRegisteredPacker(Schema schema) {
-    checkRunning();
     CompletableFuture<RecordPacker> future = knownPackersBySchema.getIfPresent(SchemaDescriptor.of(schema));
     if (future == null) {
       checkPublished(schema);
@@ -401,7 +302,7 @@ public class AvroCodec extends AbstractService {
    * method itself.
    *
    * @throws IllegalStateException if the provided schema was not previously registered
-   * @throws SchemaConflictException if the provided schema conflicted with another registered schema in the {@link SchemaRepo}
+   * @throws AvroSchemaConflictException if the provided schema conflicted with another registered schema in the {@link SchemaRegistry}
    */
   public <T extends SpecificRecordBase> SpecificRecordPacker<T> getPreRegisteredPacker(Class<T> recordClass) {
     return getPreRegisteredPacker(specificData(recordClass.getClassLoader()).getSchema(recordClass)).specificPacker(recordClass);
@@ -409,13 +310,13 @@ public class AvroCodec extends AbstractService {
 
 
   /**
-   * Prepares a {@link AvroCodec.RecordPacker} for the given {@link Schema}, registering the schema with the {@link AvroCodec}
+   * Prepares a {@link AvroPublisher.RecordPacker} for the given {@link Schema}, registering the schema with the {@link AvroPublisher}
    * if necessary.
    * @param schema
-   * @return a {@link CompletableFuture} which holds a {@link AvroCodec.RecordPacker}, which completes only when the
-   * {@code fingerprint} has been successfully registered with the {@link SchemaRepo}.
-   * @throws SchemaConflictException (via the returned {@link CompletableFuture}) if the provided schema
-   * conflicted with another registered schema in the {@link SchemaRepo}
+   * @return a {@link CompletableFuture} which holds a {@link AvroPublisher.RecordPacker}, which completes only when the
+   * {@code fingerprint} has been successfully registered with the {@link SchemaRegistry}.
+   * @throws AvroSchemaConflictException (via the returned {@link CompletableFuture}) if the provided schema
+   * conflicted with another registered schema in the {@link SchemaRegistry}
    */
   public CompletableFuture<RecordPacker> getOrRegisterPacker(Schema schema) {
     SchemaDescriptor descriptor = SchemaDescriptor.of(schema);
@@ -423,25 +324,25 @@ public class AvroCodec extends AbstractService {
             .thenCompose(__ -> knownPackersBySchema.getUnchecked(descriptor));
   }
 
-  /**
-   * Finds the registered {@link RecordPacker} for the given {@link SchemaFingerprint}, returning a CompleteableFuture
-   * which waits (indefinitely!) for the schema to be published by the the underlying {@link SchemaRepo} if necessary.
-   * @return a {@link CompletableFuture} which completes when the fingerprint has been resolved (which should usually be
-   * immediate, but may delay indefinitely if the corresponding schema is never published by the SchemaRepo).
-   * @throws IllegalStateException if the {@link AvroCodec} is not {@link #isRunning running} (either because it has
-   * not been {@link #startAsync started}, has been {@link #stopAsync stopped}, or because it has encountered an
-   * unrecoverable error accessing the SchemaRepo)
-   */
-  public CompletableFuture<RecordPacker> findRegisteredPacker(SchemaFingerprint fingerprint) {
-    checkRunning();
-    Promise<RecordPacker> packerFuture = knownPackersByFingerprint.getUnchecked(fingerprint);
-    if (!packerFuture.isDone()) LOG.warn("Awaiting arrival of unrecognized schema-fingerprint: {}", fingerprint.hexValue());
-    return packerFuture;
-  }
+//  /**
+//   * Finds the registered {@link RecordPacker} for the given {@link SchemaFingerprint}, returning a CompleteableFuture
+//   * which waits (indefinitely!) for the schema to be published by the the underlying {@link SchemaRegistry} if necessary.
+//   * @return a {@link CompletableFuture} which completes when the fingerprint has been resolved (which should usually be
+//   * immediate, but may delay indefinitely if the corresponding schema is never published by the SchemaRepo).
+//   * @throws IllegalStateException if the {@link AvroCodec} is not {@link #isRunning running} (either because it has
+//   * not been {@link #startAsync started}, has been {@link #stopAsync stopped}, or because it has encountered an
+//   * unrecoverable error accessing the SchemaRepo)
+//   */
+//  public CompletableFuture<RecordPacker> findRegisteredPacker(SchemaFingerprint fingerprint) {
+//    checkRunning();
+//    Promise<RecordPacker> packerFuture = knownPackersByFingerprint.getUnchecked(fingerprint);
+//    if (!packerFuture.isDone()) LOG.warn("Awaiting arrival of unrecognized schema-fingerprint: {}", fingerprint.hexValue());
+//    return packerFuture;
+//  }
 
   /**
    * Finds the registered {@link RecordPacker} for the given {@link SchemaFingerprint}, syncing with the underlying
-   * {@link SchemaRepo} if necessary.
+   * {@link SchemaRegistry} if necessary.
    * @return a {@link CompletableFuture} which completes when the fingerprint has been resolved (which should usually be
    * immediate).
    * <p/>
@@ -449,15 +350,14 @@ public class AvroCodec extends AbstractService {
    * If the SchemaRepo is being asynchronously replicated from an upstream source in a manner that could be reordered
    * vs. messages being consumed via this codec, this method may fail. In such scenarios, {@link #findRegisteredPacker}
    * may be a better choice.
-   * @throws IllegalStateException if the {@link AvroCodec} is not {@link #isRunning running} (either because it has
+   * @throws IllegalStateException if the {@link AvroPublisher} is not {@link #isRunning running} (either because it has
    * not been {@link #startAsync started} or because it has encountered an unrecoverable error accessing the SchemaRepo)
    * @throws IllegalStateException via the returned {@link CompletableFuture} if the {@code fingerprint} could not be
    * resolved with the refreshed contents of the SchemaRepo.
    */
   public CompletableFuture<RecordPacker> findPreRegisteredPacker(SchemaFingerprint fingerprint) {
-    checkRunning();
     return Optional.<CompletableFuture<RecordPacker>>ofNullable(knownPackersByFingerprint.getIfPresent(fingerprint))
-            .orElseGet(() -> schemaRepo.refresh()
+            .orElseGet(() -> taxonomy.refresh()
                     .thenCompose(__ -> {
                       Promise<RecordPacker> found = knownPackersByFingerprint.getIfPresent(fingerprint);
                       checkState(found != null, "Unrecognized schema", fingerprint);
@@ -467,25 +367,23 @@ public class AvroCodec extends AbstractService {
   }
 
   public CompletableFuture<List<SchemaDescriptor>> getAllRegisteredSchemas(boolean refresh) {
-    checkRunning();
-    CompletableFuture<?> refreshed = refresh ? schemaRepo.refresh() : CompletableFutures.nullFuture();
+    CompletableFuture<?> refreshed = refresh ? taxonomy.refresh() : CompletableFutures.nullFuture();
 
-    return refreshed.thenApply(ignored -> typesByFullName.asMap().values().stream()
+    return refreshed.thenApply(ignored -> taxonomy.getAllRegisteredRecordTypes()
             .flatMap(RecordTypeFamily::getAllVersions)
             .toList()
     );
   }
 
-  private void onSchemaAdded(SchemaDescriptor descriptor) {
+  private void onSchemaAdded(SchemaDescriptor descriptor, RecordTypeFamily.RegistrationResult registrationResult) {
     Promise<RecordPacker> promise = knownPackersByFingerprint.getUnchecked(descriptor.fingerprint());
     if (promise.isDone()) return; // we tolerate multiple copies of the same schema
 
-    RegistrationResult registrationResult = typesByFullName.getUnchecked(descriptor.fullName()).addVersion(descriptor);
     if (registrationResult.succeeded()) {
       LOG.info("Loaded schema from repository: {}", descriptor);
-      promise.complete(registrationResult.getRegisteredPacker());
+      promise.complete(new RecordPacker(registrationResult.registeredSchema(), registrationResult.typeFamily()));
     } else {
-      SchemaConflictException ex = registrationResult.getConflictException();
+      AvroSchemaConflictException ex = registrationResult.getConflictException();
       LOG.warn("Rejected schema that was speculatively added to the repo: {}", ex.getMessage());
       promise.completeExceptionally(ex);
     }
@@ -500,15 +398,15 @@ public class AvroCodec extends AbstractService {
   }
 
   private CompletableFuture<RecordPacker> register(SchemaDescriptor descriptor) {
-    RecordTypeFamily family = typesByFullName.getUnchecked(descriptor.fullName());
-    Optional<SchemaConflictException> exception = family.checkCompatibility(descriptor);
+    RecordTypeFamily family = taxonomy.findOrCreateTypeFamily(descriptor.fullName());
+    Optional<AvroSchemaConflictException> exception = family.checkCompatibility(descriptor);
     return exception.<CompletableFuture<RecordPacker>>map(CompletableFutures::failedFuture)
             .orElseGet(() -> {
               Promise<RecordPacker> promise = knownPackersByFingerprint.getUnchecked(descriptor.fingerprint());
               if (!promise.isDone()) {
                 pendingRegistrations.offer(descriptor);
-                return CompletableFutures.recoverCompose(promise, SchemaConflictException.class, conflictException ->
-                        CompletableFutures.sequence(schemaRepo.delete(descriptor).handle((__, e2) -> {
+                return CompletableFutures.recoverCompose(promise, AvroSchemaConflictException.class, conflictException ->
+                        CompletableFutures.sequence(taxonomy.delete(descriptor).handle((__, e2) -> {
                           if (e2 != null) {
                             LOG.warn("Error deleting conflicting schema", e2);
                             conflictException.addSuppressed(e2);
@@ -522,54 +420,14 @@ public class AvroCodec extends AbstractService {
   }
 
 
-  @Override
-  protected void doStart() {
-    schemaRepo.startUp(new SchemaRepo.SchemaListener() {
-      @Override
-      public void onSchemaAdded(SchemaDescriptor schema) {
-        AvroCodec.this.onSchemaAdded(schema);
-      }
 
-      @Override
-      public void onSchemaRemoved(SchemaFingerprint fingerprint) {
-        AvroCodec.this.onSchemaRemoved(fingerprint);
-      }
-    }).thenCompose(__ -> schemaRepo.refresh())
-            .whenComplete((__, e) -> {
-              if (e == null) {
-                notifyStarted();
-              } else {
-                notifyFailed(e);
-              }
-            });
-  }
-
-  @Override
-  protected void doStop() {
-    schemaRepo.shutDown().whenComplete((__, e) -> {
-//      IllegalStateException stragglerException = new IllegalStateException("AvroCodec was shut down");
-      knownPackersByFingerprint.asMap().forEach((fingerprint, promise) -> {
-        if (!promise.isDone()) promise.completeExceptionally(new ShutdownException("AvroCodec was shut down while awaiting schema: " + fingerprint.hexValue()));
-      });
-      if (e == null) {
-        notifyStopped();
-      } else {
-        notifyFailed(e);
-      }
-    });
-  }
 
   static BinaryDecoder binaryDecoder(InputStream in) {
     return DecoderFactory.get().binaryDecoder(in, null);
   }
 
-  private void checkRunning() {
-    checkState(isRunning(), "AvroCodec wasn't running", this);
-  }
-
-  public CompletableFuture<Void> ensureReplicatedFrom(AvroCodec other) {
+  public CompletableFuture<Void> ensureReplicatedFrom(AvroPublisher other) {
     checkArgument(this != other, "Tried to replicate identical repo");
-    checkRunning();
     return other.getAllRegisteredSchemas(true).thenApply(Collection::stream).thenCompose(this::ensureRegistration);
   }
 
@@ -586,8 +444,8 @@ public class AvroCodec extends AbstractService {
    * Note that if you are working with generated {@link SpecificRecordBase} classes, it may be good to use a
    * {@link #specificPacker}, which is type-safe and slightly optimized.
    * <p/>
-   * Instances of this class are obtained from {@link AvroCodec#getPreRegisteredPacker} or
-   * {@link AvroCodec#getOrRegisterPacker}, and are thread-safe and reusable. For example, do something like this
+   * Instances of this class are obtained from {@link AvroPublisher#getPreRegisteredPacker} or
+   * {@link AvroPublisher#getOrRegisterPacker}, and are thread-safe and reusable. For example, do something like this
    * when starting up for every record-type you might serialize for the lifetime of the application:
    * <pre>
    * {@code
@@ -678,158 +536,6 @@ public class AvroCodec extends AbstractService {
     }
   }
 
-  /**
-   * Represents a lineage of schemas for a type of record, as identified by {@link Schema#getFullName}:
-   * when a schema has been updated with multiple versions, all known historical versions will share the
-   * same RecordTypeFamily.
-   */
-  public static class RecordTypeFamily {
-    private final String fullName;
-    private final Map<SchemaFingerprint, SchemaDescriptor> versionsByFingerprint = new ConcurrentHashMap<>();
-    private final List<SchemaDescriptor> orderedVersions = new CopyOnWriteArrayList<>();
-
-    private RecordTypeFamily(String fullName) {
-      this.fullName = fullName;
-    }
-
-    public String getFullName() {
-      return fullName;
-    }
-
-    public boolean isInstance(UnpackableRecord record) {
-      return versionsByFingerprint.containsKey(record.fingerprint());
-    }
-
-    public List<SchemaFingerprint> getAllFingerprints() {
-      return orderedVersions.stream()
-              .map(SchemaDescriptor::fingerprint)
-              .collect(Collectors.toList());
-    }
-
-    public Stream<SchemaDescriptor> getAllVersions() {
-      return orderedVersions.stream();
-    }
-
-    /**
-     * Constructs a new {@link SpecificRecordConverter} for the provided {@code recordClass}.
-     *
-     * @see SpecificRecordConverter
-     */
-    public <T extends SpecificRecordBase> SpecificRecordConverter<T> newConverter(Class<T> recordClass) {
-      return new SpecificRecordConverter<>(this, new SpecificRecordUnpacker<>(recordClass));
-    }
-
-    public Optional<SchemaDescriptor> getLatestSchema() {
-      return orderedVersions.isEmpty() ? Optional.empty() : Optional.of(orderedVersions.get(orderedVersions.size() - 1));
-    }
-
-    public boolean isCompatibleReader(Schema readerSchema) {
-      return allSchemas().anyMatch(readerSchema::equals)
-              || allSchemas().allMatch(writer -> isCompatibleReaderWriter(readerSchema, writer));
-    }
-
-    private Stream<Schema> allSchemas() {
-      return orderedVersions.stream().map(SchemaDescriptor::schema);
-    }
-
-    public SchemaDescriptor requireLatestSchema() {
-      return getLatestSchema().orElseThrow(() -> new IllegalStateException("No writer-schemas registered for type: " + fullName));
-    }
-
-    public Optional<SchemaConflictException> checkCompatibility(SchemaDescriptor candidate) {
-      Schema schema = candidate.schema();
-      List<SchemaConflict> incompatibilities = PairStream.withMappedValues(
-                      orderedVersions.stream(),
-                      version -> checkBidirectionalCompatibility(schema, version.schema())
-              )
-              .filterValues(result -> result.getCompatibility() != SchemaCompatibility.SchemaCompatibilityType.COMPATIBLE)
-              .map(SchemaConflict::of)
-              .collect(Collectors.toUnmodifiableList());
-      return Optionals.onlyIfFrom(
-              !incompatibilities.isEmpty(),
-              () -> new SchemaConflictException(candidate, incompatibilities));
-    }
-
-    synchronized RegistrationResult addVersion(SchemaDescriptor schema) {
-      return checkCompatibility(schema)
-              .map(RegistrationResult::failed)
-              .orElseGet(() -> {
-                SchemaDescriptor prev = versionsByFingerprint.put(schema.fingerprint(), schema);
-                if (prev != null) {
-                  if (!prev.equals(schema)) orderedVersions.set(orderedVersions.indexOf(prev), schema);
-                } else {
-                  orderedVersions.add(schema);
-                }
-                return new RegistrationResult(new RecordPacker(schema, this), null);
-              });
-    }
-
-    private static boolean isCompatibleReaderWriter(Schema readerSchema, Schema writerSchema) {
-      return SchemaCompatibility.checkReaderWriterCompatibility(readerSchema, writerSchema).getType() == SchemaCompatibility.SchemaCompatibilityType.COMPATIBLE;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      return this == o;
-    }
-
-    @Override
-    public int hashCode() {
-      return getFullName().hashCode();
-    }
-  }
-
-  private static SchemaCompatibility.SchemaCompatibilityResult checkBidirectionalCompatibility(
-          Schema a, Schema b
-  ) {
-    return SchemaCompatibility.checkReaderWriterCompatibility(a, b).getResult()
-            .mergedWith(SchemaCompatibility.checkReaderWriterCompatibility(b, a).getResult());
-  }
-
-  public static class SchemaConflictException extends RuntimeException {
-    public SchemaConflictException(SchemaDescriptor conflict, List<SchemaConflict> conflicts) {
-      super(String.format("Incompatible schema:\n  %s\n  conflicts:  %s", conflict, conflicts));
-    }
-  }
-
-  @Value.Immutable
-  @Tuple
-  public interface SchemaConflict {
-    static SchemaConflict of(SchemaDescriptor conflictingSchema, SchemaCompatibility.SchemaCompatibilityResult result) {
-      return ImmutableSchemaConflict.of(conflictingSchema, result);
-    }
-
-    SchemaDescriptor conflictingSchema();
-    SchemaCompatibility.SchemaCompatibilityResult compatibilityResult();
-  }
-
-  private static class RegistrationResult {
-    private final RecordPacker registeredPacker;
-    private final SchemaConflictException conflictException;
-
-    private RegistrationResult(RecordPacker registeredPacker, SchemaConflictException conflictException) {
-      assert registeredPacker == null ^ conflictException == null; // exactly one of these must be null
-      this.registeredPacker = registeredPacker;
-      this.conflictException = conflictException;
-    }
-
-    boolean succeeded() {
-      return registeredPacker != null;
-    }
-
-    static RegistrationResult failed(SchemaConflictException conflictException) {
-      return new RegistrationResult(null, conflictException);
-    }
-
-    RecordPacker getRegisteredPacker() {
-      return registeredPacker;
-    }
-
-    SchemaConflictException getConflictException() {
-      return conflictException;
-    }
-  }
-
   @Value.Immutable(intern = true)
   @Tuple
   public interface PackageKey {
@@ -853,23 +559,9 @@ public class AvroCodec extends AbstractService {
 
       return recordClasses.stream()
               .map(specificData::getSchema)
-              .filter(AvroCodec::isMarkedForPublication)
+              .filter(AvroPublisher::isMarkedForPublication)
               .collect(ImmutableList.toImmutableList());
     }
   }
 
-  @Identifier
-  abstract static class SchemaDescriptorImpl implements SchemaDescriptor {
-
-    @Override
-    @Value.Auxiliary @Value.Derived
-    public SchemaFingerprint fingerprint() {
-      return SchemaFingerprint.of(schema());
-    }
-
-    @Override
-    public String toString() {
-      return String.format("Schema[%s]%s", fingerprint().hexValue(), schema());
-    }
-  }
 }

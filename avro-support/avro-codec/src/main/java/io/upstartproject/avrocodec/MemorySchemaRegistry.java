@@ -7,9 +7,9 @@ import java.util.concurrent.CompletableFuture;
 
 /**
  * A transient in-memory schema-repo, intended primarily for testing (but possibly suitable for production use where
- * integration with an external {@link SchemaRepo} is unnecessary or undesirable)
+ * integration with an external {@link SchemaRegistry} is unnecessary or undesirable)
  */
-public class MemorySchemaRepo implements SchemaRepo {
+public class MemorySchemaRegistry implements SchemaRegistry {
   private SchemaListener schemaListener;
 
   @Override

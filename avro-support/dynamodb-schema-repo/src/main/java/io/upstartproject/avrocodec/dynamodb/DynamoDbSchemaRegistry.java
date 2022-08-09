@@ -4,8 +4,10 @@ import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.MoreExecutors;
 import io.upstartproject.avrocodec.SchemaDescriptor;
 import io.upstartproject.avrocodec.SchemaFingerprint;
-import io.upstartproject.avrocodec.SchemaRepo;
-import io.upstartproject.avrocodec.upstart.AvroModule;
+import io.upstartproject.avrocodec.SchemaRegistry;
+import io.upstartproject.avrocodec.upstart.AvroPublicationModule;
+import io.upstartproject.avrocodec.upstart.DataStore;
+import org.immutables.value.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbAsyncIndex;
@@ -23,7 +25,7 @@ import software.amazon.awssdk.services.dynamodb.model.CancellationReason;
 import software.amazon.awssdk.services.dynamodb.model.ConditionalCheckFailedException;
 import software.amazon.awssdk.services.dynamodb.model.TransactionCanceledException;
 import upstart.config.UpstartModule;
-import upstart.config.annotations.ConfigPath;
+import upstart.config.annotations.DeserializedImmutable;
 import upstart.dynamodb.DynamoDbClientService;
 import upstart.dynamodb.DynamoDbModule;
 import upstart.dynamodb.DynamoDbNamespace;
@@ -47,13 +49,13 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 
 @Singleton
-public class DynamoDbSchemaRepo implements SchemaRepo {
-  private static final Logger LOG = LoggerFactory.getLogger(DynamoDbSchemaRepo.class);
+public class DynamoDbSchemaRegistry implements SchemaRegistry {
+  private static final Logger LOG = LoggerFactory.getLogger(DynamoDbSchemaRegistry.class);
   private final SchemaTable table;
   private final BlockingBoundedActor actor = new BlockingBoundedActor(10);
 
   @Inject
-  public DynamoDbSchemaRepo(SchemaTable table) {
+  public DynamoDbSchemaRegistry(SchemaTable table) {
     this.table = table;
   }
 
@@ -268,18 +270,43 @@ public class DynamoDbSchemaRepo implements SchemaRepo {
     }
   }
 
-  public static class DynamoDbSchemaRepoModule extends UpstartModule {
+  public static class DynamoDbSchemaRegistryModule extends UpstartModule {
+    private final DataStore dataStore;
+    private final DynamoDbNamespace namespace;
+
+    public DynamoDbSchemaRegistryModule(DataStore dataStore, DynamoDbNamespace namespace) {
+      super(dataStore);
+      this.dataStore = dataStore;
+      this.namespace = namespace;
+    }
+
     @Override
     protected void configure() {
-      install(AvroModule.class);
+      install(new AvroPublicationModule(dataStore));
       install(DynamoDbModule.class);
-      bindConfig(DynamoDbRepoConfig.class);
-      bind(SchemaRepo.class).to(DynamoDbSchemaRepo.class);
+      com.google.inject.Key<DynamoDbRepoConfig> configKey = guiceKey(DynamoDbRepoConfig.class);
+      install(new AvroPublicationModule.DataStoreModule(dataStore) {
+        @Override
+        protected void configure() {
+          super.configure();
+          bind(DynamoDbRepoConfig.class).to(configKey);
+          bind(SchemaRegistry.class).to(DynamoDbSchemaRegistry.class);
+          bind(DynamoDbNamespace.class).toInstance(namespace);
+        }
+      }.exposing(SchemaRegistry.class, DynamoDbSchemaRegistry.class));
+      bindConfig("upstart.avroCodec.dynamoDbSchemaRepo." + dataStore.value(), DynamoDbRepoConfig.class, configKey);
+    }
+
+    private <T> com.google.inject.Key<T> guiceKey(Class<T> type) {
+      return com.google.inject.Key.get(type, dataStore);
     }
   }
 
-  @ConfigPath("upstart.avroCodec.dynamoDbSchemaRepo")
+  @DeserializedImmutable
   public interface DynamoDbRepoConfig {
-    String repoTableNameSuffix();
+    @Value.Default
+    default String repoTableNameSuffix() {
+      return "schemarepo";
+    }
   }
 }

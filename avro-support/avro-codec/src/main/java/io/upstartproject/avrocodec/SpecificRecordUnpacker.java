@@ -8,7 +8,7 @@ import org.apache.avro.specific.SpecificRecordBase;
 /**
  * A utility for unpacking {@link UnpackableRecord}s into code-generated {@link SpecificRecordBase} instance.
  * <p/>
- * Usually obtained via {@link AvroCodec#recordUnpacker}.
+ * Usually obtained via {@link AvroPublisher#recordUnpacker}.
  * <p/>
  * Instances of this class are thread-safe, and should be cached/reused for the lifetime of the process.
  */
@@ -19,7 +19,7 @@ public class SpecificRecordUnpacker<T extends SpecificRecordBase> {
 
   public SpecificRecordUnpacker(Class<T> recordClass) {
     this.recordClass = recordClass;
-    this.specificData = AvroCodec.specificData(recordClass.getClassLoader());
+    this.specificData = AvroPublisher.specificData(recordClass.getClassLoader());
     this.schema = specificData.getSchema(recordClass);
   }
 

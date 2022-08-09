@@ -5,7 +5,7 @@ import io.upstartproject.avrocodec.SchemaFingerprint;
 import upstart.aws.s3.test.MockS3;
 import upstart.aws.s3.test.MockS3Test;
 import io.upstartproject.avrocodec.SchemaDescriptor;
-import io.upstartproject.avrocodec.SchemaRepo;
+import io.upstartproject.avrocodec.SchemaRegistry;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import software.amazon.awssdk.auth.credentials.AnonymousCredentialsProvider;
@@ -23,7 +23,7 @@ class S3SchemaRepoTest {
   void startRepo(MockS3 s3) {
     S3AsyncClient client = S3AsyncClient.builder().endpointOverride(s3.getEndpointUri()).region(Region.US_EAST_1).credentialsProvider(AnonymousCredentialsProvider.create()).build();
     client.putBucketVersioning(b -> b.bucket(TEST_REPO_BUCKET).versioningConfiguration(v -> v.status(BucketVersioningStatus.ENABLED))).join();
-    S3SchemaRepo repo = new S3SchemaRepo(new S3SchemaRepo.S3RepoConfig() {
+    S3SchemaRegistry repo = new S3SchemaRegistry(new S3SchemaRegistry.S3RepoConfig() {
       @Override
       public String repoBucket() {
         return TEST_REPO_BUCKET;
@@ -35,7 +35,7 @@ class S3SchemaRepoTest {
       }
     }, () -> client);
 
-    repo.startUp(new SchemaRepo.SchemaListener() {
+    repo.startUp(new SchemaRegistry.SchemaListener() {
       @Override
       public void onSchemaAdded(SchemaDescriptor schema) {
 

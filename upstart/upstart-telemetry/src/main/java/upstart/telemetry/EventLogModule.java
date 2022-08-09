@@ -2,20 +2,19 @@ package upstart.telemetry;
 
 
 import com.google.inject.Binder;
-import com.google.inject.Provides;
 import com.google.inject.binder.LinkedBindingBuilder;
 import com.google.inject.multibindings.Multibinder;
 import io.upstartproject.avrocodec.events.EventLog;
 import io.upstartproject.avrocodec.events.EventPublisher;
 import io.upstartproject.avrocodec.events.PackagedEvent;
 import io.upstartproject.avrocodec.events.PackagedEventSink;
-import io.upstartproject.avrocodec.upstart.AvroEnvelopeModule;
-import upstart.config.annotations.ConfigPath;
+import io.upstartproject.avrocodec.upstart.DataStore;
 import upstart.config.UpstartModule;
 
-import javax.inject.Singleton;
-
 public class EventLogModule extends UpstartModule {
+
+  public static final String TELEMETRY = "TELEMETRY";
+  public static final DataStore TELEMETRY_DATA_STORE = DataStore.Factory.dataStore(TELEMETRY);
 
   public static LinkedBindingBuilder<PackagedEventSink> bindEventSink(Binder binder) {
     return Multibinder.newSetBinder(binder, PackagedEventSink.class).addBinding();
@@ -31,8 +30,7 @@ public class EventLogModule extends UpstartModule {
 
   @Override
   protected void configure() {
-    install(AvroEnvelopeModule.class);
-
+    install(MessageEnvelopeModule.class);
     // ensure multibinder is defined
     decoratorMultibinder(binder());
 

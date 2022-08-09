@@ -1,9 +1,9 @@
 package io.upstartproject.avrocodec.kafka;
 
-import io.upstartproject.avrocodec.AvroCodec;
-import io.upstartproject.avrocodec.BaseSchemaRepo;
+import io.upstartproject.avrocodec.AvroPublisher;
+import io.upstartproject.avrocodec.BaseSchemaRegistry;
 import io.upstartproject.avrocodec.SchemaDescriptor;
-import io.upstartproject.avrocodec.SchemaRepo;
+import io.upstartproject.avrocodec.SchemaRegistry;
 import upstart.util.concurrent.CompletableFutures;
 import upstart.util.concurrent.Promise;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -25,13 +25,13 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * A {@link SchemaRepo} implementation, for use with an {@link AvroCodec#AvroCodec(SchemaRepo) AvroCodec}, which
+ * A {@link SchemaRegistry} implementation, for use with an {@link AvroPublisher#AvroCodec(SchemaRegistry) AvroCodec}, which
  * stores schemas in a configured Kafka topic.
  *
- * @see SchemaRepo
- * @see AvroCodec#AvroCodec(SchemaRepo)
+ * @see SchemaRegistry
+ * @see AvroPublisher#AvroCodec(SchemaRegistry)
  */
-public class KafkaSchemaRepo extends BaseSchemaRepo {
+public class KafkaSchemaRegistry extends BaseSchemaRegistry {
   private final String topic;
   private final Config config;
 
@@ -39,7 +39,7 @@ public class KafkaSchemaRepo extends BaseSchemaRepo {
   private Producer<Long, String> producer;
 
   @Inject
-  public KafkaSchemaRepo(Config config) {
+  public KafkaSchemaRegistry(Config config) {
     this.config = config;
     this.topic = config.schemaTopic();
   }

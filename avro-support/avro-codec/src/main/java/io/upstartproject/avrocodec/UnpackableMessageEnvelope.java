@@ -16,7 +16,7 @@ import java.util.stream.Stream;
  * the {@link #messageRecord} and all of its {@link #annotationRecords}.
  * <p/>
  * Also assists with {@link #findAnnotationRecords finding annotations} belonging to a specific
- * {@link AvroCodec.RecordTypeFamily} (which is a necessary subtlety for accommodating schema-evolution of annotations).
+ * {@link RecordTypeFamily} (which is a necessary subtlety for accommodating schema-evolution of annotations).
  */
 @Value.Immutable
 public interface UnpackableMessageEnvelope {
@@ -42,23 +42,23 @@ public interface UnpackableMessageEnvelope {
   MessageEnvelope rawEnvelope();
 
   /**
-   * Determines if the {@link #messageRecord} embedded in this envelope is a member of the given {@link AvroCodec.RecordTypeFamily}
-   * (which can be obtained with {@link AvroCodec#findTypeFamily}).
+   * Determines if the {@link #messageRecord} embedded in this envelope is a member of the given {@link RecordTypeFamily}
+   * (which can be obtained with {@link AvroPublisher#findTypeFamily}).
    * <p/>
    * Identical to {@code typeFamily.isInstance(messageRecord())} (which may be more convenient to call directly).
    */
-  default boolean messageIsInstanceOf(AvroCodec.RecordTypeFamily typeFamily) {
+  default boolean messageIsInstanceOf(RecordTypeFamily typeFamily) {
     return typeFamily.isInstance(messageRecord());
   }
 
   /**
    * Converts this envelope's {@link #messageRecord} with the given converter if it is a member of the converter's
    * {@link RecordConverterApi#writerTypeFamily}.
-   * @return an {@link Optional} containing the converted message, if it matches the converter's target {@link AvroCodec.RecordTypeFamily};
+   * @return an {@link Optional} containing the converted message, if it matches the converter's target {@link RecordTypeFamily};
    * otherwise, {@link Optional#empty}
    *
    * @see #messageIsInstanceOf
-   * @see AvroCodec#findTypeFamily(String)
+   * @see AvroPublisher#findTypeFamily(String)
    */
   default <T extends SpecificRecordBase> Optional<T> convertMessage(RecordConverterApi<T> converter) {
     return messageIsInstanceOf(converter.writerTypeFamily())
@@ -69,7 +69,7 @@ public interface UnpackableMessageEnvelope {
   /**
    * Finds annotations on this envelope matching the given typeFamily.
    */
-  default Stream<UnpackableRecord> findAnnotationRecords(AvroCodec.RecordTypeFamily typeFamily) {
+  default Stream<UnpackableRecord> findAnnotationRecords(RecordTypeFamily typeFamily) {
     return annotationRecords().stream()
             .filter(typeFamily::isInstance);
   }
@@ -86,7 +86,7 @@ public interface UnpackableMessageEnvelope {
    * Finds the first annotation on this envelope matching the given typeFamily.
    * @throws NoSuchElementException if no matching annotation is found
    */
-  default UnpackableRecord getRequiredAnnotationRecord(AvroCodec.RecordTypeFamily typeFamily) {
+  default UnpackableRecord getRequiredAnnotationRecord(RecordTypeFamily typeFamily) {
     return findAnnotationRecords(typeFamily).findFirst()
             .orElseThrow(() -> new NoSuchElementException(String.format("Annotation not found: %s (envelope metadata: %s)", typeFamily.getFullName(), metadata())));
   }

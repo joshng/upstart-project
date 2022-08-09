@@ -17,7 +17,6 @@ import java.util.concurrent.CompletableFuture;
  * @see EventLog
  */
 public class EventPublisher extends EventLog {
-  private final EnvelopeCodec codec;
   private final MessageMetadata metadata;
   private final Set<PackagedEventSink> sinks;
   private final Clock clock;
@@ -25,13 +24,11 @@ public class EventPublisher extends EventLog {
 
   @Inject
   public EventPublisher(
-          EnvelopeCodec codec,
           MessageMetadata metadata,
           Clock clock,
           Set<PackagedEventSink> sinks,
           Set<PackagedEvent.Decorator> decorators
   ) {
-    this.codec = codec;
     this.metadata = metadata;
     this.sinks = sinks;
     this.clock = clock;
@@ -39,9 +36,7 @@ public class EventPublisher extends EventLog {
   }
 
   public CompletableFuture<?> publish(LogLevel diagnosticLogLevel, PackagedEvent event) {
-    MessageEnvelope envelope = event.toEnvelope(codec);
-    byte[] value = codec.getSerializedBytes(envelope);
-    return CompletableFutures.allOf(sinks.stream().map(sink -> sink.publish(diagnosticLogLevel, event, value)));
+    return CompletableFutures.allOf(sinks.stream().map(sink -> sink.publish(diagnosticLogLevel, event)));
   }
 
   @Override

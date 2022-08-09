@@ -1,5 +1,7 @@
 package io.upstartproject.avrocodec;
 
+import org.immutables.value.Value;
+import upstart.util.annotations.Identifier;
 import upstart.util.exceptions.UncheckedIO;
 import org.apache.avro.Schema;
 
@@ -29,5 +31,20 @@ public interface SchemaDescriptor {
 
   default String fullName() {
     return schema().getFullName();
+  }
+
+  @Identifier
+  abstract class SchemaDescriptorImpl implements SchemaDescriptor {
+
+    @Override
+    @Value.Auxiliary @Value.Derived
+    public SchemaFingerprint fingerprint() {
+      return SchemaFingerprint.of(schema());
+    }
+
+    @Override
+    public String toString() {
+      return String.format("Schema[%s]%s", fingerprint().hexValue(), schema());
+    }
   }
 }

@@ -7,7 +7,7 @@ import io.upstartproject.avro.event.ConfigValueRecord;
 import io.upstartproject.avro.event.ServiceCleanShutdownEvent;
 import io.upstartproject.avro.event.ServiceConfigLoadedEvent;
 import io.upstartproject.avro.event.ExceptionEvent;
-import io.upstartproject.avrocodec.upstart.AvroModule;
+import io.upstartproject.avrocodec.upstart.AvroPublicationModule;
 import io.upstartproject.avrocodec.upstart.EventLogger;
 import upstart.config.ConfigDump;
 import upstart.config.UpstartApplicationConfig;
@@ -83,7 +83,7 @@ public class ServiceTelemetry extends IdleService {
     protected void configure() {
       install(EventLogModule.class);
       serviceManager().manage(ServiceTelemetry.class);
-      AvroModule.bindAvroFromRecordPackage(binder(), ServiceConfigLoadedEvent.class);
+      AvroPublicationModule.bindAvroFromRecordPackage(binder(), EventLogModule.TELEMETRY_DATA_STORE, ServiceConfigLoadedEvent.class);
       ManagedServicesModule.bindServiceListener(binder()).to(ServiceListener.class);
     }
   }

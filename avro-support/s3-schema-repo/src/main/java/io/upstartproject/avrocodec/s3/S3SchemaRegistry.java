@@ -1,10 +1,10 @@
 package io.upstartproject.avrocodec.s3;
 
+import io.upstartproject.avrocodec.BaseSchemaRegistry;
 import upstart.util.collect.PairStream;
 import upstart.util.collect.PersistentList;
 import upstart.util.concurrent.CompletableFutures;
 import upstart.util.concurrent.FutureCell;
-import io.upstartproject.avrocodec.BaseSchemaRepo;
 import io.upstartproject.avrocodec.SchemaDescriptor;
 import org.immutables.value.Value;
 import software.amazon.awssdk.core.BytesWrapper;
@@ -17,7 +17,6 @@ import software.amazon.awssdk.services.s3.model.ListObjectVersionsResponse;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.ObjectIdentifier;
 import software.amazon.awssdk.services.s3.model.ObjectVersion;
-import upstart.util.concurrent.Promise;
 
 import javax.inject.Inject;
 import java.time.Instant;
@@ -30,7 +29,7 @@ import java.util.function.Supplier;
 
 import static com.google.common.base.Preconditions.checkState;
 
-public class S3SchemaRepo extends BaseSchemaRepo {
+public class S3SchemaRegistry extends BaseSchemaRegistry {
   private final S3RepoConfig config;
   private final Supplier<S3AsyncClient> clientSupplier;
   private final String schemaPathPrefix;
@@ -39,7 +38,7 @@ public class S3SchemaRepo extends BaseSchemaRepo {
   private S3AsyncClient client;
 
   @Inject
-  public S3SchemaRepo(S3RepoConfig config, Supplier<S3AsyncClient> clientSupplier) {
+  public S3SchemaRegistry(S3RepoConfig config, Supplier<S3AsyncClient> clientSupplier) {
     this.config = config;
     // TODO: should we confirm a leading slash here?
     this.clientSupplier = clientSupplier;

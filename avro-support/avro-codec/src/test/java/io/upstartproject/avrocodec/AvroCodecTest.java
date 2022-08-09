@@ -43,11 +43,12 @@ class AvroCodecTest {
   @Test
   void comprehensiveEnvelopeRoundTrip() throws IOException {
 
-    MemorySchemaRepo schemaRepo = new MemorySchemaRepo();
-    AvroCodec avroCodec = new AvroCodec(schemaRepo);
-    avroCodec.startAsync().awaitRunning();
-    avroCodec.registerSpecificPackers(AvroCodec.PackageKey.fromRecordPackage(TestExceptionRecord.class)).join();
-    EnvelopeCodec codec = new EnvelopeCodec(avroCodec).registerEnvelopeSchema().join();
+    MemorySchemaRegistry schemaRepo = new MemorySchemaRegistry();
+    AvroTaxonomy taxonomy = new AvroTaxonomy(schemaRepo);
+    AvroPublisher avroPublisher = new AvroPublisher(taxonomy);
+    taxonomy.startAsync().awaitRunning();
+    avroPublisher.registerSpecificPackers(AvroPublisher.PackageKey.fromRecordPackage(TestExceptionRecord.class)).join();
+    EnvelopeCodec codec = new EnvelopeCodec(avroPublisher, new AvroDecoder(taxonomy)).registerEnvelopeSchema().join();
 
     String exceptionMessage = "numbers";
     MessageMetadata metadata = MessageMetadata.builder()
@@ -59,8 +60,8 @@ class AvroCodecTest {
     TestExceptionEvent event = new TestExceptionEvent(Instant.EPOCH, new TestExceptionRecord(exceptionMessage));
     TestAnnotation anno = new TestAnnotation(77L);
 
-    PackableRecord<?> exceptionRecord = avroCodec.getPreRegisteredPacker(TestExceptionEvent.getClassSchema()).makePackable(event);
-    PackableRecord<?> annotationRecord = avroCodec.getPreRegisteredPacker(anno.getSchema()).makePackable(anno);
+    PackableRecord<?> exceptionRecord = avroPublisher.getPreRegisteredPacker(TestExceptionEvent.getClassSchema()).makePackable(event);
+    PackableRecord<?> annotationRecord = avroPublisher.getPreRegisteredPacker(anno.getSchema()).makePackable(anno);
     byte[] bytes = codec.packableMessageEnvelope(Instant.ofEpochMilli(99), Optional.empty(), exceptionRecord, metadata, annotationRecord).serialize();
 
     UnpackableMessageEnvelope env = codec.loadEnvelope(new ByteArrayInputStream(bytes)).join();
@@ -71,9 +72,10 @@ class AvroCodecTest {
     assertThat(genericException.get("message")).isEqualTo(exceptionMessage);
 
     assertThat(env.annotationRecords().get(0).unpackGeneric().get("id")).isEqualTo(77L);
-    assertThat(env.convertRequiredAnnotation(avroCodec.recordConverter(TestAnnotation.class))).isEqualTo(anno);
+    AvroDecoder decoder = new AvroDecoder(taxonomy);
+    assertThat(env.convertRequiredAnnotation(decoder.recordConverter(TestAnnotation.class))).isEqualTo(anno);
 
-    SpecificRecordUnpacker<TestExceptionEvent> recordUnpacker = avroCodec.recordUnpacker(TestExceptionEvent.class);
+    SpecificRecordUnpacker<TestExceptionEvent> recordUnpacker = decoder.recordUnpacker(TestExceptionEvent.class);
     assertThat(recordUnpacker.unpack(
             codec.extractEnvelopeMessage(new ByteArrayInputStream(bytes)).join())
     ).isEqualTo(event);
@@ -89,26 +91,29 @@ class AvroCodecTest {
   @Nested
   class WithMockSchemaRepo {
 
-    @Captor ArgumentCaptor<SchemaRepo.SchemaListener> listenerCaptor;
-    @Mock SchemaRepo mockRepo;
-    private AvroCodec codec;
-    private SchemaRepo.SchemaListener schemaListener;
+    @Captor ArgumentCaptor<SchemaRegistry.SchemaListener> listenerCaptor;
+    @Mock SchemaRegistry mockRepo;
+    private AvroPublisher codec;
+    private SchemaRegistry.SchemaListener schemaListener;
     private SchemaDescriptor testRecordSchemaDescriptor;
+    private AvroDecoder decoder;
 
     @BeforeEach
     void setupRepo() throws IOException {
-      codec = new AvroCodec(mockRepo);
+      AvroTaxonomy taxonomy = new AvroTaxonomy(mockRepo);
+      codec = new AvroPublisher(taxonomy);
+      decoder = new AvroDecoder(taxonomy);
 
       when(mockRepo.startUp(listenerCaptor.capture())).thenReturn(nullFuture());
       when(mockRepo.refresh()).thenReturn(nullFuture());
 
-      codec.startAsync().awaitRunning();
+      taxonomy.start().join();
 
       schemaListener = listenerCaptor.getValue();
       testRecordSchemaDescriptor = SchemaDescriptor.of(loadSchema("IncompatibleTestRecord2.avsc"));
     }
 
-    @SuppressLogs(value = AvroCodec.class, threshold = UpstartLogConfig.LogThreshold.ERROR)
+    @SuppressLogs(value = AvroPublisher.class, threshold = UpstartLogConfig.LogThreshold.ERROR)
     @Test
     void racingSchemasResolveCorrectly() throws IOException {
       when(mockRepo.insert(any())).thenReturn(nullFuture());
@@ -127,17 +132,17 @@ class AvroCodecTest {
       // confirm the repo is cleaned up by the offending party (non-critical, but good hygiene)
       verify(mockRepo).delete(rejectedDescriptor);
 
-      assertThat(codec.findRegisteredPacker(rejectedDescriptor.fingerprint()))
-              .failedWith(AvroCodec.SchemaConflictException.class);
+      assertThat(codec.findPreRegisteredPacker(rejectedDescriptor.fingerprint()))
+              .failedWith(AvroSchemaConflictException.class);
 
       schemaListener.onSchemaRemoved(rejectedDescriptor.fingerprint());
 
-      assertThat(codec.findRegisteredPacker(rejectedDescriptor.fingerprint()))
-              .failedWith(AvroCodec.SchemaConflictException.class);
+      assertThat(codec.findPreRegisteredPacker(rejectedDescriptor.fingerprint()))
+              .failedWith(AvroSchemaConflictException.class);
 
-      assertThat(racingFuture).failedWith(AvroCodec.SchemaConflictException.class);
+      assertThat(racingFuture).failedWith(AvroSchemaConflictException.class);
 
-      assertThrows(AvroCodec.SchemaConflictException.class, () -> codec.getPreRegisteredPacker(proposedConflictingSchema));
+      assertThrows(AvroSchemaConflictException.class, () -> codec.getPreRegisteredPacker(proposedConflictingSchema));
     }
 
     @Test
@@ -148,14 +153,15 @@ class AvroCodecTest {
               .read(null, DecoderFactory.get().jsonDecoder(testRecordSchemaDescriptor.schema(), json));
 
       // now write the record using a real AvroCodec that knows about the schema
-      AvroCodec writerCodec = new AvroCodec(new MemorySchemaRepo());
-      writerCodec.startAsync().awaitRunning();
+      AvroTaxonomy taxonomy = new AvroTaxonomy(new MemorySchemaRegistry());
+      AvroPublisher writerCodec = new AvroPublisher(taxonomy);
+      taxonomy.startAsync().awaitRunning();
       PackedRecord packedRecord = writerCodec.getOrRegisterPacker(testRecordSchemaDescriptor.schema())
               .join()
               .pack(record);
 
       // finally, ask our test-codec to unpack the record; this must wait until its SchemaRepo adds the schema
-      CompletableFuture<UnpackableRecord> futureUnpackable = codec.toUnpackable(packedRecord);
+      CompletableFuture<UnpackableRecord> futureUnpackable = decoder.toUnpackable(packedRecord);
       assertThat(futureUnpackable).isNotDone(); // schema is unresolved, so future should still be pending
 
       schemaListener.onSchemaAdded(testRecordSchemaDescriptor);

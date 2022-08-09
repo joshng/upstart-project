@@ -1,23 +1,26 @@
 package upstart.telemetry;
 
+import com.google.inject.Key;
 import io.upstartproject.avro.MessageEnvelope;
 import io.upstartproject.avro.event.ConfigValueRecord;
 import io.upstartproject.avro.event.ExceptionEvent;
 import io.upstartproject.avro.event.ServiceCleanShutdownEvent;
 import io.upstartproject.avro.event.ServiceConfigLoadedEvent;
-import io.upstartproject.avrocodec.AvroCodec;
+import io.upstartproject.avrocodec.AvroDecoder;
+import io.upstartproject.avrocodec.AvroPublisher;
+import io.upstartproject.avrocodec.AvroTaxonomy;
 import io.upstartproject.avrocodec.EnvelopeCodec;
-import io.upstartproject.avrocodec.MemorySchemaRepo;
-import io.upstartproject.avrocodec.SchemaRepo;
-import io.upstartproject.avrocodec.UnpackableMessageEnvelope;
+import io.upstartproject.avrocodec.MemorySchemaRegistry;
+import io.upstartproject.avrocodec.SchemaRegistry;
+import io.upstartproject.avrocodec.events.PackagedEvent;
 import io.upstartproject.avrocodec.events.PackagedEventSink;
-import io.upstartproject.avrocodec.upstart.AvroModule;
+import io.upstartproject.avrocodec.upstart.AvroEnvelopeModule;
+import io.upstartproject.avrocodec.upstart.AvroPublicationModule;
+import io.upstartproject.avrocodec.upstart.DataStore;
 import org.apache.avro.specific.SpecificRecordBase;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mockito;
 import upstart.config.UpstartModule;
 import upstart.log4j.test.SuppressLogs;
 import upstart.managedservices.LifecycleCoordinator;
@@ -26,6 +29,7 @@ import upstart.managedservices.ServiceLifecycle;
 import upstart.metrics.TaggedMetricRegistry;
 import upstart.test.StacklessTestException;
 import upstart.test.UpstartTest;
+import upstart.util.LogLevel;
 import upstart.util.concurrent.CompletableFutures;
 import upstart.util.concurrent.Deadline;
 import upstart.util.concurrent.services.NotifyingService;
@@ -34,7 +38,9 @@ import upstart.util.concurrent.services.ServiceDependencyChecker;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -44,7 +50,6 @@ import static com.google.common.truth.Truth.assertThat;
 import static com.google.common.truth.Truth.assertWithMessage;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import static upstart.test.truth.CompletableFutureSubject.assertThat;
 
 //@ShowServiceGraph
@@ -52,7 +57,7 @@ import static upstart.test.truth.CompletableFutureSubject.assertThat;
 @UpstartTest
 public class ServiceTelemetryTest extends UpstartModule {
   private static final String ERROR_MESSAGE = "Testing service-failure";
-  private final PackagedEventSink mockEventSink = mock(PackagedEventSink.class);
+  @Inject CapturingEventSink capturingEventSink;
 
   @Inject
   @ServiceLifecycle(ServiceLifecycle.Phase.Infrastructure)
@@ -61,15 +66,16 @@ public class ServiceTelemetryTest extends UpstartModule {
   @ServiceLifecycle(ServiceLifecycle.Phase.Application) ManagedServiceGraph appServiceGraph;
   @Inject
   ServiceDependencyChecker dependencyChecker;
-  private final AvroCodec avroCodec = new AvroCodec(new MemorySchemaRepo());
-  private final EnvelopeCodec envelopeCodec = new EnvelopeCodec(avroCodec);
+  AvroDecoder decoder;
+  EnvelopeCodec envelopeCodec;
   private StacklessTestException failureException = null;
 
   @Override
   protected void configure() {
     install(new EventLogModule());
-    bind(SchemaRepo.class).to(MemorySchemaRepo.class);
-    EventLogModule.bindEventSink(binder()).toInstance(mockEventSink);
+    install(new AvroEnvelopeModule(EventLogModule.TELEMETRY_DATA_STORE));
+    bind(SchemaRegistry.class).annotatedWith(EventLogModule.TELEMETRY_DATA_STORE).to(MemorySchemaRegistry.class);
+    EventLogModule.bindEventSink(binder()).to(CapturingEventSink.class);
 
     install(ServiceTelemetry.Module.class);
     serviceManager().manage(FailingService.class);
@@ -77,17 +83,20 @@ public class ServiceTelemetryTest extends UpstartModule {
 
   @BeforeEach
   void setup() {
-    avroCodec.startAsync().awaitRunning();
-    avroCodec.ensureRegistered(Stream.of(MessageEnvelope.getClassSchema())).join();
-    avroCodec.registerSpecificPackers(AvroCodec.PackageKey.fromRecordPackage(ExceptionEvent.class)).join();
+    AvroTaxonomy taxonomy = new AvroTaxonomy(new MemorySchemaRegistry());
+    decoder = new AvroDecoder(taxonomy);
+    AvroPublisher avroPublisher = new AvroPublisher(taxonomy);
+    envelopeCodec = new EnvelopeCodec(avroPublisher, decoder);
+    taxonomy.start().join();
 
-    when(mockEventSink.publish(any(), any(), any())).thenReturn(CompletableFutures.nullFuture());
+    avroPublisher.ensureRegistered(Stream.of(MessageEnvelope.getClassSchema())).join();
+    avroPublisher.registerSpecificPackers(AvroPublisher.PackageKey.fromRecordPackage(ExceptionEvent.class)).join();
   }
 
   @Test
   void checkFailureEvent() throws InterruptedException {
     dependencyChecker.assertThat(FailingService.class).dependsUpon(ServiceTelemetry.class);
-    dependencyChecker.assertThat(ServiceTelemetry.class).dependsUpon(AvroModule.AvroCodecService.class);
+    dependencyChecker.assertThat(ServiceTelemetry.class).dependsUpon(Key.get(AvroPublicationModule.AvroPublicationService.class, EventLogModule.TELEMETRY_DATA_STORE));
 
     infrastructureServiceGraph.start().join();
     FailingService failingService = appServiceGraph.getService(FailingService.class);
@@ -99,21 +108,17 @@ public class ServiceTelemetryTest extends UpstartModule {
     assertThat(infrastructureServiceGraph.getStoppedFuture()).doneWithin(Deadline.withinSeconds(5))
             .completedWithExceptionThat().isSameInstanceAs(failureException);
 
-    List<UnpackableMessageEnvelope> envelopes = capturePublishedEvents(2);
+    List<MessageEnvelope> envelopes = capturePublishedEvents(2);
 
-    UnpackableMessageEnvelope configEnvelope = envelopes.get(0);
-    assertThat(unpack(configEnvelope, ServiceConfigLoadedEvent.class)
+    assertThat(unpack(envelopes.get(0), ServiceConfigLoadedEvent.class)
             .getConfigEntries()).containsEntry("upstart.context.environment", new ConfigValueRecord("TEST", "UPSTART_ENVIRONMENT"));
 
-    UnpackableMessageEnvelope exceptionEnvelope = envelopes.get(1);
-    assertThat(unpack(exceptionEnvelope, ExceptionEvent.class).getException().getMessage())
+    assertThat(unpack(envelopes.get(1), ExceptionEvent.class).getException().getMessage())
             .isEqualTo(ERROR_MESSAGE);
   }
 
   @Test
   void checkCleanShutdownEvent() throws ExecutionException, InterruptedException {
-//    infrastructureServiceGraph.start().join();
-    boolean waiting;
     while (true) {
       try {
         infrastructureServiceGraph.start().get(3, TimeUnit.SECONDS);
@@ -124,7 +129,7 @@ public class ServiceTelemetryTest extends UpstartModule {
     }
     infrastructureServiceGraph.stop().join();
 
-    List<UnpackableMessageEnvelope> envelopes = capturePublishedEvents(2);
+    List<MessageEnvelope> envelopes = capturePublishedEvents(2);
     unpack(envelopes.get(0), ServiceConfigLoadedEvent.class);
     unpack(envelopes.get(1), ServiceCleanShutdownEvent.class);
   }
@@ -141,17 +146,15 @@ public class ServiceTelemetryTest extends UpstartModule {
     }
   }
 
-  private List<UnpackableMessageEnvelope> capturePublishedEvents(int expectedEventCount) {
-    ArgumentCaptor<byte[]> bytesCaptor = ArgumentCaptor.forClass(byte[].class);
-    Mockito.verify(mockEventSink, Mockito.times(expectedEventCount)).publish(any(), any(), bytesCaptor.capture());
+  private List<MessageEnvelope> capturePublishedEvents(int expectedEventCount) {
 
-    List<byte[]> eventBytes = bytesCaptor.getAllValues();
-    assertThat(eventBytes).hasSize(expectedEventCount);
-    return CompletableFutures.allAsList(eventBytes.stream().map(envelopeCodec::loadEnvelope)).join();
+    List<MessageEnvelope> events = capturingEventSink.events;
+    assertThat(events).hasSize(expectedEventCount);
+    return events;
   }
 
-  private <T extends SpecificRecordBase> T unpack(UnpackableMessageEnvelope envelope, Class<T> recordClass) {
-    return envelope.convertMessage(avroCodec.recordConverter(recordClass)).get();
+  private <T extends SpecificRecordBase> T unpack(MessageEnvelope envelope, Class<T> recordClass) {
+    return envelopeCodec.makeUnpackable(envelope).join().convertMessage(decoder.recordConverter(recordClass)).orElseThrow();
   }
 
   @Singleton
@@ -172,6 +175,28 @@ public class ServiceTelemetryTest extends UpstartModule {
     protected void doStop() {
       assertWithMessage("should have failed").that(failed).isFalse();
       notifyStopped();
+    }
+  }
+
+  @Singleton
+  static class CapturingEventSink implements PackagedEventSink {
+    final List<MessageEnvelope> events = new CopyOnWriteArrayList<>();
+    private final EnvelopeCodec envelopeCodec;
+
+    @Inject
+    CapturingEventSink(@DataStore(EventLogModule.TELEMETRY) EnvelopeCodec envelopeCodec) {
+      this.envelopeCodec = envelopeCodec;
+    }
+
+    @Override
+    public CompletableFuture<?> publish(LogLevel diagnosticLogLevel, PackagedEvent event) {
+      events.add(event.toEnvelope(envelopeCodec));
+      return CompletableFutures.nullFuture();
+    }
+
+    @Override
+    public void flush() {
+
     }
   }
 }

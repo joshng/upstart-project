@@ -32,10 +32,6 @@
       <groupId>io.upstartproject</groupId>
       <artifactId>upstart</artifactId>
     </dependency>
-    <dependency>
-      <groupId>io.upstartproject</groupId>
-      <artifactId>kafka-schema-repo</artifactId>
-    </dependency>
   </dependencies>
 
 </project>

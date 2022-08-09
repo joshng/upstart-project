@@ -15,6 +15,7 @@ import org.apache.avro.file.SeekableInput;
 import org.apache.avro.specific.SpecificDatumReader;
 import upstart.util.strings.RandomId;
 
+import javax.inject.Inject;
 import java.io.ByteArrayInputStream;
 import java.io.Closeable;
 import java.io.IOException;
@@ -34,24 +35,27 @@ import java.util.stream.Stream;
  */
 public class EnvelopeCodec {
 
-  private final AvroCodec avroCodec;
+  private final AvroPublisher avroPublisher;
   private final SpecificRecordUnpacker<MessageEnvelopePayload> payloadUnpacker;
   private final SpecificRecordUnpacker<MessageEnvelope> envelopeUnpacker;
+  private final AvroDecoder decoder;
   private volatile SpecificRecordPacker<MessageEnvelope> envelopeEncoder = null;
 
-  public EnvelopeCodec(AvroCodec avroCodec) {
-    this.avroCodec = avroCodec;
-    payloadUnpacker = avroCodec.recordUnpacker(MessageEnvelopePayload.class);
-    envelopeUnpacker = avroCodec.recordUnpacker(MessageEnvelope.class);
+  @Inject
+  public EnvelopeCodec(AvroPublisher avroPublisher, AvroDecoder decoder) {
+    this.avroPublisher = avroPublisher;
+    payloadUnpacker = decoder.recordUnpacker(MessageEnvelopePayload.class);
+    envelopeUnpacker = decoder.recordUnpacker(MessageEnvelope.class);
+    this.decoder = decoder;
   }
 
   public CompletableFuture<EnvelopeCodec> registerEnvelopeSchema() {
-    return avroCodec.ensureRegistered(Stream.of(MessageEnvelope.getClassSchema()))
+    return avroPublisher.ensureRegistered(Stream.of(MessageEnvelope.getClassSchema()))
             .thenApply(ignored -> this);
   }
 
-  public AvroCodec avroCodec() {
-    return avroCodec;
+  public AvroPublisher avroCodec() {
+    return avroPublisher;
   }
 
   public MessageEnvelope buildMessageEnvelope(Instant timestamp, Optional<String> uniqueId, PackedRecord message, MessageMetadata metadata, PackedRecord... annotations) {
@@ -103,10 +107,10 @@ public class EnvelopeCodec {
    * {@link UnpackableMessageEnvelope} which can be used to deserialize its contents.
    * <p/>
    * Ensures that * all {@link SchemaFingerprint fingerprints} referenced by the envelope are resolved by the
-   * underlying {@link AvroCodec} before completing the returned {@link CompletableFuture}.
+   * underlying {@link AvroPublisher} before completing the returned {@link CompletableFuture}.
    */
   public CompletableFuture<UnpackableMessageEnvelope> loadEnvelope(InputStream in) {
-    return avroCodec.readUnpackableRecord(in)
+    return decoder.readUnpackableRecord(in)
             .thenCompose(unpackableEnvelope -> makeUnpackable(unpackableEnvelope.unpackWith(envelopeUnpacker)));
   }
 
@@ -134,10 +138,10 @@ public class EnvelopeCodec {
 
     CompletableFuture<List<UnpackableRecord>> annotationRecords = CompletableFutures.allAsList(
             envelope.getAnnotations().stream()
-                    .map(avroCodec::toUnpackable)
+                    .map(decoder::toUnpackable)
     );
 
-    return avroCodec.toUnpackable(envelope.getMessage()).thenCombine(
+    return decoder.toUnpackable(envelope.getMessage()).thenCombine(
             annotationRecords,
             (messageDecoder, annotationList) -> {
 
@@ -176,8 +180,8 @@ public class EnvelopeCodec {
   }
 
   public CompletableFuture<UnpackableRecord> extractEnvelopeMessage(InputStream in) {
-    return avroCodec.toUnpackable(AvroCodec.readPackedRecord(in))
-            .thenCompose(unpackable -> avroCodec.toUnpackable(payloadUnpacker.unpack(unpackable).getMessage()));
+    return decoder.toUnpackable(AvroDecoder.readPackedRecord(in))
+            .thenCompose(unpackable -> decoder.toUnpackable(payloadUnpacker.unpack(unpackable).getMessage()));
   }
 
   public PackableRecord<MessageEnvelope> makePackable(MessageEnvelope envelope) {
@@ -190,7 +194,7 @@ public class EnvelopeCodec {
 
   private SpecificRecordPacker<MessageEnvelope> envelopePacker() {
     if (envelopeEncoder == null) {
-      envelopeEncoder = avroCodec.getPreRegisteredPacker(MessageEnvelope.getClassSchema())
+      envelopeEncoder = avroPublisher.getPreRegisteredPacker(MessageEnvelope.getClassSchema())
               .specificPacker(MessageEnvelope.class);
     }
     return envelopeEncoder;

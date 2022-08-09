@@ -1,10 +1,12 @@
 package io.upstartproject.avrocodec.dynamodb;
 
 import io.upstartproject.avro.MessageEnvelope;
-import io.upstartproject.avrocodec.AvroCodec;
+import io.upstartproject.avrocodec.AvroPublisher;
+import io.upstartproject.avrocodec.AvroSchemaConflictException;
 import io.upstartproject.avrocodec.SchemaDescriptor;
-import io.upstartproject.avrocodec.SchemaRepo;
-import io.upstartproject.avrocodec.upstart.AvroModule;
+import io.upstartproject.avrocodec.SchemaRegistry;
+import io.upstartproject.avrocodec.upstart.AvroPublicationModule;
+import io.upstartproject.avrocodec.upstart.DataStore;
 import org.apache.avro.Schema;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -12,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
 import upstart.aws.test.dynamodb.LocalDynamoDbTest;
 import upstart.config.UpstartModule;
+import upstart.dynamodb.DynamoDbNamespace;
 import upstart.log4j.test.SuppressLogs;
 import upstart.test.ThreadPauseHelper;
 import upstart.test.UpstartServiceTest;
@@ -34,43 +37,40 @@ import static upstart.test.truth.CompletableFutureSubject.assertThat;
 
 @LocalDynamoDbTest
 @UpstartServiceTest
-class DynamoDbSchemaRepoTest extends UpstartModule {
+class DynamoDbSchemaRegistryTest extends UpstartModule {
+  public static final String TEST_DATASTORE = "test";
+  private static final DataStore DATA_STORE = DataStore.Factory.dataStore(TEST_DATASTORE);
   @Override
   protected void configure() {
-    install(DynamoDbSchemaRepo.DynamoDbSchemaRepoModule.class);
-    AvroModule.bindAvroFromRecordPackage(binder(), MessageEnvelope.class);
+    install(new DynamoDbSchemaRegistry.DynamoDbSchemaRegistryModule(DATA_STORE, new DynamoDbNamespace("TEST")));
+    AvroPublicationModule.bindAvroFromRecordPackage(binder(), DATA_STORE, MessageEnvelope.class);
   }
 
-  @Inject AvroCodec avroCodec;
-
-  @BeforeEach
-  void setupConfig(UpstartTestBuilder testBuilder) {
-    testBuilder.overrideConfig("upstart.avroCodec.dynamoDbSchemaRepo.repoTableNameSuffix", "schemaRepo");
-  }
+  @Inject @DataStore(TEST_DATASTORE) AvroPublisher avroPublisher;
 
   @Test
   void roundTrip() {
-    avroCodec.getPreRegisteredPacker(MessageEnvelope.class).schema();
+    avroPublisher.getPreRegisteredPacker(MessageEnvelope.class).schema();
   }
 
   @Nested
   class WithInterceptedRepo {
     private final ThreadPauseHelper pauseHelper = new ThreadPauseHelper(Deadline.withinSeconds(5));
-    private DynamoDbTable<DynamoDbSchemaRepo.SchemaTable.SchemaDocument> schemaTable;
+    private DynamoDbTable<DynamoDbSchemaRegistry.SchemaTable.SchemaDocument> schemaTable;
     private CompletableFuture<Void> racingInsertion;
 
-    @Inject DynamoRepoSpy dynamoRepoSpy;
+    @Inject DynamoRegistrySpy dynamoRepoSpy;
 
     @BeforeEach
-    void injectRepoSpy(UpstartTestBuilder testBuilder, @Named("TEST.schemaRepo") DynamoDbTable<DynamoDbSchemaRepo.SchemaTable.SchemaDocument> schemaTable) {
+    void injectRepoSpy(UpstartTestBuilder testBuilder, @Named("TEST.schemarepo") DynamoDbTable<DynamoDbSchemaRegistry.SchemaTable.SchemaDocument> schemaTable) {
       this.schemaTable = schemaTable;
       testBuilder.overrideBindings(binder -> {
-        binder.bind(SchemaRepo.class).to(DynamoRepoSpy.class);
+        binder.bind(SchemaRegistry.class).annotatedWith(DataStore.Factory.dataStore(TEST_DATASTORE)).to(DynamoRegistrySpy.class);
         binder.bind(ThreadPauseHelper.class).toInstance(pauseHelper);
       });
 
       racingInsertion = pauseHelper.doWhenPaused(1, () -> {
-        schemaTable.putItem(new DynamoDbSchemaRepo.SchemaTable.SchemaDocument(SchemaDescriptor.of(MessageEnvelope.getClassSchema()), 0));
+        schemaTable.putItem(new DynamoDbSchemaRegistry.SchemaTable.SchemaDocument(SchemaDescriptor.of(MessageEnvelope.getClassSchema()), 0));
       });
     }
 
@@ -80,24 +80,24 @@ class DynamoDbSchemaRepoTest extends UpstartModule {
     }
 
     @Test
-    @SuppressLogs(AvroCodec.class)
+    @SuppressLogs(AvroPublisher.class)
     void conflictsAreRejectedAndCleaned() throws InterruptedException {
       assertSchemaCount(1);
 
       ThreadPauseHelper.PendingPause pause = pauseHelper.requestPause(1);
       CompletableFuture<Void> resumed = pause.doWhenPaused(true, () -> {
-        schemaTable.putItem(new DynamoDbSchemaRepo.SchemaTable.SchemaDocument(
+        schemaTable.putItem(new DynamoDbSchemaRegistry.SchemaTable.SchemaDocument(
                 SchemaDescriptor.of(INCOMPATIBLE_SCHEMA1),
                 1
         ));
       });
 
       Schema rejectedSchema = new Schema.Parser().parse(INCOMPATIBLE_SCHEMA2);
-      CompletableFuture<Void> failedRegistration = avroCodec.ensureRegistered(Stream.of(rejectedSchema));
+      CompletableFuture<Void> failedRegistration = avroPublisher.ensureRegistered(Stream.of(rejectedSchema));
       resumed.join();
       assertThat(failedRegistration)
               .doneWithin(Deadline.withinSeconds(5))
-              .completedExceptionallyWith(AvroCodec.SchemaConflictException.class);
+              .completedExceptionallyWith(AvroSchemaConflictException.class);
 
       await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> assertSchemaCount(2));
 
@@ -105,18 +105,18 @@ class DynamoDbSchemaRepoTest extends UpstartModule {
     }
 
     private void assertSchemaCount(int expectedSize) {
-      List<DynamoDbSchemaRepo.SchemaTable.SchemaDocument> allSchemas = schemaTable.scan().items().stream().toList();
+      List<DynamoDbSchemaRegistry.SchemaTable.SchemaDocument> allSchemas = schemaTable.scan().items().stream().toList();
       assertThat(allSchemas).hasSize(expectedSize);
     }
 
     @Singleton
-    static class DynamoRepoSpy implements SchemaRepo {
-      private final DynamoDbSchemaRepo realRepo;
+    static class DynamoRegistrySpy implements SchemaRegistry {
+      private final SchemaRegistry realRepo;
       private final ThreadPauseHelper pauseHelper;
       AtomicInteger deletionCount = new AtomicInteger();
 
       @Inject
-      DynamoRepoSpy(DynamoDbSchemaRepo realRepo, ThreadPauseHelper pauseHelper) {
+      DynamoRegistrySpy(@DataStore(TEST_DATASTORE) DynamoDbSchemaRegistry realRepo, ThreadPauseHelper pauseHelper) {
         this.realRepo = realRepo;
         this.pauseHelper = pauseHelper;
       }

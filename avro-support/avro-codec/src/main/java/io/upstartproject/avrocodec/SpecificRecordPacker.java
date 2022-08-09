@@ -12,17 +12,17 @@ import static com.google.common.base.Preconditions.checkArgument;
 /**
  * A serializer for a specific code-generated avro record-type ({@link SpecificRecordBase}).
  * <p/>
- * Usually obtained from {@link AvroCodec.RecordPacker#specificPacker(Class)}.
+ * Usually obtained from {@link AvroPublisher.RecordPacker#specificPacker(Class)}.
  * <p/>
- * Note that the specific record-type ({@link T}) must represent the same schema as the {@link AvroCodec.RecordPacker}
+ * Note that the specific record-type ({@link T}) must represent the same schema as the {@link AvroPublisher.RecordPacker}
  * it augments. If you wish to convert records to an alternate schema, use a {@link SpecificRecordConverter} instead.
  * <p/>
  * Instances of this class are thread-safe, and should be cached/reused for the lifetime of the process.
  *
- * @see AvroCodec.RecordPacker#specificPacker(Class)
+ * @see AvroPublisher.RecordPacker#specificPacker(Class)
  */
 public class SpecificRecordPacker<T extends SpecificRecordBase> implements RecordPackerApi<T> {
-  private final AvroCodec.RecordPacker genericPacker;
+  private final AvroPublisher.RecordPacker genericPacker;
   private final SpecificDatumWriter<GenericRecord> writer;
   private final Class<T> recordClass;
   private final SpecificData specificData;
@@ -30,9 +30,9 @@ public class SpecificRecordPacker<T extends SpecificRecordBase> implements Recor
   /**
    * @throws IllegalArgumentException if the provided record-class does not match the provided RecordPacker's schema
    */
-  public SpecificRecordPacker(AvroCodec.RecordPacker genericPacker, Class<T> recordClass) {
+  public SpecificRecordPacker(AvroPublisher.RecordPacker genericPacker, Class<T> recordClass) {
     this.recordClass = recordClass;
-    this.specificData = AvroCodec.specificData(recordClass.getClassLoader());
+    this.specificData = AvroPublisher.specificData(recordClass.getClassLoader());
     Schema recordSchema = specificData.getSchema(recordClass);
     checkArgument(SchemaFingerprint.of(recordSchema).equals(genericPacker.fingerprint()), "Mismatched schemas:\n  schema: %s\n  record: %s", genericPacker.schema(), recordSchema);
     this.genericPacker = genericPacker;
@@ -44,7 +44,7 @@ public class SpecificRecordPacker<T extends SpecificRecordBase> implements Recor
   }
 
   @Override
-  public AvroCodec.RecordTypeFamily getTypeFamily() {
+  public RecordTypeFamily getTypeFamily() {
     return genericPacker.getTypeFamily();
   }
 
@@ -57,7 +57,7 @@ public class SpecificRecordPacker<T extends SpecificRecordBase> implements Recor
     return recordClass;
   }
 
-  public AvroCodec.RecordPacker genericPacker() {
+  public AvroPublisher.RecordPacker genericPacker() {
     return genericPacker;
   }
 

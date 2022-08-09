@@ -3,25 +3,23 @@ package io.upstartproject.avrocodec;
 import org.apache.avro.Schema;
 import org.apache.avro.specific.SpecificRecordBase;
 
-import java.util.concurrent.CompletableFuture;
-
 import static com.google.common.base.Preconditions.checkArgument;
 
 /**
- * Encapsulates support for converting {@link UnpackableRecord} (packed) records from a specific {@link AvroCodec.RecordTypeFamily}
+ * Encapsulates support for converting {@link UnpackableRecord} (packed) records from a specific {@link RecordTypeFamily}
  * to a compatible specific structure.
  * <p/>
- * Usually obtained from {@link AvroCodec#recordConverter(Class)} (when the record-type ({@link T}) is a member of the target
- * {@link AvroCodec.RecordTypeFamily}, or via {@link AvroCodec.RecordTypeFamily#recordConverter(Class)} otherwise.
+ * Usually obtained from {@link AvroPublisher#recordConverter(Class)} (when the record-type ({@link T}) is a member of the target
+ * {@link RecordTypeFamily}, or via {@link RecordTypeFamily#recordConverter(Class)} otherwise.
  * <p/>
  * Instances of this class are thread-safe, and should be cached/reused for the lifetime of the process.
  */
 public class SpecificRecordConverter<T extends SpecificRecordBase> implements RecordConverterApi<T> {
-  private final AvroCodec.RecordTypeFamily writerTypeFamily;
+  private final RecordTypeFamily writerTypeFamily;
   private final SpecificRecordUnpacker<T> unpacker;
 
-  protected SpecificRecordConverter(AvroCodec.RecordTypeFamily writerTypeFamily, SpecificRecordUnpacker<T> unpacker) {
-    checkArgument(writerTypeFamily.isCompatibleReader(unpacker.getSchema()));
+  protected SpecificRecordConverter(RecordTypeFamily writerTypeFamily, SpecificRecordUnpacker<T> unpacker) {
+//    checkArgument(writerTypeFamily.isCompatibleReader(unpacker.getSchema()));
     this.writerTypeFamily = writerTypeFamily;
     this.unpacker = unpacker;
   }
@@ -32,7 +30,7 @@ public class SpecificRecordConverter<T extends SpecificRecordBase> implements Re
   }
 
   @Override
-  public AvroCodec.RecordTypeFamily writerTypeFamily() {
+  public RecordTypeFamily writerTypeFamily() {
     return writerTypeFamily;
   }
 

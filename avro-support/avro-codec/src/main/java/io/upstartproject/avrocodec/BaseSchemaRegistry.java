@@ -6,7 +6,7 @@ import java.io.InputStream;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 
-public abstract class BaseSchemaRepo implements SchemaRepo {
+public abstract class BaseSchemaRegistry implements SchemaRegistry {
   protected SchemaListener schemaListener;
 
   protected CompletableFuture<?> runOnDedicatedThread(String state, Runnable runnable) {

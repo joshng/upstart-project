@@ -16,7 +16,7 @@ import org.immutables.value.Value;
  * The computation of a schema's fingerprint is performed by {@link SchemaNormalization2#resolvingFingerprint64}.
  * @see SchemaNormalization2#resolvingFingerprint64
  * @see PackedRecord#getFingerprint
- * @see AvroCodec#findRegisteredPacker
+ * @see AvroPublisher#findRegisteredPacker
  */
 @Value.Immutable(builder = false, intern = true)
 @Value.Style(allParameters = true)

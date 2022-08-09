@@ -21,7 +21,7 @@ public class Slf4jEventSink implements PackagedEventSink {
   }
 
   @Override
-  public CompletableFuture<?> publish(LogLevel diagnosticLogLevel, PackagedEvent event, byte[] avroSerialized) {
+  public CompletableFuture<?> publish(LogLevel diagnosticLogLevel, PackagedEvent event) {
     logProvider.logWithPayload(LOG, diagnosticLogLevel, event, "Event");
     return CompletableFutures.nullFuture();
   }

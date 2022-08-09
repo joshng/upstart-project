@@ -1,8 +1,9 @@
 package io.upstartproject.avrocodec.upstart;
 
+import com.google.inject.TypeLiteral;
 import io.upstartproject.avro.PackedRecord;
+import io.upstartproject.avrocodec.RecordTypeFamily;
 import upstart.util.LogLevel;
-import io.upstartproject.avrocodec.AvroCodec;
 import io.upstartproject.avrocodec.PackableRecord;
 import io.upstartproject.avrocodec.RecordPackerApi;
 import io.upstartproject.avrocodec.SchemaFingerprint;
@@ -23,6 +24,11 @@ public class EventLogger<T extends SpecificRecordBase> implements PackagedEvent.
   private final EventLog eventLog;
 
   @Inject
+  public EventLogger(TypeLiteral<T> eventType, @DataStore("TELEMETRY") AvroPublicationModule.AvroPublicationService codecService, EventLog eventLog) {
+    this.packer = codecService.packerFor(eventType);
+    this.eventLog = eventLog;
+  }
+
   public EventLogger(AvroPacker<T> packer, EventLog eventLog) {
     this.packer = packer;
     this.eventLog = eventLog;
@@ -69,7 +75,7 @@ public class EventLogger<T extends SpecificRecordBase> implements PackagedEvent.
   }
 
   @Override
-  public AvroCodec.RecordTypeFamily getTypeFamily() {
+  public RecordTypeFamily getTypeFamily() {
     return packer.getTypeFamily();
   }
 

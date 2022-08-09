@@ -1,8 +1,10 @@
 package io.upstartproject.avrocodec.upstart;
 
 import com.google.inject.TypeLiteral;
+import io.upstartproject.avrocodec.AvroDecoder;
+import io.upstartproject.avrocodec.AvroTaxonomy;
+import io.upstartproject.avrocodec.RecordTypeFamily;
 import upstart.guice.TypeLiterals;
-import io.upstartproject.avrocodec.AvroCodec;
 import io.upstartproject.avrocodec.RecordConverterApi;
 import io.upstartproject.avrocodec.SpecificRecordConverter;
 import io.upstartproject.avrocodec.UnpackableRecord;
@@ -13,27 +15,29 @@ import javax.inject.Inject;
 import java.util.concurrent.CompletableFuture;
 
 public class AvroConverter<T extends SpecificRecordBase>
-        extends ServiceTransformer<AvroModule.AvroCodecService, SpecificRecordConverter<T>>
         implements RecordConverterApi<T>
 {
 
+  private final SpecificRecordConverter<T> converter;
+  private final AvroDecoder decoder;
+
   @Inject
-  AvroConverter(TypeLiteral<T> recordTypeLiteral, AvroModule.AvroCodecService avroCodecService) {
-    super(avroCodecService, () -> avroCodecService.getCodec()
-            .recordConverter(TypeLiterals.getRawType(recordTypeLiteral)));
+  AvroConverter(TypeLiteral<T> recordTypeLiteral, AvroDecoder decoder) {
+    this.decoder = decoder;
+    converter = decoder.recordConverter(TypeLiterals.getRawType(recordTypeLiteral));
   }
 
   public CompletableFuture<T> readPackedRecord(byte[] bytes) {
-    return readPackedRecord(bytes, service().getCodec());
+    return readPackedRecord(bytes, decoder);
   }
 
   @Override
   public T convert(UnpackableRecord record) {
-    return get().convert(record);
+    return converter.convert(record);
   }
 
   @Override
-  public AvroCodec.RecordTypeFamily writerTypeFamily() {
-    return get().writerTypeFamily();
+  public RecordTypeFamily writerTypeFamily() {
+    return converter.writerTypeFamily();
   }
 }

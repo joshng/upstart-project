@@ -14,6 +14,6 @@ public interface RecordPackerApi<R extends GenericRecord> extends SchemaDescript
 
   PackedRecord pack(R record);
 
-  AvroCodec.RecordTypeFamily getTypeFamily();
+  RecordTypeFamily getTypeFamily();
 
 }

@@ -1,6 +1,7 @@
 package upstart.healthchecks;
 
 import com.google.inject.Binder;
+import com.google.inject.Key;
 import com.google.inject.binder.LinkedBindingBuilder;
 import com.google.inject.multibindings.MapBinder;
 import upstart.util.collect.Pair;
@@ -10,6 +11,7 @@ import upstart.util.concurrent.OptionalPromise;
 import upstart.util.concurrent.Promise;
 
 import javax.inject.Inject;
+import java.lang.annotation.Annotation;
 import java.util.Map;
 import java.util.Optional;
 
@@ -26,6 +28,20 @@ public class HealthChecker {
     MapBinder<String, HealthCheck> mapBinder = healthCheckMapBinder(binder);
     for (Class<? extends HealthCheck> healthCheckClass : healthCheckClasses) {
       mapBinder.addBinding(healthCheckClass.getSimpleName()).to(healthCheckClass);
+    }
+  }
+  @SafeVarargs
+  public static void bindHealthChecks(Binder binder, Key<? extends HealthCheck>... healthCheckClasses) {
+    MapBinder<String, HealthCheck> mapBinder = healthCheckMapBinder(binder);
+    for (Key<? extends HealthCheck> healthCheckClass : healthCheckClasses) {
+      String name = healthCheckClass.getTypeLiteral().getRawType().getSimpleName();
+      Class<? extends Annotation> annotationType = healthCheckClass.getAnnotationType();
+      if (annotationType != null) {
+        Annotation annotation = healthCheckClass.getAnnotation();
+        String annoDescription = annotation != null ? annotation.toString() : annotationType.getSimpleName();
+        name += "[" + annoDescription + "]";
+      }
+      mapBinder.addBinding(name).to(healthCheckClass);
     }
   }
 

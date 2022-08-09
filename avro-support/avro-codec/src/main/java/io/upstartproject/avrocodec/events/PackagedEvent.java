@@ -7,9 +7,9 @@ import io.upstartproject.avrocodec.EnvelopeCodec;
 import io.upstartproject.avrocodec.MessageMetadata;
 import io.upstartproject.avrocodec.PackableRecord;
 import io.upstartproject.avro.MessageEnvelope;
+import io.upstartproject.avrocodec.RecordTypeFamily;
 import upstart.util.collect.PairStream;
 import upstart.util.SelfType;
-import io.upstartproject.avrocodec.AvroCodec;
 import org.immutables.value.Value;
 import upstart.util.strings.RandomId;
 
@@ -62,9 +62,9 @@ public abstract class PackagedEvent {
 
   @Value.Lazy
   @JsonProperty("annotations")
-  public Map<AvroCodec.RecordTypeFamily, PackableRecord<?>> annotationMap() {
+  public Map<RecordTypeFamily, PackableRecord<?>> annotationMap() {
     Set<String> duplicatedTypes = new HashSet<>();
-    Map<AvroCodec.RecordTypeFamily, PackableRecord<?>> recordTypeFamilies = PairStream.withMappedKeys(
+    Map<RecordTypeFamily, PackableRecord<?>> recordTypeFamilies = PairStream.withMappedKeys(
             annotations().stream(),
             PackableRecord::getRecordTypeFamily
     ).toImmutableMap((a, b) -> {

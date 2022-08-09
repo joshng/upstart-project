@@ -38,7 +38,7 @@ public interface PackableRecord<T extends GenericRecord> {
 
   @Value.Derived
   @Value.Auxiliary
-  default AvroCodec.RecordTypeFamily getRecordTypeFamily() {
+  default RecordTypeFamily getRecordTypeFamily() {
     return packer().getTypeFamily();
   }
 
@@ -49,7 +49,7 @@ public interface PackableRecord<T extends GenericRecord> {
   }
 
   default void writeSerialized(OutputStream out) throws IOException {
-    AvroCodec.writePackedRecord(packedRecord(), out);
+    AvroPublisher.writePackedRecord(packedRecord(), out);
   }
 
   default <R extends GenericRecord> Optional<PackableRecord<R>> asInstance(Class<R> recordClass) {
@@ -57,6 +57,6 @@ public interface PackableRecord<T extends GenericRecord> {
   }
 
   default byte[] serialize() {
-    return AvroCodec.serializePackedRecord(packedRecord());
+    return AvroPublisher.serializePackedRecord(packedRecord());
   }
 }

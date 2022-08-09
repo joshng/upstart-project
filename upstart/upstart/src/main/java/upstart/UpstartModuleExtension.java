@@ -50,11 +50,15 @@ public interface UpstartModuleExtension {
     return bindConfig(configPath, key.getTypeLiteral(), key);
   }
 
-  default <T> T bindConfig(String configPath, TypeLiteral<T> type, Key<? super T> key) {
-    return bindConfig(key, ConfigKey.of(configPath, type));
+  default <T> T bindConfig(String configPath, Class<T> type, Key<? super T> key) {
+    return bindConfig(ConfigKey.of(configPath, type), key);
   }
 
-  default <T> T bindConfig(Key<? super T> key, ConfigKey<T> configKey) {
+  default <T> T bindConfig(String configPath, TypeLiteral<T> type, Key<? super T> key) {
+    return bindConfig(ConfigKey.of(configPath, type), key);
+  }
+
+  default <T> T bindConfig(ConfigKey<T> configKey, Key<? super T> key) {
     return configBinder().bindConfig(binder(), key, configKey);
   }
 

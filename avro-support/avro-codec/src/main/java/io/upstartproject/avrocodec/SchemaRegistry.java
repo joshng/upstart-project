@@ -11,7 +11,7 @@ import java.util.concurrent.CompletableFuture;
  * Implementations must behave as follows:
  * <ol>
  *   <li>
- *     On {@link #startUp}, a background process should begin streaming {@link AvroCodec.SchemaDescriptorImpl}
+ *     On {@link #startUp}, a background process should begin streaming {@link SchemaDescriptor}
  *     instances for every stored schema into the provided {@link SchemaListener#onSchemaAdded} callback.<br/>
  *     Each schema in the repo must be passed to {@link SchemaListener#onSchemaAdded onSchemaAdded} in sequence
  *     (eg, by a single thread), strictly in the order that they were inserted into the repo.<br/>
@@ -28,11 +28,11 @@ import java.util.concurrent.CompletableFuture;
  *   </li>
  * </ol>
  * @see SchemaDescriptor#from
- * @see AvroCodec#AvroCodec(SchemaRepo)
+ * @see AvroPublisher#AvroCodec(SchemaRegistry)
  */
-public interface SchemaRepo {
+public interface SchemaRegistry {
   /**
-   * Must begin a background process which streams all schema additions and removals in this {@link SchemaRepo} to the
+   * Must begin a background process which streams all schema additions and removals in this {@link SchemaRegistry} to the
    * provided {@link SchemaListener}
    *
    * @return a {@link CompletableFuture} that completes when the background process has been successfully started
@@ -41,13 +41,13 @@ public interface SchemaRepo {
 
   /**
    * Must insert the JSON {@link SchemaDescriptor#schema} from each of the provided
-   * {@link AvroCodec.SchemaDescriptorImpl SchemaDescriptors} into the store, keyed by their {@link AvroCodec.SchemaDescriptorImpl#fingerprint}.
+   * {@link SchemaDescriptor.SchemaDescriptorImpl SchemaDescriptors} into the store, keyed by their {@link SchemaDescriptor.SchemaDescriptorImpl#fingerprint}.
    * <p/>
    * <em>IMPORTANT:</em> Note that the inserted schemas must eventually also be passed back to {@link SchemaListener#onSchemaAdded},
    * according to the order they were added to the backing store.
    * <p/>
    * Also note: if the returned {@link CompletableFuture} fails (ie, completes <em>exceptionally</em>), then the calling
-   * {@link AvroCodec} will <strong>FAIL</strong>, resulting in exceptions being thrown for all subsequent interactions.
+   * {@link AvroPublisher} will <strong>FAIL</strong>, resulting in exceptions being thrown for all subsequent interactions.
    *
    * @return a {@link CompletableFuture} which completes only after all of the provided schemas have been acknowledged
    * as persisted in the repo (although perhaps before they have been surfaced to the {@link SchemaListener})
@@ -66,7 +66,7 @@ public interface SchemaRepo {
   /**
    * Must return a {@link CompletableFuture} which completes only when the {@link SchemaListener} provided to
    * {@link #startUp} has witnessed all {@link Schema} additions and removals which were performed in this
-   * {@link SchemaRepo} beforehand.
+   * {@link SchemaRegistry} beforehand.
    */
   CompletableFuture<Void> refresh();
 

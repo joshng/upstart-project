@@ -23,10 +23,10 @@ import static com.google.common.base.Preconditions.checkArgument;
  */
 public class UnpackableRecord {
   private final PackedRecord record;
-  private final AvroCodec.RecordPacker writerPacker;
+  private final SchemaDescriptor writerPacker;
   private final Map<Schema, GenericRecord> unpackCache = new ConcurrentHashMap<>();
 
-  UnpackableRecord(PackedRecord record, AvroCodec.RecordPacker writerPacker) {
+  UnpackableRecord(PackedRecord record, SchemaDescriptor writerPacker) {
     checkArgument(writerPacker.fingerprint().value() == record.getFingerprint(), "Mismatched fingerprints");
     this.record = record;
     this.writerPacker = writerPacker;
@@ -34,10 +34,6 @@ public class UnpackableRecord {
 
   public SchemaFingerprint fingerprint() {
     return writerPacker.fingerprint();
-  }
-
-  public AvroCodec.RecordTypeFamily getTypeFamily() {
-    return writerPacker.getTypeFamily();
   }
 
   public Schema schema() {
@@ -65,7 +61,7 @@ public class UnpackableRecord {
    * (or falls back to GenericRecord if no class is found matching the name of the packed schema)
    */
   public GenericRecord unpackSpecificOrGeneric(ClassLoader classLoader) {
-    return read(new SpecificDatumReader<>(AvroCodec.specificData(classLoader)));
+    return read(new SpecificDatumReader<>(AvroPublisher.specificData(classLoader)));
   }
 
   /**
@@ -94,7 +90,7 @@ public class UnpackableRecord {
   <T extends GenericRecord> T read(DatumReader<T> reader) {
     reader.setSchema(writerPacker.schema());
 
-    return UncheckedIO.getUnchecked(() -> reader.read(null, AvroCodec.binaryDecoder(byteBufferInputStream(record.getData()))));
+    return UncheckedIO.getUnchecked(() -> reader.read(null, AvroPublisher.binaryDecoder(byteBufferInputStream(record.getData()))));
   }
 
   private static InputStream byteBufferInputStream(ByteBuffer message) {
