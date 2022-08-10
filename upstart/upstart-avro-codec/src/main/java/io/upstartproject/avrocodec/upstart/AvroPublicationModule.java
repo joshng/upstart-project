@@ -87,7 +87,11 @@ public class AvroPublicationModule extends UpstartModule {
     private final DataStore dataStore;
 
     @Inject
-    AvroPublicationService(DataStore dataStore, Set<AvroPublisher.PackageKey> packagesToRegister, AvroTaxonomy taxonomy) {
+    AvroPublicationService(
+            DataStore dataStore,
+            Set<AvroPublisher.PackageKey> packagesToRegister,
+            AvroTaxonomy taxonomy
+    ) {
       this.publisher = new AvroPublisher(taxonomy);
       this.packagesToRegister = packagesToRegister;
       this.dataStore = dataStore;

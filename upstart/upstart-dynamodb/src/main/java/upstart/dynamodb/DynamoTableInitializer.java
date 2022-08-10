@@ -57,7 +57,7 @@ public abstract class DynamoTableInitializer<T> extends AsyncService implements 
     return dbService.describeTable(tableName);
   }
 
-  protected DynamoDbAsyncTable<T> table() {
+  public DynamoDbAsyncTable<T> table() {
     return table;
   }
 
