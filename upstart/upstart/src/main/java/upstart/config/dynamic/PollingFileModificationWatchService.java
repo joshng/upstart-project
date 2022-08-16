@@ -43,7 +43,8 @@ public class PollingFileModificationWatchService extends ScheduledService implem
 
   @Override
   protected Schedule schedule() {
-    return Schedule.fixedRate(Duration.ZERO, config.pollInterval().orElseThrow());
+    Duration pollInterval = config.pollInterval().orElseThrow();
+    return Schedule.fixedRate(pollInterval, pollInterval);
   }
 
   @Override
