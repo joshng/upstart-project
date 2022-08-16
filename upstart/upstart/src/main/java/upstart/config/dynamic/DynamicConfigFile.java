@@ -1,4 +1,4 @@
-package upstart.config;
+package upstart.config.dynamic;
 
 import com.google.inject.PrivateModule;
 import com.google.inject.TypeLiteral;
@@ -6,8 +6,11 @@ import com.google.inject.util.Types;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import io.upstartproject.hojack.ConfigMapper;
+import upstart.config.ConfigKey;
+import upstart.config.HojackConfigProvider;
+import upstart.config.UpstartApplicationConfig;
+import upstart.config.UpstartModule;
 import upstart.guice.PrivateBinding;
-import upstart.util.collect.Optionals;
 import upstart.util.concurrent.CompletableFutures;
 import upstart.util.functions.AsyncConsumer;
 
