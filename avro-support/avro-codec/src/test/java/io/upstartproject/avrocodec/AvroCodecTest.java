@@ -85,7 +85,7 @@ class AvroCodecTest {
     assertThat(eventView.getSchema()).isEqualTo(alternateSchema);
     assertThat(((GenericRecord)eventView.get("exception")).get("message").toString()).isEqualTo(event.getException().getMessage());
 
-    assertThat(env.messageRecord().unpackSpecificOrGeneric(getClass().getClassLoader())).isEqualTo(event);
+    assertThat(env.messageRecord().unpackSpecificOrGeneric()).isEqualTo(event);
   }
 
   @Nested
@@ -119,7 +119,7 @@ class AvroCodecTest {
       when(mockRepo.insert(any())).thenReturn(nullFuture());
       when(mockRepo.delete(any())).thenReturn(nullFuture());
       Schema proposedConflictingSchema = loadSchema("IncompatibleTestRecord1.avsc");
-      CompletableFuture<Void> racingFuture = codec.ensureRegistered(Stream.of(proposedConflictingSchema));
+      CompletableFuture<Void> racingFuture = codec.ensureRegistered(proposedConflictingSchema);
       assertThat(racingFuture).isNotDone();
 
       // arrange for a conflicting schema to arrive in the repo first

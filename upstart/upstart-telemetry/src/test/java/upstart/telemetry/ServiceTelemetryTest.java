@@ -89,7 +89,7 @@ public class ServiceTelemetryTest extends UpstartModule {
     envelopeCodec = new EnvelopeCodec(avroPublisher, decoder);
     taxonomy.start().join();
 
-    avroPublisher.ensureRegistered(Stream.of(MessageEnvelope.getClassSchema())).join();
+    avroPublisher.ensureRegistered(MessageEnvelope.class).join();
     avroPublisher.registerSpecificPackers(AvroPublisher.PackageKey.fromRecordPackage(ExceptionEvent.class)).join();
   }
 

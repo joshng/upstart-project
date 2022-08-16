@@ -93,7 +93,7 @@ class DynamoDbSchemaRegistryTest extends UpstartModule {
       });
 
       Schema rejectedSchema = new Schema.Parser().parse(INCOMPATIBLE_SCHEMA2);
-      CompletableFuture<Void> failedRegistration = avroPublisher.ensureRegistered(Stream.of(rejectedSchema));
+      CompletableFuture<Void> failedRegistration = avroPublisher.ensureRegistered(rejectedSchema);
       resumed.join();
       assertThat(failedRegistration)
               .doneWithin(Deadline.withinSeconds(5))

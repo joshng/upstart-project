@@ -79,6 +79,10 @@ public abstract class PackagedEvent {
     return codec.buildMessageEnvelope(timestamp(), Optional.of(uniqueId()), event(), metadata(), annotations());
   }
 
+  public byte[] serialize(EnvelopeCodec codec) {
+    return codec.getSerializedBytes(toEnvelope(codec));
+  }
+
   @Override
   public String toString() {
     return event().getRecordTypeFamily().getFullName() + "{uniqueId=" + uniqueId() + ", timestamp=" + timestamp() + ", metadata=" + metadata() + ", event=" + event().record() + "}";

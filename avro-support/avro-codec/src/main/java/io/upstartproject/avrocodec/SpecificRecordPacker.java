@@ -3,7 +3,6 @@ package io.upstartproject.avrocodec;
 import io.upstartproject.avro.PackedRecord;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.specific.SpecificData;
 import org.apache.avro.specific.SpecificDatumWriter;
 import org.apache.avro.specific.SpecificRecordBase;
 
@@ -19,24 +18,26 @@ import static com.google.common.base.Preconditions.checkArgument;
  * <p/>
  * Instances of this class are thread-safe, and should be cached/reused for the lifetime of the process.
  *
- * @see AvroPublisher.RecordPacker#specificPacker(Class)
+ * @see AvroPublisher.RecordPacker#specificPacker
  */
 public class SpecificRecordPacker<T extends SpecificRecordBase> implements RecordPackerApi<T> {
   private final AvroPublisher.RecordPacker genericPacker;
   private final SpecificDatumWriter<GenericRecord> writer;
-  private final Class<T> recordClass;
-  private final SpecificData specificData;
+  private final SpecificRecordType<T> recordType;
 
   /**
    * @throws IllegalArgumentException if the provided record-class does not match the provided RecordPacker's schema
    */
-  public SpecificRecordPacker(AvroPublisher.RecordPacker genericPacker, Class<T> recordClass) {
-    this.recordClass = recordClass;
-    this.specificData = AvroPublisher.specificData(recordClass.getClassLoader());
-    Schema recordSchema = specificData.getSchema(recordClass);
-    checkArgument(SchemaFingerprint.of(recordSchema).equals(genericPacker.fingerprint()), "Mismatched schemas:\n  schema: %s\n  record: %s", genericPacker.schema(), recordSchema);
+  SpecificRecordPacker(AvroPublisher.RecordPacker genericPacker, SpecificRecordType<T> recordType) {
+    checkArgument(
+            recordType.publishedSchemaDescriptor().fingerprint().equals(genericPacker.fingerprint()),
+            "Mismatched schemas:\n  schema: %s\n  record: %s",
+            genericPacker.schema(),
+            recordType.schema()
+    );
+    this.recordType = recordType;
     this.genericPacker = genericPacker;
-    writer = new SpecificDatumWriter<>(genericPacker.schema());
+    writer = new SpecificDatumWriter<>(recordType.schema());
   }
 
   public PackedRecord pack(T record) {
@@ -54,15 +55,11 @@ public class SpecificRecordPacker<T extends SpecificRecordBase> implements Recor
   }
 
   public Class<T> recordClass() {
-    return recordClass;
+    return recordType.recordClass();
   }
 
   public AvroPublisher.RecordPacker genericPacker() {
     return genericPacker;
-  }
-
-  public SpecificData specificData() {
-    return specificData;
   }
 
   @Override
@@ -72,9 +69,9 @@ public class SpecificRecordPacker<T extends SpecificRecordBase> implements Recor
 
   @SuppressWarnings("unchecked")
   public PackableRecord<? extends T> specificPackable(PackableRecord<?> genericPackable) {
-    return recordClass.isInstance(genericPackable.record()) && genericPackable.getFingerprint().equals(fingerprint())
+    return recordType.recordClass().isInstance(genericPackable.record()) && genericPackable.getFingerprint().equals(fingerprint())
             ? (PackableRecord<T>) genericPackable
-            : makePackable((T) specificData.deepCopy(schema(), genericPackable.record()));
+            : makePackable((T) recordType.specificData().deepCopy(schema(), genericPackable.record()));
   }
 
   @Override
