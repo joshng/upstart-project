@@ -187,7 +187,7 @@ public final class UpstartService extends BaseComposableService<ManagedServiceGr
      * Begins configuring a {@link ServiceSupervisor} for the provided {@link #installModule Modules}:
      * this will prepare a fully-managed application with service-lifecycles matched to the lifecycle of the JVM process.
      */
-    public ServiceSupervisor.ShutdownConfigStage buildServiceSupervisor() {
+    public ServiceSupervisor.ShutdownConfigStage<UpstartService> buildServiceSupervisor() {
       return ServiceSupervisor.forService(this::build);
     }
 

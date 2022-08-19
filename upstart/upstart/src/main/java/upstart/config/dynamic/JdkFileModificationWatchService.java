@@ -107,7 +107,7 @@ public class JdkFileModificationWatchService extends ExecutionThreadService impl
     AsyncFunction<? super Path, Void> callback();
 
     default CompletableFuture<Void> notifyModification() {
-      LOG.warn("Triggering watched file update: {}", path());
+      LOG.info("Triggering watched file update: {}", path());
       return publish();
     }
 
