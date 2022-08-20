@@ -142,8 +142,11 @@ public final class UpstartService extends BaseComposableService<ManagedServiceGr
   }
 
   public static void supervise(UpstartApplication application) {
-    application.configureSupervisor(application.builder().buildServiceSupervisor())
-            .startAndAwaitTermination();
+    application.buildServiceSupervisor().startAndAwaitTermination();
+  }
+
+  private static ServiceSupervisor.BuildFinal<UpstartService> buildSupervisor(UpstartApplication application) {
+    return application.configureSupervisor(application.builder().buildServiceSupervisor());
   }
 
   public static void main(String[] args) {

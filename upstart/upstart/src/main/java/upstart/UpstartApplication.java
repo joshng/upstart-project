@@ -36,15 +36,19 @@ public abstract class UpstartApplication extends UpstartModule {
    * @see ServiceSupervisor
    */
   public void runSupervised() {
-    UpstartService.supervise(this);
+    buildServiceSupervisor().startAndAwaitTermination();
+  }
+
+  @Override
+  protected abstract void configure();
+
+  public abstract ServiceSupervisor.BuildFinal<UpstartService> configureSupervisor(ServiceSupervisor.ShutdownConfigStage<UpstartService> builder);
+
+  public ServiceSupervisor.BuildFinal<UpstartService> buildServiceSupervisor() {
+    return configureSupervisor(builder().buildServiceSupervisor());
   }
 
   public UpstartService.Builder builder() {
     return UpstartService.builder().installModule(this);
   }
-
-  public abstract ServiceSupervisor.BuildFinal configureSupervisor(ServiceSupervisor.ShutdownConfigStage builder);
-
-  @Override
-  protected abstract void configure();
 }

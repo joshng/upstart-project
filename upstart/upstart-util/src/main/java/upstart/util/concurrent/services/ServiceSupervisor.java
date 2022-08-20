@@ -154,7 +154,7 @@ public abstract class ServiceSupervisor<S extends ComposableService> {
     awaitTermination();
   }
 
-  public void start() {
+  public ServiceSupervisor<S> start() {
     try {
       ComposableService supervisedService = supervisedService();
       logger().info(startingLogMessage());
@@ -165,6 +165,7 @@ public abstract class ServiceSupervisor<S extends ComposableService> {
       logger().error("Failed to start, terminating", e);
       throw terminateSystem();
     }
+    return this;
   }
 
   private boolean awaitOperation(String desc, Function<Instant, Duration> waitTime, Supplier<CompletableFuture<?>> operation) throws InterruptedException, ExecutionException {
