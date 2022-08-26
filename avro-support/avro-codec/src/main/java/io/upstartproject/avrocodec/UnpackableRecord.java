@@ -2,6 +2,7 @@ package io.upstartproject.avrocodec;
 
 import com.google.common.collect.ImmutableList;
 import io.upstartproject.avro.PackedRecord;
+import org.apache.avro.specific.SpecificData;
 import upstart.util.exceptions.UncheckedIO;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericDatumReader;
@@ -60,8 +61,8 @@ public class UnpackableRecord {
    * Polymorphic deserializer that returns SpecificRecordBase types known to the given ClassLoader whenever possible
    * (or falls back to GenericRecord if no class is found matching the name of the packed schema)
    */
-  public GenericRecord unpackSpecificOrGeneric(ClassLoader classLoader) {
-    return read(new SpecificDatumReader<>(AvroPublisher.specificData(classLoader)));
+  public GenericRecord unpackSpecificOrGeneric() {
+    return read(new SpecificDatumReader<>(SpecificData.getForSchema(schema())));
   }
 
   /**

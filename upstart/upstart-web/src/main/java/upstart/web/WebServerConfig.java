@@ -3,6 +3,7 @@ package upstart.web;
 import upstart.config.annotations.ConfigPath;
 import upstart.util.collect.PairStream;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -16,12 +17,9 @@ public interface WebServerConfig {
 
   boolean allowCorsForAllOrigins();
 
-  Map<String, Boolean> corsAllowedOrigins();
+  List<String> corsAllowedOrigins();
 
   default String[] corsAllowedOriginsArray() {
-    return PairStream.of(corsAllowedOrigins())
-            .filterValues(v -> v)
-            .keys()
-            .toArray(String[]::new);
+    return corsAllowedOrigins().toArray(String[]::new);
   }
 }

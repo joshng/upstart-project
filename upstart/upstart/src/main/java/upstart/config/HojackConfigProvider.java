@@ -53,7 +53,7 @@ public abstract class HojackConfigProvider extends UpstartConfigProvider {
 
   @Override
   @Value.Lazy
-  Config resolvedBaseConfig() {
+  public Config resolvedBaseConfig() {
     return baseConfig().resolve();
   }
 

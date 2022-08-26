@@ -1,4 +1,4 @@
-package upstart.config;
+package upstart.config.dynamic;
 
 import com.google.inject.PrivateModule;
 import com.google.inject.TypeLiteral;

@@ -170,6 +170,10 @@ public abstract class UpstartEnvironment {
     }
   }
 
+  public static Optional<Path> findDevConfigPath() {
+    return findDevConfigFile().map(conf -> conf.toPath().normalize());
+  }
+
   @Override
   public String toString() {
     return name();

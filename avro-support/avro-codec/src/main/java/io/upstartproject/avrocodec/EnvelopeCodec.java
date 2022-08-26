@@ -35,6 +35,7 @@ import java.util.stream.Stream;
  */
 public class EnvelopeCodec {
 
+  public static final SpecificRecordType<MessageEnvelope> MESSAGE_ENVELOPE_TYPE = SpecificRecordType.of(MessageEnvelope.class);
   private final AvroPublisher avroPublisher;
   private final SpecificRecordUnpacker<MessageEnvelopePayload> payloadUnpacker;
   private final SpecificRecordUnpacker<MessageEnvelope> envelopeUnpacker;
@@ -50,11 +51,10 @@ public class EnvelopeCodec {
   }
 
   public CompletableFuture<EnvelopeCodec> registerEnvelopeSchema() {
-    return avroPublisher.ensureRegistered(Stream.of(MessageEnvelope.getClassSchema()))
-            .thenApply(ignored -> this);
+    return avroPublisher.ensureRegistered(Stream.of(MESSAGE_ENVELOPE_TYPE)).thenApply(ignored -> this);
   }
 
-  public AvroPublisher avroCodec() {
+  public AvroPublisher publisher() {
     return avroPublisher;
   }
 
@@ -160,20 +160,13 @@ public class EnvelopeCodec {
   }
 
   public static Instant toInstant(long timestampValue, EventTimestampResolution resolution) {
-    TimeUnit unit;
-    switch (resolution) {
-      case Milliseconds:
-        unit = TimeUnit.MILLISECONDS;
-        break;
-      case Microseconds:
-        unit = TimeUnit.MICROSECONDS;
-        break;
-      case Nanoseconds:
-        unit = TimeUnit.NANOSECONDS;
-        break;
-      default:
-        throw new IllegalArgumentException("Unrecognized EventTimestampResolution: " + resolution);
-    }
+    TimeUnit unit = switch (resolution) {
+      case Milliseconds -> TimeUnit.MILLISECONDS;
+      case Microseconds -> TimeUnit.MICROSECONDS;
+      case Nanoseconds -> TimeUnit.NANOSECONDS;
+      case Seconds -> TimeUnit.SECONDS;
+//      default -> throw new IllegalArgumentException("Unrecognized EventTimestampResolution: " + resolution);
+    };
 
     Duration sinceEpoch = Duration.ofNanos(unit.toNanos(timestampValue));
     return Instant.EPOCH.plus(sinceEpoch);
@@ -194,8 +187,7 @@ public class EnvelopeCodec {
 
   private SpecificRecordPacker<MessageEnvelope> envelopePacker() {
     if (envelopeEncoder == null) {
-      envelopeEncoder = avroPublisher.getPreRegisteredPacker(MessageEnvelope.getClassSchema())
-              .specificPacker(MessageEnvelope.class);
+      envelopeEncoder = avroPublisher.getPreRegisteredPacker(MessageEnvelope.class);
     }
     return envelopeEncoder;
   }

@@ -30,7 +30,7 @@ public abstract class UpstartConfigProvider {
 
   public abstract UpstartDeploymentStage deploymentStage();
 
-  abstract Config resolvedBaseConfig();
+  public abstract Config resolvedBaseConfig();
 
   public abstract ConfigMapper configMapper();
 

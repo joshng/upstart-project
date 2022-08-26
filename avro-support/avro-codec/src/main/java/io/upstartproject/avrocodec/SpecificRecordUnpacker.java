@@ -13,26 +13,30 @@ import org.apache.avro.specific.SpecificRecordBase;
  * Instances of this class are thread-safe, and should be cached/reused for the lifetime of the process.
  */
 public class SpecificRecordUnpacker<T extends SpecificRecordBase> {
-  private final Class<T> recordClass;
-  private final Schema schema;
-  private final SpecificData specificData;
+
+  private final SpecificRecordType<T> recordType;
 
   public SpecificRecordUnpacker(Class<T> recordClass) {
-    this.recordClass = recordClass;
-    this.specificData = AvroPublisher.specificData(recordClass.getClassLoader());
-    this.schema = specificData.getSchema(recordClass);
+    this(SpecificRecordType.of(recordClass));
+  }
+
+  public SpecificRecordUnpacker(SpecificRecordType<T> recordType) {
+    this.recordType = recordType;
+  }
+
+  public SpecificRecordType<T> recordType() {
+    return recordType;
   }
 
   public Class<T> getRecordClass() {
-    return recordClass;
+    return recordType().recordClass();
   }
 
   public Schema getSchema() {
-    return schema;
+    return recordType().schema();
   }
 
-  @SuppressWarnings("unchecked")
   public T unpack(UnpackableRecord record) {
-    return record.read((DatumReader<T>)specificData.createDatumReader(schema));
+    return record.read(recordType().createDatumReader());
   }
 }

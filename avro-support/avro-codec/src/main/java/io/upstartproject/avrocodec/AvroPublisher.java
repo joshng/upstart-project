@@ -39,6 +39,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -98,25 +99,6 @@ public class AvroPublisher {
   private static final DatumWriter<PackedRecord> PACKED_RECORD_WRITER = new SpecificDatumWriter<>(PackedRecord.getClassSchema());
   private static final String SCHEMA_PUBLISHED_PROPERTY = "published";
 
-  private static final LoadingCache<ClassLoader, SpecificData> SPECIFIC_DATA_BY_CLASSLOADER = CacheBuilder.newBuilder()
-          .build(new CacheLoader<ClassLoader, SpecificData>() {
-            @Override
-            public SpecificData load(ClassLoader classLoader) {
-              return new SpecificData(classLoader);
-            }
-          });
-
-  private static final LoadingCache<PackageKey, Set<Class<? extends SpecificRecordBase>>> CLASS_REFLECTION_CACHE = CacheBuilder.newBuilder()
-          .build(new CacheLoader<PackageKey, Set<Class<? extends SpecificRecordBase>>>() {
-            @Override
-            public Set<Class<? extends SpecificRecordBase>> load(PackageKey key) {
-              // TODO: Reflections is not thread-safe ... consider switching to ClassGraph for this https://github.com/classgraph/classgraph
-              synchronized (AvroPublisher.class) {
-                return new Reflections(key.packageName(), key.classLoader()).getSubTypesOf(SpecificRecordBase.class);
-              }
-            }
-          });
-
   private final Queue<SchemaDescriptor> pendingRegistrations = new ConcurrentLinkedQueue<>();
 
   private final LoadingCache<SchemaDescriptor, CompletableFuture<RecordPacker>> knownPackersBySchema = CacheBuilder.newBuilder()
@@ -163,22 +145,6 @@ public class AvroPublisher {
     }
   }
 
-  static SpecificData specificData(ClassLoader classLoader) {
-    return SPECIFIC_DATA_BY_CLASSLOADER.getUnchecked(classLoader);
-  }
-
-  /**
-   * Retrieves the schema for a code-generated avro type. Uses various layers of caching and <em>reflection</em>
-   * to find the static {@code SCHEMA$} member embedded in the class by the code-generator.
-   * <p/>
-   * Note that if you know the specific recordClass (ie, your code can refer to {@code YourRecordClass.class}, without
-   * a generic {@code Class<? extends SpecificRecordBase>} variable), then it's better to use the generated
-   * {@code YourRecordClass.getClassSchema()} method instead.
-   */
-  public static Schema getSchema(Class<? extends SpecificRecordBase> recordClass) {
-    return specificData(recordClass.getClassLoader()).getSchema(recordClass);
-  }
-
   /**
    * Serializes the PackedRecord as an avro byte array. Using this method directly is rarely necessary;
    * {@link RecordPacker#makePackable(GenericRecord)}.{@link PackableRecord#serialize() serialize()} is usually preferable.
@@ -219,24 +185,28 @@ public class AvroPublisher {
   public CompletableFuture<List<SpecificRecordPacker<?>>> registerSpecificPackers(PackageKey packageKey) {
     return registerSpecificRecordSchemas(packageKey)
             .thenApply(schemas -> schemas.stream().map(this::getPreRegisteredPacker)
-                    .map(packer -> packer.inferSpecificPacker(packageKey.classLoader()))
                     .collect(Collectors.toList())
             );
   }
 
-  public CompletableFuture<List<Schema>> registerSpecificRecordSchemas(PackageKey packageKey) {
+  public CompletableFuture<List<SpecificRecordType<?>>> registerSpecificRecordSchemas(PackageKey packageKey) {
 
-    List<Schema> publishedSchemas = packageKey.findPublishedSchemas();
+    List<SpecificRecordType<?>> publishedTypes = packageKey.findPublishedTypes();
 
-    return ensureRegistered(publishedSchemas.stream()).thenApply(ignored -> publishedSchemas);
+    return ensureRegistered(publishedTypes.stream()).thenApply(ignored -> publishedTypes);
   }
 
-  public static Set<Class<? extends SpecificRecordBase>> findRecordClasses(PackageKey packageKey) {
-    return CLASS_REFLECTION_CACHE.getUnchecked(packageKey);
+  public CompletableFuture<Void> ensureRegistered(Stream<SpecificRecordType<?>> schemas) {
+    return ensureRegistration(schemas.map(SpecificRecordType::publishedSchemaDescriptor));
   }
 
-  public CompletableFuture<Void> ensureRegistered(Stream<Schema> schemas) {
-    return ensureRegistration(schemas.map(SchemaDescriptor::of));
+  @SafeVarargs
+  public final CompletableFuture<Void> ensureRegistered(Class<? extends SpecificRecordBase>... schemas) {
+    return ensureRegistered(Arrays.stream(schemas).map(SpecificRecordType::of));
+  }
+
+  public CompletableFuture<Void> ensureRegistered(Schema... schemas) {
+    return ensureRegistration(Arrays.stream(schemas).map(SchemaDescriptor::of));
   }
 
   private CompletableFuture<Void> ensureRegistration(Stream<SchemaDescriptor> schemas) {
@@ -285,7 +255,7 @@ public class AvroPublisher {
     } catch (CompletionException e) {
       Throwable cause = MoreObjects.firstNonNull(e.getCause(), e);
       Throwables.throwIfUnchecked(cause);
-      throw new RuntimeException(cause);
+      throw e;
     }
   }
 
@@ -305,7 +275,11 @@ public class AvroPublisher {
    * @throws AvroSchemaConflictException if the provided schema conflicted with another registered schema in the {@link SchemaRegistry}
    */
   public <T extends SpecificRecordBase> SpecificRecordPacker<T> getPreRegisteredPacker(Class<T> recordClass) {
-    return getPreRegisteredPacker(specificData(recordClass.getClassLoader()).getSchema(recordClass)).specificPacker(recordClass);
+    return getPreRegisteredPacker(SpecificRecordType.of(recordClass));
+  }
+
+  public <T extends SpecificRecordBase> SpecificRecordPacker<T> getPreRegisteredPacker(SpecificRecordType<T> recordType) {
+    return getPreRegisteredPacker(recordType.schema()).specificPacker(recordType);
   }
 
 
@@ -350,10 +324,10 @@ public class AvroPublisher {
    * If the SchemaRepo is being asynchronously replicated from an upstream source in a manner that could be reordered
    * vs. messages being consumed via this codec, this method may fail. In such scenarios, {@link #findRegisteredPacker}
    * may be a better choice.
-   * @throws IllegalStateException if the {@link AvroPublisher} is not {@link #isRunning running} (either because it has
-   * not been {@link #startAsync started} or because it has encountered an unrecoverable error accessing the SchemaRepo)
+   * @throws IllegalStateException if the {@link AvroTaxonomy} is not {@link AvroTaxonomy#isRunning running} (either because it has
+   * not been {@link AvroTaxonomy#start started} or because it has encountered an unrecoverable error accessing the SchemaRepo)
    * @throws IllegalStateException via the returned {@link CompletableFuture} if the {@code fingerprint} could not be
-   * resolved with the refreshed contents of the SchemaRepo.
+   * resolved with the refreshed contents of the {@link SchemaRegistry}.
    */
   public CompletableFuture<RecordPacker> findPreRegisteredPacker(SchemaFingerprint fingerprint) {
     return Optional.<CompletableFuture<RecordPacker>>ofNullable(knownPackersByFingerprint.getIfPresent(fingerprint))
@@ -483,11 +457,17 @@ public class AvroPublisher {
 
     @Override
     public PackableRecord<? extends GenericRecord> makePackable(GenericRecord record) {
-      if (record instanceof SpecificRecordBase) {
-        return PackableRecord.of((SpecificRecordBase) record, specificPacker(record.getClass()
-                .asSubclass(SpecificRecordBase.class)));
-      }
-      return RecordPackerApi.super.makePackable(record);
+      return record instanceof SpecificRecordBase specificRecord
+              ? makePackable(specificRecord)
+              : RecordPackerApi.super.makePackable(record);
+    }
+
+    @SuppressWarnings("unchecked")
+    public <R extends SpecificRecordBase> PackableRecord<R> makePackable(R specificRecord) {
+      return PackableRecord.of(
+              specificRecord,
+              specificPacker(SpecificRecordType.of((Class<R>)specificRecord.getClass()))
+      );
     }
 
     @Override
@@ -501,15 +481,9 @@ public class AvroPublisher {
       return packWithWriter(record, writer);
     }
 
-    public <T extends SpecificRecordBase> SpecificRecordPacker<T> specificPacker(Class<T> recordClass) {
-      return new SpecificRecordPacker<>(this, recordClass);
+    public <T extends SpecificRecordBase> SpecificRecordPacker<T> specificPacker(SpecificRecordType<T> recordType) {
+      return new SpecificRecordPacker<>(this, recordType);
     }
-
-    @SuppressWarnings("unchecked")
-    public SpecificRecordPacker<?> inferSpecificPacker(ClassLoader classLoader) {
-      return specificPacker(specificData(classLoader).getClass(schema));
-    }
-
 
     public SchemaFingerprint fingerprint() {
       return fingerprint;
@@ -552,16 +526,20 @@ public class AvroPublisher {
     ClassLoader classLoader();
 
     @Value.Lazy
-    default List<Schema> findPublishedSchemas() {
-      Set<Class<? extends SpecificRecordBase>> recordClasses = findRecordClasses(this);
-
-      SpecificData specificData = specificData(classLoader());
+    default List<SpecificRecordType<?>> findPublishedTypes() {
+      Set<Class<? extends SpecificRecordBase>> recordClasses;
+      // TODO: Reflections is not thread-safe ... consider switching to ClassGraph for this https://github.com/classgraph/classgraph
+      synchronized (Reflections.class) {
+        recordClasses = new Reflections(
+                packageName(),
+                classLoader()
+        ).getSubTypesOf(SpecificRecordBase.class);
+      }
 
       return recordClasses.stream()
-              .map(specificData::getSchema)
-              .filter(AvroPublisher::isMarkedForPublication)
+              .map(SpecificRecordType::of)
+              .filter(type -> isMarkedForPublication(type.schema()))
               .collect(ImmutableList.toImmutableList());
     }
   }
-
 }
