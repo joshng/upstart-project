@@ -5,16 +5,16 @@ import com.google.common.util.concurrent.MoreExecutors;
 import com.google.common.util.concurrent.Service;
 import com.google.inject.Binder;
 import com.google.inject.Key;
-import com.google.inject.PrivateModule;
-import com.google.inject.Scopes;
 import com.google.inject.TypeLiteral;
 import com.google.inject.binder.LinkedBindingBuilder;
 import com.google.inject.multibindings.Multibinder;
+import org.immutables.value.Value;
 import upstart.UpstartService;
 import upstart.config.UpstartModule;
+import upstart.guice.AnnotationKeyedPrivateModule;
 import upstart.guice.GuiceDependencyGraph;
+import upstart.guice.PrivateBinding;
 import upstart.util.annotations.Identifier;
-import org.immutables.value.Value;
 import upstart.util.concurrent.services.ExecutionThreadService;
 import upstart.util.concurrent.services.IdleService;
 import upstart.util.concurrent.services.InitializingService;
@@ -38,9 +38,9 @@ public class ManagedServicesModule extends UpstartModule {
   public static final Key<ManagedServiceGraph> INFRASTRUCTURE_GRAPH_KEY = Key.get(ManagedServiceGraph.class, INFRA_LIFECYCLE);
   public static final Key<ManagedServiceGraph> APP_GRAPH_KEY = Key.get(ManagedServiceGraph.class, ServiceLifecycle.Phase.Application.annotation());
   private static final ManagedServicesModule INFRA_MODULE = new ManagedServicesModule(INFRA_LIFECYCLE);
-  private static final TypeLiteral<Set<KeyRef>> KEYREF_SET_TYPE = new TypeLiteral<Set<KeyRef>>() {};
-  private static final TypeLiteral<Set<Service>> SERVICE_SET_TYPE = new TypeLiteral<Set<Service>>() {};
-  private static final TypeLiteral<Set<Service.Listener>> LISTENER_SET_TYPE = new TypeLiteral<Set<Service.Listener>>() {};
+  private static final TypeLiteral<Set<KeyRef>> KEYREF_SET_TYPE = new TypeLiteral<>() {};
+  private static final TypeLiteral<Set<Service>> SERVICE_SET_TYPE = new TypeLiteral<>() {};
+  private static final TypeLiteral<Set<Service.Listener>> LISTENER_SET_TYPE = new TypeLiteral<>() {};
 
   private final ServiceLifecycle lifecycle;
 
@@ -56,29 +56,21 @@ public class ManagedServicesModule extends UpstartModule {
   @Override
   public void configure() {
     Key<ManagedServiceGraph> annotatedGraphKey = Key.get(ManagedServiceGraph.class, lifecycle);
-    install(new PrivateModule() {
+    install(new AnnotationKeyedPrivateModule(lifecycle, ManagedServiceGraph.class) {
       @Override
-      protected void configure() {
-        bind(KEYREF_SET_TYPE).to(Key.get(KEYREF_SET_TYPE, lifecycle));
-        bind(LISTENER_SET_TYPE).to(Key.get(LISTENER_SET_TYPE, lifecycle));
-        bind(SERVICE_SET_TYPE).to(Key.get(SERVICE_SET_TYPE, lifecycle));
-        bind(annotatedGraphKey).toProvider(ManagedServiceGraphProvider.class).asEagerSingleton();
-        expose(annotatedGraphKey);
+      protected void configurePrivateScope() {
+        bindPrivateBindingToAnnotatedKey(KEYREF_SET_TYPE);
+        bindPrivateBindingToAnnotatedKey(LISTENER_SET_TYPE);
+        bindPrivateBindingToAnnotatedKey(SERVICE_SET_TYPE);
+        bind(ManagedServiceGraph.class).toProvider(ManagedServiceGraphProvider.class).asEagerSingleton();
       }
     });
 
-    switch (lifecycle.value()) {
-      case Infrastructure:
-        install(new GuiceDependencyGraph.GuiceModule());
-        break;
-      case Application:
-        bind(ManagedServiceGraph.class).to(annotatedGraphKey).in(Scopes.SINGLETON);
-        // FALL-THROUGH //
-      default:
-        // install infrastructure here, in case there are no infrastructure services
-        install(INFRA_MODULE);
-        new ServiceManager(binder()).manage(annotatedGraphKey, ServiceLifecycle.Phase.Infrastructure);
-        break;
+    if (lifecycle.value() == ServiceLifecycle.Phase.Infrastructure) {
+      install(new GuiceDependencyGraph.GuiceModule());
+    } else {// install infrastructure here, in case there are no infrastructure services
+      install(INFRA_MODULE);
+      new ServiceManager(binder()).manage(annotatedGraphKey, ServiceLifecycle.Phase.Infrastructure);
     }
 
     // ensure multibinders are defined even if no instances are added
@@ -178,9 +170,9 @@ public class ManagedServicesModule extends UpstartModule {
     @Inject
     ManagedServiceGraphProvider(
             GuiceDependencyGraph dependencyGraph,
-            Set<KeyRef> managedServiceKeyRefs,
-            Set<Service> services,
-            Set<Service.Listener> serviceListeners
+            @PrivateBinding Set<KeyRef> managedServiceKeyRefs,
+            @PrivateBinding Set<Service> services,
+            @PrivateBinding Set<Service.Listener> serviceListeners
     ) {
       this.dependencyGraph = dependencyGraph;
       this.managedServiceKeyRefs = managedServiceKeyRefs;

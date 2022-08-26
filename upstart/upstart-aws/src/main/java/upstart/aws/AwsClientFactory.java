@@ -4,7 +4,9 @@ import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.awscore.client.builder.AwsClientBuilder;
 
 import javax.inject.Inject;
+import javax.inject.Singleton;
 
+@Singleton
 public class AwsClientFactory {
   private final AwsCredentialsProvider credentialsProvider;
   private final AwsModule.AwsConfig config;

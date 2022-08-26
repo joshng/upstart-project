@@ -15,6 +15,8 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
 import upstart.aws.test.dynamodb.LocalDynamoDbTest;
 import upstart.config.UpstartModule;
 import upstart.dynamodb.DynamoDbNamespace;
+import upstart.guice.BindingResolver;
+import upstart.log.UpstartLogConfig;
 import upstart.log4j.test.SuppressLogs;
 import upstart.test.ThreadPauseHelper;
 import upstart.test.UpstartServiceTest;
@@ -42,8 +44,8 @@ class DynamoDbSchemaRegistryTest extends UpstartModule {
   private static final DataStore DATA_STORE = DataStore.Factory.dataStore(TEST_DATASTORE);
   @Override
   protected void configure() {
-    install(new DynamoDbSchemaRegistry.DynamoDbSchemaRegistryModule(DATA_STORE, new DynamoDbNamespace("TEST")));
-    AvroPublicationModule.bindAvroFromRecordPackage(binder(), DATA_STORE, MessageEnvelope.class);
+    install(new DynamoDbSchemaRegistry.DynamoDbSchemaRegistryModule(binder(), DATA_STORE, new DynamoDbNamespace("TEST")));
+    AvroPublicationModule.publishAvroFromRecordPackage(binder(), DATA_STORE, MessageEnvelope.class);
   }
 
   @Inject @DataStore(TEST_DATASTORE) AvroPublisher avroPublisher;

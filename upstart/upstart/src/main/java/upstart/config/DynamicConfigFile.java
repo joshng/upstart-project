@@ -2,12 +2,11 @@ package upstart.config;
 
 import com.google.inject.PrivateModule;
 import com.google.inject.TypeLiteral;
-import com.google.inject.util.Types;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import io.upstartproject.hojack.ConfigMapper;
 import upstart.guice.PrivateBinding;
-import upstart.util.collect.Optionals;
+import upstart.guice.TypeLiterals;
 import upstart.util.concurrent.CompletableFutures;
 import upstart.util.functions.AsyncConsumer;
 
@@ -97,10 +96,10 @@ public class DynamicConfigFile<T> implements Supplier<T> {
         @Override
         protected void configure() {
           @SuppressWarnings({"unchecked"})
-          TypeLiteral<DynamicConfigFile<T>> key = (TypeLiteral<DynamicConfigFile<T>>) TypeLiteral.get(Types.newParameterizedType(
+          TypeLiteral<DynamicConfigFile<T>> key = TypeLiterals.getParameterized(
                   DynamicConfigFile.class,
                   configKey.mappedType().getType()
-          ));
+          );
           bind(key).asEagerSingleton();
           bind(Path.class).annotatedWith(PrivateBinding.class).toInstance(path);
           bind(String.class).annotatedWith(PrivateBinding.class).toInstance(configKey.configPath());

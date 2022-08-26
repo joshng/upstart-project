@@ -2,16 +2,15 @@ package upstart.cluster;
 
 import com.google.inject.Key;
 import com.google.inject.Module;
-import com.google.inject.PrivateModule;
 import com.google.inject.Provides;
 import com.google.inject.Scopes;
+import com.google.inject.TypeLiteral;
 import com.google.inject.multibindings.MapBinder;
-import com.google.inject.util.Types;
 import upstart.config.UpstartModule;
+import upstart.guice.AnnotationKeyedPrivateModule;
+import upstart.guice.TypeLiterals;
 import upstart.util.concurrent.services.ComposableService;
 import upstart.guice.ImmutableNumbered;
-
-import java.lang.reflect.ParameterizedType;
 
 public abstract class PartitionCoordinationModule<Partition extends ComposableService> extends UpstartModule {
   private final Key<? extends PartitionAssignmentCoordinator> coordinatorKey;
@@ -43,7 +42,7 @@ public abstract class PartitionCoordinationModule<Partition extends ComposableSe
 
     MapBinder<PartitionId, ComposableService> partitionBinder = MapBinder.newMapBinder(binder(), PartitionId.class, ComposableService.class);
     Module partitionServiceModule = partitionServiceModule();
-    ParameterizedType lockedPartitionType = Types.newParameterizedType(LockedPartition.class, partitionServiceClass());
+    TypeLiteral<LockedPartition<Partition>> lockedPartitionType = TypeLiterals.getParameterized(LockedPartition.class, partitionServiceClass());
     int partitionCount = partitionCount();
     for (int i = 0; i < partitionCount; i++) {
       PartitionId partitionId = PartitionId.of(i);
@@ -53,24 +52,23 @@ public abstract class PartitionCoordinationModule<Partition extends ComposableSe
     }
   }
 
-  private class PartitionModule extends PrivateModule {
+  private class PartitionModule extends AnnotationKeyedPrivateModule {
     private final Module partitionModule;
     final PartitionId partitionId;
     final Key<LockedPartition<Partition>> partitionKey;
 
-    @SuppressWarnings("unchecked")
-    PartitionModule(PartitionId partitionId, Module partitionModule, ParameterizedType lockedPartitionType) {
+    PartitionModule(PartitionId partitionId, Module partitionServiceModule, TypeLiteral<LockedPartition<Partition>> lockedPartitionType) {
+      super(ImmutableNumbered.of(partitionId.id()), lockedPartitionType.getType());
       this.partitionId = partitionId;
-      partitionKey = (Key<LockedPartition<Partition>>) Key.get(lockedPartitionType, ImmutableNumbered.of(partitionId.id()));
-      this.partitionModule = partitionModule;
+      this.partitionModule = partitionServiceModule;
+      this.partitionKey = annotatedKey(lockedPartitionType);
+//      exposeWithAnnotatedKey(lockedPartitionType);
     }
 
     @Override
-    protected void configure() {
+    protected void configurePrivateScope() {
       bind(PartitionId.class).toInstance(partitionId);
-      bind(partitionKey).to(Key.get(partitionKey.getTypeLiteral()));
       install(partitionModule);
-      expose(partitionKey);
     }
 
     @Provides

@@ -1,7 +1,6 @@
 package io.upstartproject.avrocodec.upstart;
 
 import com.google.inject.BindingAnnotation;
-import upstart.config.annotations.DeserializedImmutable;
 import upstart.util.annotations.Identifier;
 
 import java.lang.annotation.ElementType;

@@ -39,7 +39,7 @@ import static upstart.util.concurrent.CompletableFutures.nullFuture;
 
 
 @ExtendWith(MockitoExtension.class)
-class AvroCodecTest {
+class AvroPublisherTest {
   @Test
   void comprehensiveEnvelopeRoundTrip() throws IOException {
 

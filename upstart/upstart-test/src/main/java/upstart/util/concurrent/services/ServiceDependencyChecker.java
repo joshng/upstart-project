@@ -38,7 +38,7 @@ public class ServiceDependencyChecker {
   @Inject
   public ServiceDependencyChecker(
           @ServiceLifecycle(ServiceLifecycle.Phase.Infrastructure) ManagedServiceGraph infrastructureGraph,
-          ManagedServiceGraph applicationGraph,
+          @ServiceLifecycle(ServiceLifecycle.Phase.Application) ManagedServiceGraph applicationGraph,
           Injector injector
   ) {
     this.infrastructureGraph = infrastructureGraph;

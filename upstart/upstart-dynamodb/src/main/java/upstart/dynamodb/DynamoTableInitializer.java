@@ -23,10 +23,8 @@ public abstract class DynamoTableInitializer<T> extends AsyncService implements 
   private static final LoadingCache<Class<?>, TableSchema<?>> TABLE_SCHEMAS = CacheBuilder.newBuilder()
           .build(CacheLoader.from(TableSchema::fromBean));
 
-  private final String tableNameSuffix;
   private final TableSchema<T> tableSchema;
   private final DynamoDbClientService dbService;
-  private final DynamoDbNamespace namespace;
   private final String tableName;
   protected volatile DynamoDbAsyncTable<T> table;
 
@@ -37,10 +35,8 @@ public abstract class DynamoTableInitializer<T> extends AsyncService implements 
           DynamoDbClientService dbService,
           DynamoDbNamespace namespace
   ) {
-    this.tableNameSuffix = tableNameSuffix;
     tableSchema = getTableSchema(mappedClass);
     this.dbService = dbService;
-    this.namespace = namespace;
     tableName = namespace.tableName(tableNameSuffix);
   }
 
