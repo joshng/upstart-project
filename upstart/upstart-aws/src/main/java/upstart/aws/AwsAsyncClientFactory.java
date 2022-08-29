@@ -5,16 +5,19 @@ import upstart.aws.s3.SdkAsyncHttpClientService;
 import software.amazon.awssdk.awscore.client.builder.AwsClientBuilder;
 import software.amazon.awssdk.core.client.builder.SdkAsyncClientBuilder;
 import software.amazon.awssdk.core.client.config.SdkAdvancedAsyncClientOption;
+import upstart.guice.PrivateBinding;
 
 import javax.inject.Inject;
+import javax.inject.Singleton;
 import java.util.concurrent.Executor;
 
+@Singleton
 public class AwsAsyncClientFactory {
   private final AwsClientFactory clientFactory;
   private final SdkAsyncHttpClientService httpClientService;
 
   @Inject
-  public AwsAsyncClientFactory(AwsClientFactory clientFactory, SdkAsyncHttpClientService httpClientService) {
+  public AwsAsyncClientFactory(@PrivateBinding AwsClientFactory clientFactory, SdkAsyncHttpClientService httpClientService) {
     this.clientFactory = clientFactory;
     this.httpClientService = httpClientService;
   }

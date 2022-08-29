@@ -81,7 +81,7 @@ public class ServiceTelemetryTest extends UpstartModule {
     taxonomy.start().join();
 
     avroPublisher.ensureRegistered(MessageEnvelope.class).join();
-    avroPublisher.registerSpecificPackers(AvroPublisher.PackageKey.fromRecordPackage(ExceptionEvent.class)).join();
+    avroPublisher.registerSpecificRecordSchemas(AvroPublisher.PackageKey.fromRecordPackage(ExceptionEvent.class)).join();
   }
 
   @Test

@@ -3,6 +3,7 @@ package io.upstartproject.avrocodec.upstart;
 import com.google.inject.TypeLiteral;
 import io.upstartproject.avro.PackedRecord;
 import io.upstartproject.avrocodec.RecordTypeFamily;
+import upstart.guice.PrivateBinding;
 import upstart.guice.TypeLiterals;
 import io.upstartproject.avrocodec.RecordPackerApi;
 import io.upstartproject.avrocodec.SchemaFingerprint;
@@ -20,7 +21,7 @@ public class AvroPacker<T extends SpecificRecordBase>
   private final Class<T> recordType;
 
   @Inject
-  public AvroPacker(TypeLiteral<T> recordTypeLiteral, AvroPublicationModule.AvroPublicationService avroPublicationService) {
+  public AvroPacker(TypeLiteral<T> recordTypeLiteral, @PrivateBinding AvroPublicationModule.AvroPublicationService avroPublicationService) {
     this(TypeLiterals.getRawType(recordTypeLiteral), avroPublicationService);
   }
 

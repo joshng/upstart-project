@@ -3,6 +3,7 @@ package upstart.example;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import upstart.UpstartApplication;
+import upstart.UpstartService;
 import upstart.util.concurrent.services.ServiceSupervisor;
 
 import java.time.Duration;
@@ -31,7 +32,7 @@ public class UpstartExampleApp extends UpstartApplication {
   }
 
   @Override
-  public ServiceSupervisor.BuildFinal configureSupervisor(ServiceSupervisor.ShutdownConfigStage builder) {
+  public ServiceSupervisor.BuildFinal<UpstartService> configureSupervisor(ServiceSupervisor.ShutdownConfigStage<UpstartService> builder) {
     return builder.shutdownGracePeriod(Duration.ofSeconds(30))
             .logger(LOG)
             .startedLogMessage(BANNER) // optional

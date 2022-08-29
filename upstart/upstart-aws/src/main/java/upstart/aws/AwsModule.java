@@ -3,7 +3,6 @@ package upstart.aws;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.common.base.Throwables;
 import com.google.inject.Key;
-import com.google.inject.PrivateModule;
 import org.immutables.value.Value;
 import software.amazon.awssdk.auth.credentials.AnonymousCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -12,6 +11,7 @@ import software.amazon.awssdk.awscore.client.builder.AwsClientBuilder;
 import software.amazon.awssdk.regions.Region;
 import upstart.config.UpstartModule;
 import upstart.config.annotations.DeserializedImmutable;
+import upstart.guice.AnnotationKeyedPrivateModule;
 
 import java.net.URI;
 import java.util.Optional;
@@ -24,15 +24,12 @@ public class AwsModule extends UpstartModule {
     for (Aws.Service service : Aws.Service.values()) {
       DefaultAwsConfig config = bindConfig(service.configPath, Key.get(DefaultAwsConfig.class, service.annotation));
       bind(AwsConfig.class).annotatedWith(service.annotation).toInstance(config);
-      Key<AwsClientFactory> factoryKey = Key.get(AwsClientFactory.class, service.annotation);
 
-      install(new PrivateModule() {
+      install(new AnnotationKeyedPrivateModule(service.annotation, AwsClientFactory.class) {
         @Override
-        protected void configure() {
+        protected void configurePrivateScope() {
           bind(AwsCredentialsProvider.class).toInstance(config.credentialsProvider());
           bind(AwsConfig.class).toInstance(config);
-          bind(factoryKey).to(AwsClientFactory.class);
-          expose(factoryKey);
         }
       });
     }

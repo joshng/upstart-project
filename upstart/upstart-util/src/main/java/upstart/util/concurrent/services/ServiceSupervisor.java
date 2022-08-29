@@ -48,10 +48,9 @@ import static com.google.common.base.Preconditions.checkState;
  *   .startService(() -> buildMyService()); // does not return
  * }</pre>
  */
-@SuppressWarnings("UnstableApiUsage")
 @Value.Immutable
 @Value.Style(overshadowImplementation = true)
-public abstract class ServiceSupervisor {
+public abstract class ServiceSupervisor<S extends ComposableService> {
 
   private static final FutureTask<?> TERMINATOR = new FutureTask<>(ServiceSupervisor::terminateSystem);
   private static final Executor TERMINATOR_THREAD = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder()
@@ -59,11 +58,11 @@ public abstract class ServiceSupervisor {
           .build());
   private static final AtomicBoolean SINGLETON_INSTALLED = new AtomicBoolean(false);
 
-  public static ShutdownConfigStage forService(Callable<? extends Service> service) {
-    return new Builder().serviceBuilder(service);
+  public static <S extends ComposableService> ShutdownConfigStage<S> forService(Callable<? extends S> service) {
+    return new Builder<S>().serviceBuilder(service);
   }
 
-  public abstract Callable<? extends Service> serviceBuilder();
+  public abstract Callable<? extends S> serviceBuilder();
 
   public abstract Duration shutdownGracePeriod();
 
@@ -94,7 +93,7 @@ public abstract class ServiceSupervisor {
 
   @Value.Derived
   @Value.Auxiliary
-  public ComposableService supervisedService() {
+  public S supervisedService() {
     checkState(!SINGLETON_INSTALLED.getAndSet(true), "Only one ServiceSupervisor can be configured per JVM process");
 
     Thread.setDefaultUncaughtExceptionHandler((t, e) -> {
@@ -102,9 +101,9 @@ public abstract class ServiceSupervisor {
       if (exitOnUncaughtException()) terminateSystemAsync();
     });
 
-    ComposableService supervisedService;
+    S supervisedService;
     try {
-      supervisedService = ComposableService.enhance(serviceBuilder().call());
+      supervisedService = serviceBuilder().call();
     } catch (Exception e) {
       logger().error("Failed to build service, terminating", e);
       throw terminateSystem();
@@ -155,7 +154,7 @@ public abstract class ServiceSupervisor {
     awaitTermination();
   }
 
-  public void start() {
+  public ServiceSupervisor<S> start() {
     try {
       ComposableService supervisedService = supervisedService();
       logger().info(startingLogMessage());
@@ -166,6 +165,7 @@ public abstract class ServiceSupervisor {
       logger().error("Failed to start, terminating", e);
       throw terminateSystem();
     }
+    return this;
   }
 
   private boolean awaitOperation(String desc, Function<Instant, Duration> waitTime, Supplier<CompletableFuture<?>> operation) throws InterruptedException, ExecutionException {
@@ -212,16 +212,16 @@ public abstract class ServiceSupervisor {
     return new AssertionError("Unpossible");
   }
 
-  public interface ShutdownConfigStage {
+  public interface ShutdownConfigStage<S extends ComposableService> {
     /**
      * Initializes the value for the {@link ServiceSupervisor#shutdownGracePeriod() shutdownGracePeriod} attribute.
      * @param shutdownGracePeriod The value for shutdownGracePeriod
      * @return {@code this} builder for use in a chained invocation
      */
-    BuildFinal shutdownGracePeriod(Duration shutdownGracePeriod);
+    BuildFinal<S> shutdownGracePeriod(Duration shutdownGracePeriod);
   }
 
-  public interface BuildFinal {
+  public interface BuildFinal<S extends ComposableService> {
 
     /**
      * Initializes the value for the {@link ServiceSupervisor#pendingTransitionLogInterval() pendingTransitionLogInterval} attribute.
@@ -229,7 +229,7 @@ public abstract class ServiceSupervisor {
      * @param pendingTransitionLogInterval The value for pendingTransitionLogInterval
      * @return {@code this} builder for use in a chained invocation
      */
-    BuildFinal pendingTransitionLogInterval(Duration pendingTransitionLogInterval);
+    BuildFinal<S> pendingTransitionLogInterval(Duration pendingTransitionLogInterval);
 
     /**
      * Initializes the value for the {@link ServiceSupervisor#logger() logger} attribute.
@@ -237,7 +237,7 @@ public abstract class ServiceSupervisor {
      * @param logger The value for logger
      * @return {@code this} builder for use in a chained invocation
      */
-    BuildFinal logger(Logger logger);
+    BuildFinal<S> logger(Logger logger);
 
     /**
      * Initializes the value for the {@link ServiceSupervisor#exitOnUncaughtException() exitOnUncaughtException} attribute.
@@ -245,7 +245,7 @@ public abstract class ServiceSupervisor {
      * @param exitOnUncaughtException The value for exitOnUncaughtException
      * @return {@code this} builder for use in a chained invocation
      */
-    BuildFinal exitOnUncaughtException(boolean exitOnUncaughtException);
+    BuildFinal<S> exitOnUncaughtException(boolean exitOnUncaughtException);
 
     /**
      * Initializes the value for the {@link ServiceSupervisor#startingLogMessage() startingLogMessage} attribute.
@@ -253,7 +253,7 @@ public abstract class ServiceSupervisor {
      * @param startingLogMessage The value for startingLogMessage
      * @return {@code this} builder for use in a chained invocation
      */
-    BuildFinal startingLogMessage(String startingLogMessage);
+    BuildFinal<S> startingLogMessage(String startingLogMessage);
 
     /**
      * Initializes the value for the {@link ServiceSupervisor#startedLogMessage() startedLogMessage} attribute.
@@ -261,18 +261,18 @@ public abstract class ServiceSupervisor {
      * @param startedLogMessage The value for startedLogMessage
      * @return {@code this} builder for use in a chained invocation
      */
-    BuildFinal startedLogMessage(String startedLogMessage);
+    BuildFinal<S> startedLogMessage(String startedLogMessage);
 
-    ServiceSupervisor build();
+    ServiceSupervisor<S> build();
 
-    ServiceSupervisor start();
+    ServiceSupervisor<S> start();
 
     void startAndAwaitTermination();
   }
 
-  static class Builder extends ImmutableServiceSupervisor.Builder implements ShutdownConfigStage, BuildFinal {
-    public ServiceSupervisor start() {
-      ServiceSupervisor supervisor = build();
+  static class Builder<S extends ComposableService> extends ImmutableServiceSupervisor.Builder<S> implements ShutdownConfigStage<S>, BuildFinal<S> {
+    public ServiceSupervisor<S> start() {
+      ServiceSupervisor<S> supervisor = build();
       supervisor.start();
       return supervisor;
     }

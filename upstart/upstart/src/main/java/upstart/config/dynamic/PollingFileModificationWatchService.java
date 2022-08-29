@@ -89,7 +89,7 @@ public class PollingFileModificationWatchService extends ScheduledService implem
       return CompletableFutures.callSafely(() -> {
         Instant currentModified = Files.getLastModifiedTime(path).toInstant();
         if (!currentModified.equals(lastModified.get())) {
-          LOG.warn("Triggering watched file update: {}", path);
+          LOG.info("Triggering watched file update: {}", path);
           lastModified.set(currentModified);
           return publish();
         } else {

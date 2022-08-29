@@ -34,6 +34,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import upstart.util.collect.Optionals;
 import upstart.util.collect.PersistentList;
+import upstart.util.exceptions.Exceptions;
 
 import javax.inject.Inject;
 import javax.inject.Provider;
@@ -98,9 +99,13 @@ public class BindingResolver {
       return traverseKey(linkedKeyBinding.getLinkedKey());
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public ResolvedBinding<T> visit(ExposedBinding<?> exposedBinding) {
-      return resolve(originalKey, exposedBinding.getPrivateElements().getInjector());
+      // this previously used originalKey, but that doesn't always work with multiple interrelated PrivateModules.
+      // does losing the originalKey here cause any issues elsewhere?
+//      return resolve(originalKey, exposedBinding.getPrivateElements().getInjector());
+      return resolve(((ExposedBinding<T>) exposedBinding).getKey(), exposedBinding.getPrivateElements().getInjector());
     }
 
     @Override
@@ -200,6 +205,9 @@ public class BindingResolver {
       } catch (BindingResolutionException e) {
         throw e;
       } catch (Exception e) {
+        if (Exceptions.isCausedBy(BindingResolutionException.class, e)) {
+          throw e;
+        }
         throw new BindingResolutionException(context, e);
       }
     }

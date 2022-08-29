@@ -83,7 +83,7 @@ public class ServiceTelemetry extends IdleService {
     protected void configure() {
       install(EventLogModule.class);
       serviceManager().manage(ServiceTelemetry.class);
-      AvroPublicationModule.bindAvroFromRecordPackage(binder(), EventLogModule.TELEMETRY_DATA_STORE, ServiceConfigLoadedEvent.class);
+      AvroPublicationModule.publishAvroFromRecordPackage(binder(), EventLogModule.TELEMETRY_DATA_STORE, ServiceConfigLoadedEvent.class);
       ManagedServicesModule.bindServiceListener(binder()).to(ServiceListener.class);
     }
   }

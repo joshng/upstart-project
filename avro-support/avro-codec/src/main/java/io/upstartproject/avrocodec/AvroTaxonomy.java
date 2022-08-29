@@ -23,6 +23,12 @@ import static com.google.common.base.Preconditions.checkState;
 @Singleton
 public class AvroTaxonomy extends NotifyingService {
   private static final Logger LOG = LoggerFactory.getLogger(AvroTaxonomy.class);
+  private static final TaxonomyListener NULL_LISTENER = new TaxonomyListener() {
+    @Override public void onSchemaAdded(SchemaDescriptor schema, RecordTypeFamily.RegistrationResult registrationResult) { }
+    @Override public void onSchemaRemoved(SchemaFingerprint fingerprint) { }
+    @Override public void onShutdown() { }
+  };
+
   private final SchemaRegistry registry;
   private final LoadingCache<String, RecordTypeFamily> typesByFullName = CacheBuilder.newBuilder()
           .build(CacheLoader.from(RecordTypeFamily::new));
@@ -30,7 +36,7 @@ public class AvroTaxonomy extends NotifyingService {
   private final LoadingCache<SchemaFingerprint, Promise<RecordTypeFamily.RegistrationResult>> knownFingerprints = CacheBuilder.newBuilder()
           .build(CacheLoader.from((Supplier<Promise<RecordTypeFamily.RegistrationResult>>) Promise::new));
 
-  private TaxonomyListener listener = null;
+  private TaxonomyListener listener = NULL_LISTENER;
 
   @Inject
   public AvroTaxonomy(SchemaRegistry registry) {
@@ -39,6 +45,7 @@ public class AvroTaxonomy extends NotifyingService {
 
   synchronized void setListener(TaxonomyListener listener) {
     checkState(state() == State.NEW, "Taxonomy listener can only be set before service is started");
+    checkState(this.listener == NULL_LISTENER, "Taxonomy listener can only be set once");
     this.listener = listener;
   }
 

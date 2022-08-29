@@ -42,6 +42,7 @@
     <module>upstart-s3-test</module>
     <module>upstart-dynamodb</module>
     <module>upstart-dynamodb-test</module>
+    <module>upstart-cli</module>
     <module>upstart-coverage</module>
   </modules>
 

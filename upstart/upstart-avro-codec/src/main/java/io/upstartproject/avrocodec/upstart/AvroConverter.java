@@ -2,14 +2,13 @@ package io.upstartproject.avrocodec.upstart;
 
 import com.google.inject.TypeLiteral;
 import io.upstartproject.avrocodec.AvroDecoder;
-import io.upstartproject.avrocodec.AvroTaxonomy;
-import io.upstartproject.avrocodec.RecordTypeFamily;
-import upstart.guice.TypeLiterals;
 import io.upstartproject.avrocodec.RecordConverterApi;
+import io.upstartproject.avrocodec.RecordTypeFamily;
 import io.upstartproject.avrocodec.SpecificRecordConverter;
 import io.upstartproject.avrocodec.UnpackableRecord;
 import org.apache.avro.specific.SpecificRecordBase;
-import upstart.managedservices.ServiceTransformer;
+import upstart.guice.PrivateBinding;
+import upstart.guice.TypeLiterals;
 
 import javax.inject.Inject;
 import java.util.concurrent.CompletableFuture;
@@ -22,7 +21,7 @@ public class AvroConverter<T extends SpecificRecordBase>
   private final AvroDecoder decoder;
 
   @Inject
-  AvroConverter(TypeLiteral<T> recordTypeLiteral, AvroDecoder decoder) {
+  AvroConverter(TypeLiteral<T> recordTypeLiteral, @PrivateBinding AvroDecoder decoder) {
     this.decoder = decoder;
     converter = decoder.recordConverter(TypeLiterals.getRawType(recordTypeLiteral));
   }

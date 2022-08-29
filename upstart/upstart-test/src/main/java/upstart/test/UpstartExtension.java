@@ -83,6 +83,10 @@ public class UpstartExtension extends SingletonParameterResolver<UpstartTestBuil
     installTestModules(context, configurator);
 
     Injector injector = configurator.getInjector();
+//    GraphvizGrapher grapher = injector.getInstance(GraphvizGrapher.class);
+//    grapher.setRankdir("TB");
+//    grapher.setOut(new PrintWriter(System.out));
+//    grapher.graph(injector);
 
     ExtensionContexts.allNestedTestInstances(context).forEach(instance -> {
       injector.injectMembers(instance);

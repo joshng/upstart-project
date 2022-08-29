@@ -1,10 +1,8 @@
 package upstart.aws;
 
-import com.google.inject.Key;
-import com.google.inject.PrivateModule;
-import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import upstart.aws.s3.SdkAsyncHttpClientService;
 import upstart.config.UpstartModule;
+import upstart.guice.AnnotationKeyedPrivateModule;
 
 public class AwsAsyncModule extends UpstartModule {
   @Override
@@ -14,15 +12,10 @@ public class AwsAsyncModule extends UpstartModule {
     serviceManager().manage(SdkAsyncHttpClientService.class);
 
     for (Aws.Service service : Aws.Service.values()) {
-      Key<AwsClientFactory> factoryKey = Key.get(AwsClientFactory.class, service.annotation);
-      Key<AwsAsyncClientFactory> asyncFactoryKey = Key.get(AwsAsyncClientFactory.class, service.annotation);
-
-      install(new PrivateModule() {
+      install(new AnnotationKeyedPrivateModule(service.annotation, AwsAsyncClientFactory.class) {
         @Override
-        protected void configure() {
-          bind(AwsClientFactory.class).to(factoryKey);
-          bind(asyncFactoryKey).to(AwsAsyncClientFactory.class);
-          expose(asyncFactoryKey);
+        protected void configurePrivateScope() {
+          bindPrivateBindingToAnnotatedKey(AwsClientFactory.class);
         }
       });
     }
