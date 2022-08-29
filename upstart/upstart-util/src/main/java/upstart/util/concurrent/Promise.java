@@ -248,7 +248,16 @@ public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Th
     return (Promise<T>) CompletableFutures.recover(this, exceptionType, recovery);
   }
 
-  public <E extends Throwable> Promise<T> recoverCompose(Class<E> exceptionType, Function<? super E, ? extends CompletionStage<? extends T>> recovery) {
+  public <E extends Throwable> Promise<T> recover(
+          Class<E> recoverableType,
+          Predicate<? super E> exceptionChecker,
+          Function<? super E, ? extends T> recovery
+  ) {
+    return (Promise<T>) CompletableFutures.recover(this, recoverableType, exceptionChecker, recovery);
+  }
+
+
+    public <E extends Throwable> Promise<T> recoverCompose(Class<E> exceptionType, Function<? super E, ? extends CompletionStage<? extends T>> recovery) {
     return CompletableFutures.recoverCompose(this, exceptionType, recovery);
   }
 

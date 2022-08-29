@@ -12,11 +12,8 @@ import io.upstartproject.avrocodec.AvroTaxonomy;
 import io.upstartproject.avrocodec.EnvelopeCodec;
 import io.upstartproject.avrocodec.MemorySchemaRegistry;
 import io.upstartproject.avrocodec.SchemaRegistry;
-import io.upstartproject.avrocodec.events.PackagedEvent;
-import io.upstartproject.avrocodec.events.PackagedEventSink;
 import io.upstartproject.avrocodec.upstart.AvroEnvelopeModule;
 import io.upstartproject.avrocodec.upstart.AvroPublicationModule;
-import io.upstartproject.avrocodec.upstart.DataStore;
 import org.apache.avro.specific.SpecificRecordBase;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,10 +24,9 @@ import upstart.managedservices.LifecycleCoordinator;
 import upstart.managedservices.ManagedServiceGraph;
 import upstart.managedservices.ServiceLifecycle;
 import upstart.metrics.TaggedMetricRegistry;
+import upstart.telemetry.test.CapturingEventSink;
 import upstart.test.StacklessTestException;
 import upstart.test.UpstartTest;
-import upstart.util.LogLevel;
-import upstart.util.concurrent.CompletableFutures;
 import upstart.util.concurrent.Deadline;
 import upstart.util.concurrent.services.NotifyingService;
 import upstart.util.concurrent.services.ServiceDependencyChecker;
@@ -38,18 +34,13 @@ import upstart.util.concurrent.services.ServiceDependencyChecker;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.stream.Stream;
 
 import static com.google.common.truth.Truth.assertThat;
 import static com.google.common.truth.Truth.assertWithMessage;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static upstart.test.truth.CompletableFutureSubject.assertThat;
 
 //@ShowServiceGraph
@@ -75,7 +66,7 @@ public class ServiceTelemetryTest extends UpstartModule {
     install(new EventLogModule());
     install(new AvroEnvelopeModule(EventLogModule.TELEMETRY_DATA_STORE));
     bind(SchemaRegistry.class).annotatedWith(EventLogModule.TELEMETRY_DATA_STORE).to(MemorySchemaRegistry.class);
-    EventLogModule.bindEventSink(binder()).to(CapturingEventSink.class);
+    install(new CapturingEventSink.Module());
 
     install(ServiceTelemetry.Module.class);
     serviceManager().manage(FailingService.class);
@@ -148,7 +139,7 @@ public class ServiceTelemetryTest extends UpstartModule {
 
   private List<MessageEnvelope> capturePublishedEvents(int expectedEventCount) {
 
-    List<MessageEnvelope> events = capturingEventSink.events;
+    List<MessageEnvelope> events = capturingEventSink.capturedEvents();
     assertThat(events).hasSize(expectedEventCount);
     return events;
   }
@@ -178,25 +169,4 @@ public class ServiceTelemetryTest extends UpstartModule {
     }
   }
 
-  @Singleton
-  static class CapturingEventSink implements PackagedEventSink {
-    final List<MessageEnvelope> events = new CopyOnWriteArrayList<>();
-    private final EnvelopeCodec envelopeCodec;
-
-    @Inject
-    CapturingEventSink(@DataStore(EventLogModule.TELEMETRY) EnvelopeCodec envelopeCodec) {
-      this.envelopeCodec = envelopeCodec;
-    }
-
-    @Override
-    public CompletableFuture<?> publish(LogLevel diagnosticLogLevel, PackagedEvent event) {
-      events.add(event.toEnvelope(envelopeCodec));
-      return CompletableFutures.nullFuture();
-    }
-
-    @Override
-    public void flush() {
-
-    }
-  }
 }

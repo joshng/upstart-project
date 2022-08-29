@@ -12,11 +12,11 @@ import software.amazon.awssdk.services.dynamodb.model.DescribeTableResponse;
 import software.amazon.awssdk.services.dynamodb.model.DynamoDbException;
 import software.amazon.awssdk.services.dynamodb.model.ResourceInUseException;
 import software.amazon.awssdk.services.dynamodb.model.TableAlreadyExistsException;
-import software.amazon.awssdk.services.dynamodb.model.TableStatus;
 import upstart.aws.Aws;
 import upstart.aws.AwsAsyncClientFactory;
 import upstart.aws.BaseAwsAsyncClientService;
 import upstart.managedservices.ServiceLifecycle;
+import upstart.util.concurrent.Promise;
 import upstart.util.concurrent.services.ThreadPoolService;
 import upstart.util.concurrent.BlockingBoundedActor;
 import upstart.util.concurrent.CompletableFutures;
@@ -29,7 +29,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 import static com.google.common.base.Preconditions.checkState;
 
@@ -38,8 +37,7 @@ import static com.google.common.base.Preconditions.checkState;
 public class DynamoDbClientService extends BaseAwsAsyncClientService<DynamoDbAsyncClient, DynamoDbAsyncClientBuilder> {
   private static final Logger LOG = LoggerFactory.getLogger(DynamoDbClientService.class);
   public static final int MAX_ITEMS_PER_DYNAMODB_BATCH = 25;
-  private final Executor directExecutor = MoreExecutors.directExecutor();
-  private final DynamoDbConfig config;
+  private static final Executor directExecutor = MoreExecutors.directExecutor();
   private final BlockingBoundedActor tableCreationActor = new BlockingBoundedActor(10);
   private DynamoDbEnhancedAsyncClient enhancedClient;
 
@@ -47,11 +45,9 @@ public class DynamoDbClientService extends BaseAwsAsyncClientService<DynamoDbAsy
   @Inject
   public DynamoDbClientService(
           @Aws(Aws.Service.DynamoDB) AwsAsyncClientFactory clientFactory,
-          DynamoThreadPoolService completionExecutor,
-          DynamoDbConfig config
+          DynamoThreadPoolService completionExecutor
   ) {
     super(clientFactory, completionExecutor);
-    this.config = config;
   }
 
   @Override
@@ -70,20 +66,16 @@ public class DynamoDbClientService extends BaseAwsAsyncClientService<DynamoDbAsy
       DynamoDbAsyncTable<T> table = enhancedClient.table(tableName, tableSchema);
       // TODO: dynamo doesn't support concurrent DDL operations, but what exception is thrown if a different table is creating?
       LOG.debug("Initiating table creation: {}", tableName);
-      return CompletableFutures.recover(
-              table.createTable(),
-              DynamoDbException.class,
-              e -> (e instanceof ResourceInUseException) || (e instanceof TableAlreadyExistsException),
-              e -> null
-      ).thenComposeAsync(ignored -> pollTableStatus(
-                                 tableName,
-                                 CompletableFuture.delayedExecutor(
-                                         config.tableCreationPollPeriod().toMillis(),
-                                         TimeUnit.MILLISECONDS,
-                                         directExecutor
-                                 )
-                         )
-      ).thenApply(ignored -> table);
+      return Promise.of(table.createTable())
+              .recover(
+                      DynamoDbException.class,
+                      e -> (e instanceof ResourceInUseException) || (e instanceof TableAlreadyExistsException),
+                      e -> null
+              ).thenReplaceFuture(() -> {
+                                    LOG.debug("Polling table status: {}", tableName);
+                                    return client().waiter().waitUntilTableExists(b -> b.tableName(tableName));
+                                  }
+              ).thenReplace(table);
     }, directExecutor);
   }
 
@@ -93,27 +85,6 @@ public class DynamoDbClientService extends BaseAwsAsyncClientService<DynamoDbAsy
 
   public DynamoDbEnhancedAsyncClient enhancedClient() {
     return enhancedClient;
-  }
-
-  private CompletableFuture<?> pollTableStatus(String tableName, Executor pollDelayExecutor) {
-    LOG.debug("Polling table status: {}", tableName);
-    return describeTable(tableName).thenCompose(resp -> {
-      TableStatus tableStatus = resp.table().tableStatus();
-      if (tableStatus == TableStatus.CREATING) {
-        LOG.info("Waiting for dynamodb table '{}' creation...", tableName);
-        return CompletableFutures.sequence(
-                CompletableFuture.supplyAsync(() -> pollTableStatus(tableName, pollDelayExecutor), pollDelayExecutor)
-        );
-      } else {
-        checkState(
-                tableStatus == TableStatus.ACTIVE,
-                "Dynamodb table %s was not active: %s",
-                tableName,
-                tableStatus
-        );
-        return CompletableFutures.nullFuture();
-      }
-    });
   }
 
   @Singleton

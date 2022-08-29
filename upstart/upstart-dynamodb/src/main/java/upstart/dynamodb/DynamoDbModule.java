@@ -7,7 +7,6 @@ public class DynamoDbModule extends UpstartModule {
   @Override
   protected void configure() {
     install(AwsAsyncModule.class);
-    bindConfig(DynamoDbConfig.class);
     serviceManager()
             .manage(DynamoDbClientService.DynamoThreadPoolService.class)
             .manage(DynamoDbClientService.class);

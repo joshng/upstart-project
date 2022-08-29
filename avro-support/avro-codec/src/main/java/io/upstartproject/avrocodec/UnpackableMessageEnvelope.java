@@ -43,7 +43,7 @@ public interface UnpackableMessageEnvelope {
 
   /**
    * Determines if the {@link #messageRecord} embedded in this envelope is a member of the given {@link RecordTypeFamily}
-   * (which can be obtained with {@link AvroPublisher#findTypeFamily}).
+   * (which can be obtained with {@link AvroTaxonomy#findTypeFamily}).
    * <p/>
    * Identical to {@code typeFamily.isInstance(messageRecord())} (which may be more convenient to call directly).
    */
@@ -58,7 +58,7 @@ public interface UnpackableMessageEnvelope {
    * otherwise, {@link Optional#empty}
    *
    * @see #messageIsInstanceOf
-   * @see AvroPublisher#findTypeFamily(String)
+   * @see AvroTaxonomy#findTypeFamily(String)
    */
   default <T extends SpecificRecordBase> Optional<T> convertMessage(RecordConverterApi<T> converter) {
     return messageIsInstanceOf(converter.writerTypeFamily())

@@ -103,10 +103,6 @@ public abstract class DynamoTableInitializer<T> extends AsyncService implements 
     return dbService.asyncClientBuilder();
   }
 
-  public <T> CompletableFuture<DynamoDbAsyncTable<T>> ensureTableCreated(String tableName, TableSchema<T> tableSchema) {
-    return dbService.ensureTableCreated(tableName, tableSchema);
-  }
-
   public CompletableFuture<DescribeTableResponse> describeTable(String tableName) {
     return dbService.describeTable(tableName);
   }

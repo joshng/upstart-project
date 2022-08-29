@@ -40,10 +40,8 @@ public class EventPublisher extends EventLog {
   }
 
   @Override
-  public void flush() {
-    for (PackagedEventSink sink : sinks) {
-      sink.flush();
-    }
+  public CompletableFuture<?> flush() {
+    return CompletableFutures.allOf(sinks.stream().map(PackagedEventSink::flush));
   }
 
   @Override

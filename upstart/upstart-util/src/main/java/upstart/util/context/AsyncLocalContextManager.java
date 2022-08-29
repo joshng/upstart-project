@@ -49,6 +49,11 @@ public class AsyncLocalContextManager implements AsyncContextManager<PersistentM
     return value;
   }
 
+  public static <T> Optional<T> getIfPresent(AsyncLocal<T> handle) {
+    PersistentMap<AsyncLocal<?>, Object> current = THREAD_CONTEXT.get();
+    return Optional.ofNullable(get(handle, current));
+  }
+
   public static <T> void putCurrentValue(AsyncLocal<T> handle, T value) {
     updateCurrent(current -> current.plus(handle, Objects.requireNonNull(value, "value")));
   }
