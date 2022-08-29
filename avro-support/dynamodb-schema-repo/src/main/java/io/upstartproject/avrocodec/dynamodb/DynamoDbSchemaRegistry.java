@@ -290,7 +290,7 @@ public class DynamoDbSchemaRegistry implements SchemaRegistry {
                                         DynamoDbNamespace namespace,
                                         DynamoDbRegistryConfig config
     ) {
-      super(annotation, config);
+      super(annotation, namespace, config);
       this.annotation = annotation;
       this.namespace = namespace;
       this.config = config;

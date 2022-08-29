@@ -77,7 +77,7 @@ public class AnnotationKeyedPrivateModule extends PrivateModule {
   }
 
   protected <T> ScopedBindingBuilder bindToAnnotatedKey(Key<T> boundKey) {
-    return bind(boundKey).to(annotatedKey(boundKey));
+    return binder().skipSources(AnnotationKeyedPrivateModule.class).bind(boundKey).to(annotatedKey(boundKey));
   }
 
 

@@ -24,21 +24,21 @@ import static com.google.common.base.Preconditions.checkArgument;
  */
 public class UnpackableRecord {
   private final PackedRecord record;
-  private final SchemaDescriptor writerPacker;
+  private final SchemaDescriptor writerSchema;
   private final Map<Schema, GenericRecord> unpackCache = new ConcurrentHashMap<>();
 
-  UnpackableRecord(PackedRecord record, SchemaDescriptor writerPacker) {
-    checkArgument(writerPacker.fingerprint().value() == record.getFingerprint(), "Mismatched fingerprints");
+  UnpackableRecord(PackedRecord record, SchemaDescriptor writerSchema) {
+    checkArgument(writerSchema.fingerprint().value() == record.getFingerprint(), "Mismatched fingerprints");
     this.record = record;
-    this.writerPacker = writerPacker;
+    this.writerSchema = writerSchema;
   }
 
   public SchemaFingerprint fingerprint() {
-    return writerPacker.fingerprint();
+    return writerSchema.fingerprint();
   }
 
   public Schema schema() {
-    return writerPacker.schema();
+    return writerSchema.schema();
   }
 
   public PackedRecord getPackedRecord() {
@@ -81,7 +81,7 @@ public class UnpackableRecord {
    * Deserializes the enclosed record into a generic structure containing exactly what was originally written.
    */
   public GenericRecord unpackGeneric() {
-    return unpackGeneric(writerPacker.schema());
+    return unpackGeneric(writerSchema.schema());
   }
 
   /**
@@ -89,7 +89,7 @@ public class UnpackableRecord {
    * provided here should probably be constructed anew for each invocation
    */
   <T extends GenericRecord> T read(DatumReader<T> reader) {
-    reader.setSchema(writerPacker.schema());
+    reader.setSchema(writerSchema.schema());
 
     return UncheckedIO.getUnchecked(() -> reader.read(null, AvroPublisher.binaryDecoder(byteBufferInputStream(record.getData()))));
   }
@@ -100,10 +100,7 @@ public class UnpackableRecord {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (!(o instanceof UnpackableRecord)) return false;
-    UnpackableRecord that = (UnpackableRecord) o;
-    return record.equals(that.record);
+    return this == o || o instanceof UnpackableRecord that && record.equals(that.record);
   }
 
   @Override
