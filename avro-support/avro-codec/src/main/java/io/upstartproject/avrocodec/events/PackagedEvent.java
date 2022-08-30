@@ -3,6 +3,7 @@ package io.upstartproject.avrocodec.events;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import io.upstartproject.avrocodec.EnvelopeCodec;
 import io.upstartproject.avrocodec.MessageMetadata;
 import io.upstartproject.avrocodec.PackableRecord;

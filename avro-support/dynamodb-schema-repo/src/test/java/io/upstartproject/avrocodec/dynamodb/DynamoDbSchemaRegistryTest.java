@@ -44,7 +44,7 @@ class DynamoDbSchemaRegistryTest extends UpstartModule {
   private static final DataStore DATA_STORE = DataStore.Factory.dataStore(TEST_DATASTORE);
   @Override
   protected void configure() {
-    install(new DynamoDbSchemaRegistry.DynamoDbSchemaRegistryModule(binder(), DATA_STORE, new DynamoDbNamespace("TEST")));
+    install(new DynamoDbSchemaRegistry.DynamoDbSchemaRegistryModule(binder(), DATA_STORE, DynamoDbNamespace.environmentNamespace(upstartContext())));
     AvroPublicationModule.publishAvroFromRecordPackage(binder(), DATA_STORE, MessageEnvelope.class);
   }
 

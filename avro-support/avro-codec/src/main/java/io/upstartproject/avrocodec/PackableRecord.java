@@ -1,5 +1,8 @@
 package io.upstartproject.avrocodec;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import io.upstartproject.avro.PackedRecord;
 import upstart.util.collect.Optionals;
 import upstart.util.reflect.Reflect;
@@ -16,6 +19,7 @@ import java.util.Optional;
  * @see SpecificRecordPacker
  */
 @Value.Immutable
+@JsonSerialize
 public interface PackableRecord<T extends GenericRecord> {
   static <T extends GenericRecord> PackableRecord<T> of(T record, RecordPackerApi<T> packer) {
     return PackableRecord.<T>builder().record(record).packer(packer).build();
@@ -26,7 +30,9 @@ public interface PackableRecord<T extends GenericRecord> {
   }
 
   @Value.Auxiliary
+  @JsonIgnore
   RecordPackerApi<T> packer();
+
   T record();
 
   PackableRecord<T> withRecord(T record);
@@ -38,6 +44,7 @@ public interface PackableRecord<T extends GenericRecord> {
 
   @Value.Derived
   @Value.Auxiliary
+  @JsonProperty("type")
   default RecordTypeFamily getRecordTypeFamily() {
     return packer().getTypeFamily();
   }

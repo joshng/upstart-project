@@ -14,10 +14,10 @@ public abstract class BaseDynamicEventDecorator<T extends SpecificRecordBase> im
 
   @Override
   public PackagedEvent.Builder decorate(PackagedEvent.Builder eventBuilder) {
-    return getAnnotation(eventBuilder)
+    return getEventAnnotation(eventBuilder)
             .map(annotation -> annotator.annotate(annotation, eventBuilder))
             .orElse(eventBuilder);
   }
 
-  protected abstract Optional<T> getAnnotation(PackagedEvent.Builder eventBuilder);
+  protected abstract Optional<T> getEventAnnotation(PackagedEvent.Builder eventBuilder);
 }

@@ -2,12 +2,22 @@ package upstart.dynamodb;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
+import com.google.inject.Binder;
+import upstart.config.UpstartConfigBinder;
+import upstart.config.UpstartContext;
 
-import javax.inject.Inject;
 import java.util.Objects;
 
 public class DynamoDbNamespace {
   private final String namespace;
+
+  public static DynamoDbNamespace environmentNamespace(Binder binder) {
+    return environmentNamespace(UpstartConfigBinder.get().bindConfig(binder, UpstartContext.class));
+  }
+
+  public static DynamoDbNamespace environmentNamespace(UpstartContext upstartContext) {
+    return new DynamoDbNamespace(upstartContext.environment());
+  }
 
   @JsonCreator
   public DynamoDbNamespace(String namespace) {
