@@ -5,13 +5,10 @@ import com.google.inject.Binder;
 import com.google.inject.Binding;
 import com.google.inject.Module;
 import com.google.inject.matcher.AbstractMatcher;
-import com.google.inject.matcher.Matcher;
-import com.google.inject.matcher.Matchers;
-import com.google.inject.multibindings.MapBinder;
 import com.google.inject.spi.ProvisionListener;
 import upstart.ExecutorServiceScheduler;
-import upstart.util.concurrent.services.ScheduledService;
 import upstart.util.concurrent.Promise;
+import upstart.util.concurrent.services.ScheduledService;
 
 import javax.annotation.Nullable;
 import java.time.Clock;
@@ -31,7 +28,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.UnaryOperator;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
@@ -58,6 +54,10 @@ public class FakeTime {
 
   public void runPendingJobs() {
     advance(Duration.ZERO);
+  }
+
+  public FakeTimeClock clock() {
+    return clock;
   }
 
   public Instant instant() {

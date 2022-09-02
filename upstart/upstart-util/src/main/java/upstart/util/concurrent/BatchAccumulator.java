@@ -14,10 +14,15 @@ public class BatchAccumulator<B> {
   private final Duration idleTimeout;
   private final Duration maxBufferLatency;
   private final Scheduler scheduler;
+  private final Deadline.Clock deadlineClock;
 
   private BatchTimeout currentTimeout = null;
 
-  public BatchAccumulator(
+  /**
+   * This constructor is protected to prevent its use except by subclasses; use {@link Factory#create} instead to
+   * support interception in tests.
+   */
+  protected BatchAccumulator(
           Supplier<B> newBatchSupplier,
           Consumer<B> completedBatchConsumer,
           Duration idleTimeout,
@@ -29,6 +34,7 @@ public class BatchAccumulator<B> {
     this.idleTimeout = idleTimeout;
     this.maxBufferLatency = maxBufferLatency;
     this.scheduler = scheduler;
+    deadlineClock = Deadline.clock(scheduler.clock());
   }
 
   public synchronized <I> Deadline accumulate(I input, BatchBuilder<I, B> action) {
@@ -86,7 +92,7 @@ public class BatchAccumulator<B> {
     }
 
     Deadline touchDeadline(Instant now) {
-      return idleDeadline = Deadline.until(Comparators.min(now.plus(idleTimeout), accumulationDeadline));
+      return idleDeadline = deadlineClock.deadlineAt(Comparators.min(now.plus(idleTimeout), accumulationDeadline));
     }
 
     void scheduleTimeout(Duration delay) {
@@ -97,8 +103,7 @@ public class BatchAccumulator<B> {
       synchronized (BatchAccumulator.this) {
         Deadline deadline = idleDeadline;
         if (deadline != null) {
-          Instant now = scheduler.now();
-          Duration remaining = deadline.remaining(now);
+          Duration remaining = deadline.remaining();
           boolean isExpired = remaining.isNegative() || remaining.isZero(); // todo: change to isPositive() with java 18
           if (!isExpired) {
             scheduleTimeout(remaining);
@@ -165,6 +170,28 @@ public class BatchAccumulator<B> {
     @Override
     public boolean closeBatch() {
       return true;
+    }
+  }
+
+  public static class Factory {
+    public <B> BatchAccumulator<B> create(
+            Supplier<B> newBatchSupplier,
+            Consumer<B> completedBatchConsumer,
+            Duration idleTimeout,
+            Duration maxBufferLatency,
+            Scheduler scheduler
+    ) {
+      return createStandard(newBatchSupplier, completedBatchConsumer, idleTimeout, maxBufferLatency, scheduler);
+    }
+
+    protected <B> BatchAccumulator<B> createStandard(
+            Supplier<B> newBatchSupplier,
+            Consumer<B> completedBatchConsumer,
+            Duration idleTimeout,
+            Duration maxBufferLatency,
+            Scheduler scheduler
+    ) {
+      return new BatchAccumulator<>(newBatchSupplier, completedBatchConsumer, idleTimeout, maxBufferLatency, scheduler);
     }
   }
 }
