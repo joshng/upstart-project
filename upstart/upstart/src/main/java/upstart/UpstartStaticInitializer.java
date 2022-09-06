@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
  * }</pre>
  */
 public abstract class UpstartStaticInitializer {
-  public static final String DEFAULT_DEV_ENVIRONMENT_NAME = "DEV";
+  public static final String DEFAULT_DEV_ENVIRONMENT_NAME = "dev";
 
   static {
     prepareIntellijDevEnvironment();

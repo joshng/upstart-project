@@ -20,6 +20,7 @@ import java.io.ByteArrayInputStream;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
@@ -92,6 +93,10 @@ public class EnvelopeCodec {
             metadata.deploymentStage(),
             metadata.tags()
     );
+  }
+
+  public CompletableFuture<UnpackableMessageEnvelope> loadEnvelope(ByteBuffer bytes) {
+    return loadEnvelope(AvroDecoder.byteBufferInputStream(bytes));
   }
 
   /**

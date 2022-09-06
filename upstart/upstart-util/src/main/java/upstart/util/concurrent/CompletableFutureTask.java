@@ -14,6 +14,11 @@ public class CompletableFutureTask<T> extends Promise<T> implements RunnableFutu
     this.callable = callable;
   }
 
+  public Promise<T> ensureStarted() {
+    run();
+    return this;
+  }
+
   @Override
   public void run() {
     if (called.compareAndSet(false, true)) {

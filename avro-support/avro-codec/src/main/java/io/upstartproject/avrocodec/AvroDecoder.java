@@ -2,10 +2,12 @@ package io.upstartproject.avrocodec;
 
 import com.google.common.collect.Streams;
 import io.upstartproject.avro.PackedRecord;
+import org.apache.avro.Schema;
 import org.apache.avro.file.DataFileReader;
 import org.apache.avro.file.DataFileStream;
 import org.apache.avro.specific.SpecificDatumReader;
 import org.apache.avro.specific.SpecificRecordBase;
+import org.apache.avro.util.ByteBufferInputStream;
 import upstart.util.exceptions.UncheckedIO;
 
 import javax.inject.Inject;
@@ -17,9 +19,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static upstart.util.exceptions.Fallible.fallible;
 
 /**
@@ -48,6 +52,20 @@ public class AvroDecoder {
    */
   public static PackedRecord readPackedRecord(InputStream in) {
     return UncheckedIO.getUnchecked(() -> PACKED_RECORD_READER.read(null, AvroPublisher.binaryDecoder(in)));
+  }
+
+  public static InputStream byteBufferInputStream(ByteBuffer buf) {
+    return new ByteBufferInputStream(List.of(buf.duplicate()));
+  }
+
+  public static Schema unwrapNullable(Schema declaredSchema) {
+    if (declaredSchema.isNullable()) {
+      List<Schema> types = declaredSchema.getTypes();
+      checkArgument(types.size() == 2 && types.get(0).getType() == Schema.Type.NULL,
+                    "Unsupported union schema: must specify null first, with exactly one non-null type", declaredSchema);
+      return types.get(1);
+    }
+    return declaredSchema;
   }
 
   /**
@@ -96,6 +114,10 @@ public class AvroDecoder {
             .thenApply(writerPacker -> new UnpackableRecord(record, writerPacker.registeredSchema()));
   }
 
+
+  public CompletableFuture<UnpackableRecord> readUnpackableRecord(ByteBuffer in) {
+    return readUnpackableRecord(byteBufferInputStream(in));
+  }
 
   public CompletableFuture<UnpackableRecord> readUnpackableRecord(InputStream in) {
     return toUnpackable(readPackedRecord(in));

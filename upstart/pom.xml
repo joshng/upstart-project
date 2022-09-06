@@ -38,6 +38,7 @@
     <module>upstart-example-app</module>
     <module>upstart-kafka-test</module>
     <module>upstart-aws</module>
+    <module>upstart-aws-kinesis</module>
     <module>upstart-aws-test</module>
     <module>upstart-s3-test</module>
     <module>upstart-dynamodb</module>
