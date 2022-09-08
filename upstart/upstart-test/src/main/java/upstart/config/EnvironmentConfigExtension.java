@@ -81,8 +81,7 @@ public class EnvironmentConfigExtension extends SingletonParameterResolver<Envir
 
     abstract String resourceName();
 
-    @Value.Derived
-    @Value.Auxiliary
+    @Value.Lazy
     Config parsedConfig() {
       return ConfigFactory.parseResourcesAnySyntax(resourceName());
     }
@@ -105,8 +104,7 @@ public class EnvironmentConfigExtension extends SingletonParameterResolver<Envir
 
     abstract String config();
 
-    @Value.Derived
-    @Value.Auxiliary
+    @Value.Lazy
     Config parsedConfig() {
       return ConfigFactory.parseString(config(), FIXTURE_ORIGIN_DESCRIPTION);
     }

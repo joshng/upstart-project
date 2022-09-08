@@ -7,25 +7,35 @@ import org.jdbi.v3.core.extension.ExtensionCallback;
 import org.jdbi.v3.core.extension.ExtensionConsumer;
 import org.jdbi.v3.core.spi.JdbiPlugin;
 import org.jdbi.v3.core.transaction.TransactionIsolationLevel;
+import upstart.guice.PrivateBinding;
 import upstart.util.concurrent.services.InitializingService;
 
+import javax.inject.Inject;
+import javax.inject.Singleton;
+import java.lang.annotation.Annotation;
 import java.util.Set;
 
-public abstract class AbstractJdbiService extends InitializingService {
+@Singleton
+public class JdbiService extends InitializingService {
+  private final JdbiInitializer initializer;
   private final Set<JdbiPlugin> plugins;
+  private final Annotation bindingAnnotation;
   private Jdbi jdbi;
 
-  public AbstractJdbiService(Set<JdbiPlugin> plugins) {
+  @Inject
+  public JdbiService(
+          @PrivateBinding JdbiInitializer initializer,
+          @PrivateBinding Set<JdbiPlugin> plugins,
+          @PrivateBinding Annotation bindingAnnotation
+          ) {
+    this.initializer = initializer;
     this.plugins = plugins;
+    this.bindingAnnotation = bindingAnnotation;
   }
-
-  protected abstract Jdbi buildJdbi();
 
   @Override
   protected void startUp() throws Exception {
-
-    jdbi = buildJdbi();
-
+    jdbi = initializer.buildJdbi();
     plugins.forEach(jdbi::installPlugin);
   }
 
@@ -67,5 +77,9 @@ public abstract class AbstractJdbiService extends InitializingService {
 
   public <X extends Exception> void useTransaction(TransactionIsolationLevel level, HandleConsumer<X> callback) throws X {
     jdbi.useTransaction(level, callback);
+  }
+
+  public interface JdbiInitializer {
+    Jdbi buildJdbi();
   }
 }

@@ -1,6 +1,7 @@
 package upstart;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.common.base.Ticker;
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.Service;
 import com.google.inject.AbstractModule;
@@ -306,6 +307,7 @@ public final class UpstartService extends BaseComposableService<ManagedServiceGr
         bindConfig("upstart.localhost", LocalHost.class);
 
         bind(Clock.class).toInstance(Clock.systemUTC());
+        bind(Ticker.class).toInstance(Ticker.systemTicker());
         bind(FileSystem.class).toInstance(FileSystems.getDefault());
 
         UpstartDeploymentStage upstartDeploymentStage = bindConfig(UpstartContext.class).deploymentStage();

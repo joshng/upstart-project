@@ -316,7 +316,7 @@ public class DynamoDbSchemaRegistry implements SchemaRegistry {
         protected void configurePrivateScope() {
           bind(DynamoDbRegistryConfig.class).toInstance(config);
           bind(SchemaRegistry.class).to(DynamoDbSchemaRegistry.class);
-          bind(privateBindingKey(DynamoDbNamespace.class)).toInstance(namespace);
+          bindPrivateBinding(DynamoDbNamespace.class).toInstance(namespace);
         }
       });
     }

@@ -1,5 +1,6 @@
 package io.upstartproject.avrocodec;
 
+import com.google.common.collect.ClassToInstanceMap;
 import org.apache.avro.Schema;
 import org.apache.avro.io.DatumReader;
 import org.apache.avro.specific.SpecificData;
@@ -11,11 +12,18 @@ import upstart.util.collect.Optionals;
 
 import java.util.Optional;
 
-@Value.Immutable(intern = true)
 @Tuple
 public interface SpecificRecordType<R extends SpecificRecordBase> {
+  ClassValue<SpecificRecordType<?>> CACHE = new ClassValue<>() {
+    @Override
+    protected SpecificRecordType<?> computeValue(Class<?> type) {
+      return ImmutableSpecificRecordType.of(type.asSubclass(SpecificRecordBase.class));
+    }
+  };
+
+  @SuppressWarnings("unchecked")
   static <T extends SpecificRecordBase> SpecificRecordType<T> of(Class<T> recordClass) {
-    return ImmutableSpecificRecordType.of(recordClass);
+    return (SpecificRecordType<T>) CACHE.get(recordClass);
 
   }
 
