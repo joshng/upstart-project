@@ -9,7 +9,7 @@ import com.google.inject.binder.ScopedBindingBuilder;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
 
-public class AnnotationKeyedPrivateModule extends PrivateModule {
+public class AnnotationKeyedPrivateModule extends UpstartPrivateModule {
   private final Annotation annotation;
   private final Type[] exposedTypes;
 
@@ -20,22 +20,6 @@ public class AnnotationKeyedPrivateModule extends PrivateModule {
 
   protected void configurePrivateScope() {
 
-  }
-
-  public static Key<?> privateBindingKey(Type type) {
-    return Key.get(type, PrivateBinding.class);
-  }
-
-  public static <T> Key<T> privateBindingKey(Class<T> type) {
-    return Key.get(type, PrivateBinding.class);
-  }
-
-  public static <T> Key<T> privateBindingKey(TypeLiteral<T> type) {
-    return Key.get(type, PrivateBinding.class);
-  }
-
-  public static <T> Key<?> privateBindingKey(Key<T> type) {
-    return type.withAnnotation(PrivateBinding.class);
   }
 
 
@@ -75,10 +59,6 @@ public class AnnotationKeyedPrivateModule extends PrivateModule {
 
   protected ScopedBindingBuilder bindPrivateBindingToAnnotatedKey(TypeLiteral<?> boundType) {
     return bindToAnnotatedKey(privateBindingKey(boundType));
-  }
-
-  protected <T> LinkedBindingBuilder<T> bindPrivateBinding(Class<T> boundType) {
-    return bind(privateBindingKey(boundType));
   }
 
   protected <T> ScopedBindingBuilder bindToAnnotatedKey(Key<T> boundKey) {

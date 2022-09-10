@@ -6,7 +6,7 @@ import upstart.config.UpstartModule;
 public class ZkApiModule extends UpstartModule {
   @Override
   public void configure() {
-    install(CuratorServiceModule.class);
+    install(new CuratorServiceModule());
     bind(ClusterAdministrator.class).to(ZkClusterAdministrator.class);
   }
 }

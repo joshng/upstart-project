@@ -37,10 +37,10 @@ class ZkClusterTest extends UpstartModule {
 
   @Override
   protected void configure() {
-    install(ClusterModule.class);
-    install(ZkClusterModule.class);
-    install(ExecutorServiceScheduler.Module.class);
-    install(UpstartClusterNodeModule.class);
+    install(new ClusterModule());
+    install(new ZkClusterModule());
+    install(new ExecutorServiceScheduler.Module());
+    install(new UpstartClusterNodeModule());
   }
 
   @Test

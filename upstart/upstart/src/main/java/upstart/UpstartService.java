@@ -10,6 +10,7 @@ import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Module;
 import com.google.inject.Scopes;
+import com.google.inject.Stage;
 import com.google.inject.spi.Message;
 import com.typesafe.config.ConfigException;
 import io.upstartproject.hojack.ConfigMapper;
@@ -175,10 +176,10 @@ public final class UpstartService extends BaseComposableService<ManagedServiceGr
    */
   public static class Builder implements UpstartApplicationBuilder<Builder> {
     private final List<Module> modules = new ArrayList<>();
-    private final UpstartConfigProvider config;
+    private final UpstartConfigProvider configProvider;
 
-    private Builder(UpstartConfigProvider config) {
-      this.config = config;
+    private Builder(UpstartConfigProvider configProvider) {
+      this.configProvider = configProvider;
     }
 
     @Override
@@ -213,10 +214,14 @@ public final class UpstartService extends BaseComposableService<ManagedServiceGr
      * @see #build
      */
     public Injector buildInjector() {
-      Injector injector = s_latestInjector = UpstartConfigBinder.withBinder(config,
+      Injector injector = s_latestInjector = UpstartConfigBinder.withBinder(
+              configProvider,
               () -> {
+                Stage stage = configProvider.deploymentStage().isProductionLike()
+                        ? Stage.PRODUCTION
+                        : Stage.DEVELOPMENT;
                 try {
-                  return Guice.createInjector(modules);
+                  return Guice.createInjector(stage, modules);
                 } catch (RuntimeException e) {
                   throw summarizeCreationErrors(e);
                 }

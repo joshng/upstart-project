@@ -12,14 +12,11 @@ import software.amazon.awssdk.services.dynamodb.model.DescribeTableResponse;
 import software.amazon.awssdk.services.dynamodb.model.DynamoDbException;
 import software.amazon.awssdk.services.dynamodb.model.ResourceInUseException;
 import software.amazon.awssdk.services.dynamodb.model.TableAlreadyExistsException;
-import upstart.aws.Aws;
-import upstart.aws.AwsAsyncClientFactory;
-import upstart.aws.BaseAwsAsyncClientService;
+import upstart.aws.AwsAsyncClientService;
 import upstart.managedservices.ServiceLifecycle;
 import upstart.util.concurrent.Promise;
 import upstart.util.concurrent.services.ThreadPoolService;
 import upstart.util.concurrent.BlockingBoundedActor;
-import upstart.util.concurrent.CompletableFutures;
 import upstart.util.concurrent.NamedThreadFactory;
 
 import javax.inject.Inject;
@@ -34,31 +31,30 @@ import static com.google.common.base.Preconditions.checkState;
 
 @Singleton
 @ServiceLifecycle(ServiceLifecycle.Phase.Infrastructure)
-public class DynamoDbClientService extends BaseAwsAsyncClientService<DynamoDbAsyncClient, DynamoDbAsyncClientBuilder> {
+public class DynamoDbClientService {
   private static final Logger LOG = LoggerFactory.getLogger(DynamoDbClientService.class);
   public static final int MAX_ITEMS_PER_DYNAMODB_BATCH = 25;
   private static final Executor directExecutor = MoreExecutors.directExecutor();
   private final BlockingBoundedActor tableCreationActor = new BlockingBoundedActor(10);
   private DynamoDbEnhancedAsyncClient enhancedClient;
-
+  private final DynamoDbAsyncClient client;
 
   @Inject
-  public DynamoDbClientService(
-          @Aws(Aws.Service.DynamoDB) AwsAsyncClientFactory clientFactory,
-          DynamoThreadPoolService completionExecutor
-  ) {
-    super(clientFactory, completionExecutor);
+  public DynamoDbClientService(DynamoDbAsyncClient client) {
+    this.enhancedClient = DynamoDbEnhancedAsyncClient.builder()
+            .dynamoDbClient(client)
+            .build();
+    this.client = client;
   }
 
-  @Override
-  protected DynamoDbAsyncClientBuilder asyncClientBuilder() {
-    return DynamoDbAsyncClient.builder();
-  }
+//  @Override
+//  protected void startUp() throws Exception {
+//    super.startUp();
+//    enhancedClient = DynamoDbEnhancedAsyncClient.builder().dynamoDbClient(client()).build();
+//  }
 
-  @Override
-  protected void startUp() throws Exception {
-    super.startUp();
-    enhancedClient = DynamoDbEnhancedAsyncClient.builder().dynamoDbClient(client()).build();
+  public DynamoDbAsyncClient client() {
+    return client;
   }
 
   public <T> CompletableFuture<DynamoDbAsyncTable<T>> ensureTableCreated(String tableName, TableSchema<T> tableSchema) {

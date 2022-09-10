@@ -30,7 +30,7 @@ public class EventLogModule extends UpstartModule {
 
   @Override
   protected void configure() {
-    install(MessageEnvelopeModule.class);
+    install(new MessageEnvelopeModule());
     // ensure multibinder is defined
     decoratorMultibinder(binder());
 

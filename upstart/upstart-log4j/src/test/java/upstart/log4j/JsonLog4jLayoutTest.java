@@ -43,7 +43,7 @@ class JsonLog4jLayoutTest extends UpstartModule {
 
   @Override
   protected void configure() {
-    install(ExecutorServiceScheduler.Module.class);
+    install(new ExecutorServiceScheduler.Module());
     bindConfig(UpstartLogConfig.class);
   }
 

@@ -7,9 +7,7 @@ import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.GetItemResponse;
 import software.amazon.awssdk.services.dynamodb.model.KeyType;
 import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
-import upstart.aws.Aws;
-import upstart.aws.AwsClientFactory;
-import upstart.aws.AwsModule;
+import upstart.aws.AwsClientModule;
 import upstart.config.UpstartModule;
 import upstart.test.UpstartServiceTest;
 
@@ -21,10 +19,10 @@ import static com.google.common.truth.Truth.assertThat;
 @LocalDynamoDbTest
 @UpstartServiceTest
 class LocalDynamoDBExtensionTest extends UpstartModule {
-  @Inject @Aws(Aws.Service.DynamoDB) AwsClientFactory clientFactory;
+  @Inject DynamoDbClient injectedClient;
   @Override
   protected void configure() {
-    install(AwsModule.class);
+    AwsClientModule.install(binder(), DynamoDbClient.class);
   }
 
   @Test
@@ -47,7 +45,7 @@ class LocalDynamoDBExtensionTest extends UpstartModule {
                   )
             ));
 
-    GetItemResponse response = client.getItem(b -> b
+    GetItemResponse response = injectedClient.getItem(b -> b
             .tableName(tableName)
             .key(Map.of("key", AttributeValue.builder().s(key).build()))
             .projectionExpression("val")

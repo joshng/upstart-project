@@ -44,7 +44,7 @@ import static upstart.config.UpstartEnvironment.UPSTART_ENVIRONMENT;
  * class MyAppConfigValidator extends EnvironmentConfigValidator {
  *   @Override
  *   protected void configure() {
- *     install(MyAppModule.class);
+ *     install(new MyAppModule());
  *   }
  *
  *   @Override

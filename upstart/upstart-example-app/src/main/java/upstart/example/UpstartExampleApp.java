@@ -41,6 +41,6 @@ public class UpstartExampleApp extends UpstartApplication {
 
   @Override
   protected void configure() {
-    install(CountReportingService.ReportingModule.class);
+    install(new CountReportingService.ReportingModule());
   }
 }

@@ -304,7 +304,7 @@ public class DynamoDbSchemaRegistry implements SchemaRegistry {
     @Override
     protected void configure() {
       install(new AvroTaxonomyModule(annotation));
-      install(DynamoDbModule.class);
+      install(new DynamoDbModule());
 
       install(new AnnotationKeyedPrivateModule(
               annotation,
@@ -331,8 +331,8 @@ public class DynamoDbSchemaRegistry implements SchemaRegistry {
     static DynamoDbRegistryConfig bind(Binder binder, String configPath, Annotation dataStoreAnnotation) {
       return UpstartConfigBinder.get().bindConfig(
               binder,
-              com.google.inject.Key.get(DynamoDbRegistryConfig.class, dataStoreAnnotation),
-              ConfigKey.of(configPath, DynamoDbRegistryConfig.class)
+              ConfigKey.of(configPath, DynamoDbRegistryConfig.class),
+              com.google.inject.Key.get(DynamoDbRegistryConfig.class, dataStoreAnnotation)
       );
     }
 

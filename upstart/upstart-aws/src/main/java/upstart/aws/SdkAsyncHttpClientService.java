@@ -1,4 +1,4 @@
-package upstart.aws.s3;
+package upstart.aws;
 
 import io.netty.handler.ssl.SslProvider;
 import software.amazon.awssdk.http.async.AsyncExecuteRequest;
@@ -36,6 +36,11 @@ public class SdkAsyncHttpClientService extends IdleService implements SdkAsyncHt
   @Override
   protected void shutDown() throws Exception {
     delegate.close();
+  }
+
+  @Override
+  public String clientName() {
+    return delegate.clientName();
   }
 
   @Override

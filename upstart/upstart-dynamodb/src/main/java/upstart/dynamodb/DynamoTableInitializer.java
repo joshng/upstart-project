@@ -95,10 +95,6 @@ public abstract class DynamoTableInitializer<T> extends AsyncService implements 
     return dbService.client();
   }
 
-  public DynamoDbAsyncClientBuilder asyncClientBuilder() {
-    return dbService.asyncClientBuilder();
-  }
-
   public CompletableFuture<DescribeTableResponse> describeTable(String tableName) {
     return dbService.describeTable(tableName);
   }

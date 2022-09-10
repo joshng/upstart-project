@@ -68,7 +68,7 @@ public class ServiceTelemetryTest extends UpstartModule {
     bind(SchemaRegistry.class).annotatedWith(EventLogModule.TELEMETRY_DATA_STORE).to(MemorySchemaRegistry.class);
     install(new CapturingEventSink.Module());
 
-    install(ServiceTelemetry.Module.class);
+    install(new ServiceTelemetry.Module());
     serviceManager().manage(FailingService.class);
   }
 
