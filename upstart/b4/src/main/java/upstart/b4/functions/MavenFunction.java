@@ -42,6 +42,7 @@ public class MavenFunction implements B4Function<MavenFunction.MavenBuildConfig>
     String mavenExecutable();
     Set<String> goals();
     Set<String> projects();
+    Set<String> profiles();
     boolean buildAllProjects();
     Set<String> extraArgs();
     double threadsPerCore();
@@ -61,6 +62,10 @@ public class MavenFunction implements B4Function<MavenFunction.MavenBuildConfig>
         } else {
           args.addAll(goals());
         }
+      }
+
+      if (!profiles().isEmpty()) {
+        args.add("-P" + String.join(",", profiles()));
       }
       if (!buildAllProjects() && !projects().isEmpty()) {
         args.add("-pl");
