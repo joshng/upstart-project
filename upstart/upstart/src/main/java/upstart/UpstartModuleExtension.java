@@ -8,6 +8,7 @@ import com.google.inject.Module;
 import com.google.inject.TypeLiteral;
 import com.google.inject.matcher.Matcher;
 import upstart.config.ConfigKey;
+import upstart.config.UpstartContext;
 import upstart.config.annotations.ConfigPath;
 import upstart.config.UpstartConfigBinder;
 import upstart.config.UpstartConfigProvider;
@@ -29,6 +30,10 @@ import java.lang.reflect.Method;
 
 public interface UpstartModuleExtension {
   Binder binder();
+
+  default UpstartContext upstartContext() {
+    return bindConfig(UpstartContext.class);
+  }
 
   /**
    * Arrange for the given configClass (which <b>must</b> be annotated with {@link ConfigPath}) to be available for

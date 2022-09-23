@@ -174,7 +174,7 @@ public class DynamoDbSchemaRegistry implements SchemaRegistry {
     }
 
     public Promise<Void> refresh() {
-      return Promise.of(consumeItems(PagePublisher.create(table.scan(b -> {
+      return Promise.of(consumeItems(table.scan(b -> {
         b.consistentRead(true);
         if (latestObservedSeqNo >= 0) {
           // so verbose ... does anyone at amazon actually work with these APIs?
@@ -185,7 +185,7 @@ public class DynamoDbSchemaRegistry implements SchemaRegistry {
                   .build();
           b.filterExpression(filter);
         }
-      }))).reduce(0, (ignored, item) -> {
+      })).reduce(0, (ignored, item) -> {
         int seqNo = item.getSeqNo();
         assert seqNo > latestObservedSeqNo : "SeqNo was out of order: " + seqNo + " <= " + latestObservedSeqNo;
         latestObservedSeqNo = seqNo;
