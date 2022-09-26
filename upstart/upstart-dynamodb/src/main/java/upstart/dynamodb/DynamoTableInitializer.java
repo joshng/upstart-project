@@ -7,6 +7,7 @@ import reactor.core.publisher.Flux;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbAsyncTable;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedAsyncClient;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
+import software.amazon.awssdk.enhanced.dynamodb.model.CreateTableEnhancedRequest;
 import software.amazon.awssdk.enhanced.dynamodb.model.PagePublisher;
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient;
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClientBuilder;
@@ -59,8 +60,12 @@ public abstract class DynamoTableInitializer<T> extends AsyncService implements 
 
   @Override
   protected CompletableFuture<?> startUp() throws Exception {
-    return dbService.ensureTableCreated(tableName, tableSchema)
+    return dbService.ensureTableCreated(tableName, tableSchema, prepareCreateTableRequest(CreateTableEnhancedRequest.builder()).build())
             .thenAccept(table -> this.table = table);
+  }
+
+  protected CreateTableEnhancedRequest.Builder prepareCreateTableRequest(CreateTableEnhancedRequest.Builder builder) {
+    return builder;
   }
 
   @Override
@@ -100,7 +105,7 @@ public abstract class DynamoTableInitializer<T> extends AsyncService implements 
   }
 
   public <T> CompletableFuture<DynamoDbAsyncTable<T>> ensureTableCreated(String tableName, TableSchema<T> tableSchema) {
-    return dbService.ensureTableCreated(tableName, tableSchema);
+    return dbService.ensureTableCreated(tableName, tableSchema, CreateTableEnhancedRequest.builder().build());
   }
 
   public CompletableFuture<DescribeTableResponse> describeTable(String tableName) {

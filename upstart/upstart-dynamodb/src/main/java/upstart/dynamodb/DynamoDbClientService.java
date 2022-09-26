@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbAsyncTable;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedAsyncClient;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
+import software.amazon.awssdk.enhanced.dynamodb.model.CreateTableEnhancedRequest;
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient;
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClientBuilder;
 import software.amazon.awssdk.services.dynamodb.model.DescribeTableResponse;
@@ -65,13 +66,17 @@ public class DynamoDbClientService extends BaseAwsAsyncClientService<DynamoDbAsy
     enhancedClient = DynamoDbEnhancedAsyncClient.builder().dynamoDbClient(client()).build();
   }
 
-  public <T> CompletableFuture<DynamoDbAsyncTable<T>> ensureTableCreated(String tableName, TableSchema<T> tableSchema) {
+  public <T> CompletableFuture<DynamoDbAsyncTable<T>> ensureTableCreated(
+          String tableName,
+          TableSchema<T> tableSchema,
+          CreateTableEnhancedRequest request
+  ) {
     return tableCreationActor.requestAsync(() -> {
       DynamoDbAsyncTable<T> table = enhancedClient.table(tableName, tableSchema);
       // TODO: dynamo doesn't support concurrent DDL operations, but what exception is thrown if a different table is creating?
       LOG.debug("Initiating table creation: {}", tableName);
       return CompletableFutures.recover(
-              table.createTable(),
+              table.createTable(request),
               DynamoDbException.class,
               e -> (e instanceof ResourceInUseException) || (e instanceof TableAlreadyExistsException),
               e -> null

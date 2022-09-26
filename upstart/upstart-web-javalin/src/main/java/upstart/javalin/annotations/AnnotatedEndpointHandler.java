@@ -1,5 +1,6 @@
 package upstart.javalin.annotations;
 
+import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.TypeFactory;
@@ -14,6 +15,7 @@ import io.javalin.http.ContentType;
 import io.javalin.http.Context;
 import io.javalin.http.Handler;
 import io.javalin.http.HandlerType;
+import io.javalin.http.HttpCode;
 import io.javalin.plugin.openapi.annotations.AnnotationApiMappingKt;
 import io.javalin.plugin.openapi.annotations.OpenApi;
 import io.javalin.plugin.openapi.annotations.OpenApiContent;
@@ -26,7 +28,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import upstart.javalin.UnprocessableEntityResponse;
 import upstart.proxy.Proxies;
-import upstart.util.collect.Optionals;
 import upstart.util.collect.PairStream;
 import upstart.util.concurrent.LazyReference;
 import upstart.util.concurrent.ThreadLocalReference;
@@ -77,6 +78,7 @@ public class AnnotatedEndpointHandler<T> {
                       method,
                       annotation.method().handlerType,
                       annotation.path(),
+                      annotation.successCode(),
                       annotation.responseDoc(),
                       annotation.hideApiDoc(),
                       classSecurityConstraints.merge(registry.getSecurityConstraints(method))
@@ -110,6 +112,7 @@ public class AnnotatedEndpointHandler<T> {
             Method method,
             HandlerType handlerType,
             String path,
+            HttpCode annotationSuccessCode,
             OpenApiResponse openApiResponse,
             boolean hideApiDoc,
             SecurityConstraints securityConstraints
@@ -128,17 +131,25 @@ public class AnnotatedEndpointHandler<T> {
       this.path = path;
       this.securityConstraints = securityConstraints;
       ImmutableOpenApiResponse.Builder apiResponse = OpenApiAnnotations.responseBuilder().from(openApiResponse);
+      int successStatus = reconcileSuccessStatus(
+              method,
+              annotationSuccessCode,
+              apiResponse,
+              Integer.parseInt(openApiResponse.status())
+      );
+      BiConsumer<Context, Object> assignStatus = (ctx, o) -> {
+        if (ctx.status() != successStatus) ctx.status(successStatus);
+      };
       BiConsumer<Context, ?> responder;
       Class<?> returnType = method.getReturnType();
       OpenApiContent[] openApiContent;
       if (returnType == void.class) {
         openApiContent = openApiResponse.content();
-        responder = ((c, o) -> {
-        });
+        responder = assignStatus;
       } else if (InputStream.class.isAssignableFrom(returnType)) {
         // TODO: is this correct?
         openApiContent = openApiContent(byte[].class, ContentType.OCTET_STREAM, openApiResponse);
-        responder = (BiConsumer<Context, InputStream>) Context::result;
+        responder = ((BiConsumer<Context, InputStream>) Context::result).andThen(assignStatus);
       } else if (CompletionStage.class.isAssignableFrom(returnType)) {
         // TODO: deal with further generics, arrays, etc
         Class<?> futureType = Reflect.getFirstGenericType(method.getGenericReturnType());
@@ -146,15 +157,19 @@ public class AnnotatedEndpointHandler<T> {
         responder = (Context context, CompletionStage<?> o) -> context.future(
                 o.toCompletableFuture()
                         .whenComplete((ignored, e) -> {
-                          // javalin responds with 200 if the future is completed with an Error!?
-                          if (e != null && !(e instanceof Exception)) {
-                            LOG.error("Unexpected error", e);
-                            context.status(500);
+                          if (context.status() == 200) {
+                            if (e == null) {
+                              assignStatus.accept(context, ignored);
+                            } else if (!(e instanceof Exception)){
+                              // javalin responds with 200 if the future is completed with an Error!?
+                              LOG.error("Unexpected error", e);
+                              context.status(500);
+                            }
                           }
                         }));
       } else {
         openApiContent = openApiContent(returnType, ContentType.JSON, openApiResponse);
-        responder = Context::json;
+        responder = ((BiConsumer<Context, InputStream>) Context::json).andThen(assignStatus);
       }
 
       documentation = hideApiDoc
@@ -162,6 +177,37 @@ public class AnnotatedEndpointHandler<T> {
               : buildDocumentation(apiResponse.content(openApiContent).build());
       //noinspection unchecked
       resultDispatcher = (BiConsumer<Context, Object>) responder;
+    }
+
+    private static int reconcileSuccessStatus(
+            Method method,
+            HttpCode annotationSuccessCode,
+            ImmutableOpenApiResponse.Builder apiResponse,
+            int docResponseStatus
+    ) {
+      int successStatus;
+      int annotationSuccessStatus = annotationSuccessCode.getStatus();
+      if (docResponseStatus != annotationSuccessStatus) {
+        if (docResponseStatus == 200) {
+          apiResponse.status(Integer.toString(annotationSuccessStatus));
+          successStatus = annotationSuccessStatus;
+        } else if (annotationSuccessStatus == 200) {
+          successStatus = docResponseStatus;
+        } else {
+          throw new IllegalArgumentException(
+                  String.format(
+                          "Method %s.%s has conflicting @Http.successStatus and @OpenApiResponse.status values: %s and %s",
+                          method.getDeclaringClass().getSimpleName(),
+                          method.getName(),
+                          annotationSuccessStatus,
+                          docResponseStatus
+                  )
+          );
+        }
+      } else {
+        successStatus = annotationSuccessStatus;
+      }
+      return successStatus;
     }
 
     private static OpenApiContent[] openApiContent(
@@ -235,7 +281,7 @@ public class AnnotatedEndpointHandler<T> {
         return UrlParamStrategy.Query.resolver(parameter);
       } else if (parameter.isAnnotationPresent(Session.class)) {
         String name = paramName(parameter.getAnnotation(Session.class).value(), parameter);
-        return ParamResolver.nonUrlParam(parameter, Optional.empty(), ctx -> ctx.sessionAttribute(name));
+        return ParamResolver.nonUrlParam(parameter, Optional.empty(), ctx -> checkNotNull(ctx.sessionAttribute(name), "missing session attribute '%s'", name));
       } else {
         checkArgument(!mappedBody, "Method has multiple unannotated parameters", method);
         mappedBody = true;
@@ -246,9 +292,10 @@ public class AnnotatedEndpointHandler<T> {
         } else if (paramType == InputStream.class) {
           return ParamResolver.nonUrlParam(parameter, Optional.of(byte[].class), Context::bodyAsInputStream);
         } else {
+          JavaType valueType = TypeFactory.defaultInstance().constructType(parameter.getParameterizedType());
           return ParamResolver.nonUrlParam(parameter, Optional.of(paramType), ctx -> {
             try {
-              return objectMapper(ctx).readValue(ctx.bodyAsInputStream(), paramType);
+              return objectMapper(ctx).readValue(ctx.bodyAsInputStream(), valueType);
             } catch (Exception e) {
               if (LOG.isDebugEnabled()) {
                 Executable exe = parameter.getDeclaringExecutable();
@@ -349,7 +396,7 @@ public class AnnotatedEndpointHandler<T> {
 
       ParamResolver resolver(Parameter parameter) {
         String name = paramName(extractParamName(parameter), parameter);
-        // TODO: does this handle Optionals correctly? need to unwrap the optional for the OpenApi type?
+        // TODO: javalin-openapi cannot support generic parameters such as Optional<>, because its DocumentedParameter takes Class rather than Type
         boolean nullable = parameter.isAnnotationPresent(Nullable.class);
         Function<Context, String> stringExtractor = nullable
                 ? ctx -> getString(ctx, name)
