@@ -12,20 +12,20 @@ public abstract class AbstractAwsClientService<C extends SdkClient, B extends Aw
         extends IdleService
         implements ResourceProviderService<C>
 {
-  protected final AwsServiceType<C, B> serviceType;
+  protected final AwsClientType<C, B> clientType;
   protected final String serviceName;
   protected C client;
 
-  public AbstractAwsClientService(@SuppressWarnings("rawtypes") AwsServiceType serviceType) {
-    this.serviceType = (AwsServiceType<C, B>) serviceType;
-    this.serviceName = serviceType.serviceName();
+  public AbstractAwsClientService(@SuppressWarnings("rawtypes") AwsClientType clientType) {
+    this.clientType = (AwsClientType<C, B>) clientType;
+    this.serviceName = clientType.serviceName();
   }
 
   protected abstract void configureBuilder(B builder);
 
   @Override
   protected void startUp() throws Exception {
-    client = serviceType.builder()
+    client = clientType.builder()
             .applyMutation(this::configureBuilder)
             .build();
   }

@@ -3,11 +3,10 @@ package upstart.aws.s3.test;
 import akka.actor.ActorSystem;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import software.amazon.awssdk.services.s3.S3Client;
-import upstart.aws.AwsServiceType;
+import upstart.aws.AwsClientType;
 import upstart.aws.s3.S3Key;
 import upstart.config.EnvironmentConfigFixture;
 import upstart.config.TestConfigBuilder;
-import upstart.test.UpstartTestBuilder;
 import upstart.util.collect.MoreStreams;
 import upstart.util.collect.Optionals;
 import upstart.util.exceptions.UncheckedInterruptedException;
@@ -175,7 +174,7 @@ public class MockS3 implements EnvironmentConfigFixture {
 
   @Override
   public void applyEnvironmentValues(TestConfigBuilder<?> config) {
-    config.overrideConfig(AwsServiceType.of(S3Client.class).defaultConfigPath(), Map.of(
+    config.overrideConfig(AwsClientType.of(S3Client.class).defaultConfigPath(), Map.of(
                                   "endpoint", endpointUri,
                                   "region", getRegion(),
                                   "credentialsProviderType", "Anonymous"

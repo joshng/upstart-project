@@ -12,7 +12,7 @@ public class AwsSyncClientService<C extends SdkClient, B extends AwsClientBuilde
   @Inject
   public AwsSyncClientService(
           AwsClientFactory clientFactory,
-          @SuppressWarnings("rawtypes") @PrivateBinding AwsServiceType.SyncService serviceType
+          @SuppressWarnings("rawtypes") @PrivateBinding AwsClientType.SyncClient serviceType
   ) {
     super(serviceType);
     this.clientFactory = clientFactory;

@@ -22,7 +22,7 @@ class LocalDynamoDBExtensionTest extends UpstartModule {
   @Inject DynamoDbClient injectedClient;
   @Override
   protected void configure() {
-    AwsClientModule.install(binder(), DynamoDbClient.class);
+    AwsClientModule.installWithDefaultConfig(binder(), DynamoDbClient.class);
   }
 
   @Test

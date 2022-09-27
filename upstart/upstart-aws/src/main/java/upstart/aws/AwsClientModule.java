@@ -12,17 +12,17 @@ import upstart.config.UpstartModule;
 import upstart.guice.TypeLiterals;
 import upstart.guice.UpstartPrivateModule;
 
+import java.util.Optional;
+
 @Value.Immutable
 public abstract class AwsClientModule<C extends SdkClient> extends UpstartModule {
 
-  public static void install(Binder binder, Class<? extends SdkClient> clientClass) {
-    AwsServiceType<?, ?> serviceType = AwsServiceType.of(clientClass);
-    Key<AwsConfig> configKey = bindAwsConfig(binder, serviceType.defaultConfigPath());
-    if (serviceType.isAsync()) {
-      binder.install(of((AwsServiceType.AsyncService<?, ?>) serviceType, configKey));
-    } else {
-      binder.install(of((AwsServiceType.SyncService<?, ?>) serviceType, configKey));
-    }
+  public static void installWithDefaultConfig(Binder binder, Class<? extends SdkClient> clientClass) {
+    binder.install(withDefaultConfig(binder, clientClass));
+  }
+
+  public static <C extends SdkClient> AwsClientModule<C> withDefaultConfig(Binder binder, Class<C> clientClass) {
+    return builder(clientClass).binderForAwsConfig(binder).build();
   }
 
   public static Key<AwsConfig> bindAwsConfig(Binder binder, String configPath) {
@@ -32,69 +32,55 @@ public abstract class AwsClientModule<C extends SdkClient> extends UpstartModule
   }
 
   public static AwsConfig bindAwsConfig(Binder binder, String configPath, Key<AwsConfig> boundKey) {
-    return UpstartConfigBinder.get().bindConfig(binder,
-                                                ConfigKey.of(configPath, AwsConfig.DefaultAwsConfig.class),
-                                                boundKey
+    return UpstartConfigBinder.get().bindConfig(
+            binder,
+            ConfigKey.of(configPath, AwsConfig.DefaultAwsConfig.class),
+            boundKey
     );
   }
 
-  public abstract AwsServiceType<C, ?> serviceType();
-  public abstract Key<AwsConfig> awsConfigKey();
-  public abstract Key<AbstractAwsClientService<C, ?>> exposedKey();
+  public abstract AwsClientType<C, ?> clientType();
+  public abstract Optional<Binder> binderForAwsConfig();
 
-  public static <C extends SdkClient> AwsClientModule<C> of(
-          Class<C> clientClass,
-          Key<AwsConfig> awsConfigKey
-  ) {
-    return of(AwsServiceType.ofAsync(clientClass), awsConfigKey);
+  @Value.Default
+  public Key<AwsConfig> awsConfigKey() {
+    Binder binder = binderForAwsConfig()
+            .orElseThrow(() -> new IllegalStateException("Missing both awsConfigKey and binderForAwsConfig. Provide binderForAwsConfig to use configs from upstart.aws.<service-type>, or use bindAwsConfig()"));
+    return bindAwsConfig(binder, clientType().defaultConfigPath());
   }
 
-  public static <C extends SdkClient> AwsClientModule<C> of(
-          AwsServiceType<C, ?> awsServiceType,
-          Key<AwsConfig> awsConfigKey
-  ) {
-
-    Class<? extends AbstractAwsClientService> clientServiceType = awsServiceType.isAsync()
+  @Value.Default
+  public Key<AbstractAwsClientService<C, ?>> clientServiceKey() {
+    AwsClientType<C, ?> clientType = clientType();
+    Class<? extends AbstractAwsClientService> clientServiceType = clientType.isAsync()
             ? AwsAsyncClientService.class
             : AwsSyncClientService.class;
     TypeLiteral<AbstractAwsClientService<C,?>> serviceType = TypeLiterals.getParameterized(
             clientServiceType,
-            awsServiceType.clientClass(),
-            awsServiceType.builderClass()
+            clientType.clientClass(),
+            clientType.builderClass()
     );
 
-    Key<AbstractAwsClientService<C, ?>> exposedServiceKey = Key.get(serviceType);
-
-    return new Builder<C>()
-            .serviceType(awsServiceType)
-            .awsConfigKey(awsConfigKey)
-            .exposedKey(exposedServiceKey)
-            .build();
+    return Key.get(serviceType);
   }
 
   public static <C extends SdkClient> Builder<C> builder(Class<C> clientClass) {
-    return new Builder<C>().serviceType(AwsServiceType.ofAsync(clientClass));
+    return new Builder<C>().forClient(clientClass);
   }
 
   @Override
-  public abstract boolean equals(Object obj);
-
-  @Override
-  public abstract int hashCode();
-
-  @Override
   protected void configure() {
-    if (serviceType().isAsync()) install(new AwsAsyncModule());
+    if (clientType().isAsync()) install(new AwsAsyncModule());
 
-    Key<AbstractAwsClientService<C, ?>> exposedKey = exposedKey();
+    Key<AbstractAwsClientService<C, ?>> exposedKey = clientServiceKey();
     install(new UpstartPrivateModule() {
       @Override
       protected void configure() {
         bindPrivateBinding(AwsConfig.class).to(awsConfigKey());
-        if (serviceType().isAsync()) {
-          bindPrivateBinding(AwsServiceType.AsyncService.class).toInstance((AwsServiceType.AsyncService) serviceType());
-        } else {
-          bindPrivateBinding(AwsServiceType.SyncService.class).toInstance((AwsServiceType.SyncService) serviceType());
+        if (clientType() instanceof AwsClientType.AsyncClient<?, ?> asyncClientType) {
+          bindPrivateBinding(AwsClientType.AsyncClient.class).toInstance(asyncClientType);
+        } else if (clientType() instanceof AwsClientType.SyncClient<?, ?> syncClientType) {
+          bindPrivateBinding(AwsClientType.SyncClient.class).toInstance(syncClientType);
         }
         if (exposedKey.getAnnotationType() != null) {
           bind(exposedKey).to(exposedKey.getTypeLiteral()).asEagerSingleton();
@@ -110,6 +96,19 @@ public abstract class AwsClientModule<C extends SdkClient> extends UpstartModule
     bindResourceFromProviderService(exposedKey);
   }
 
+  @Override
+  public abstract boolean equals(Object obj);
+
+  @Override
+  public abstract int hashCode();
+
   public static class Builder<C extends SdkClient> extends ImmutableAwsClientModule.Builder<C> {
+    public Builder<C> forClient(Class<C> clientClass) {
+      return clientType(AwsClientType.of(clientClass));
+    }
+
+    public Builder<C> bindAwsConfig(Binder binder, String configPath) {
+      return awsConfigKey(AwsClientModule.bindAwsConfig(binder, configPath));
+    }
   }
 }

@@ -14,18 +14,18 @@ import java.lang.reflect.Method;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public interface AwsServiceType<C extends SdkClient, B extends AwsClientBuilder<B, C>> {
+public interface AwsClientType<C extends SdkClient, B extends AwsClientBuilder<B, C>> {
 
   @SuppressWarnings("unchecked")
-  static <C extends SdkClient, B extends AwsClientBuilder<B, C>> AwsServiceType<C, B> of(Class<C> clientClass) {
+  static <C extends SdkClient, B extends AwsClientBuilder<B, C>> AwsClientType<C, B> of(Class<C> clientClass) {
     return clientClass.getSimpleName().endsWith("AsyncClient")
-            ? (AwsServiceType<C, B>) ofAsync(clientClass)
-            : (SyncService<C, B>) AwsServiceTypeCache.SYNC_CACHE.getUnchecked(clientClass);
+            ? (AwsClientType<C, B>) ofAsync(clientClass)
+            : (SyncClient<C, B>) AwsClientTypeCache.SYNC_CACHE.getUnchecked(clientClass);
   }
 
   @SuppressWarnings("unchecked")
-  static <C extends SdkClient, B extends AwsClientBuilder<B, C> & AwsAsyncClientBuilder<B, C>> AsyncService<C, B> ofAsync(Class<C> clientClass) {
-    return (AsyncService<C, B>) AwsServiceTypeCache.ASYNC_CACHE.getUnchecked(clientClass);
+  static <C extends SdkClient, B extends AwsClientBuilder<B, C> & AwsAsyncClientBuilder<B, C>> AsyncClient<C, B> ofAsync(Class<C> clientClass) {
+    return (AsyncClient<C, B>) AwsClientTypeCache.ASYNC_CACHE.getUnchecked(clientClass);
   }
 
   String serviceName();
@@ -41,7 +41,7 @@ public interface AwsServiceType<C extends SdkClient, B extends AwsClientBuilder<
   }
 
   default boolean isAsync() {
-    return this instanceof AwsServiceType.AsyncService<?, ?>;
+    return this instanceof AwsClientType.AsyncClient<?, ?>;
   }
 
   @SuppressWarnings("unchecked")
@@ -50,49 +50,49 @@ public interface AwsServiceType<C extends SdkClient, B extends AwsClientBuilder<
   }
 
   @Tuple
-  interface SyncService<C extends SdkClient, B extends AwsClientBuilder<B, C>> extends AwsServiceType<C, B> {
+  interface SyncClient<C extends SdkClient, B extends AwsClientBuilder<B, C>> extends AwsClientType<C, B> {
   }
 
   @Tuple
-  interface AsyncService<C extends SdkClient, B extends AwsClientBuilder<B, C> & AwsAsyncClientBuilder<B, C>> extends AwsServiceType<C, B> {
+  interface AsyncClient<C extends SdkClient, B extends AwsClientBuilder<B, C> & AwsAsyncClientBuilder<B, C>> extends AwsClientType<C, B> {
   }
 }
 
-class AwsServiceTypeCache  {
-  static final LoadingCache<Class<? extends SdkClient>, AwsServiceType.SyncService<?, ?>> SYNC_CACHE = CacheBuilder.newBuilder()
+class AwsClientTypeCache {
+  static final LoadingCache<Class<? extends SdkClient>, AwsClientType.SyncClient<?, ?>> SYNC_CACHE = CacheBuilder.newBuilder()
           .build(new CacheLoader<>() {
             @Override
-            public AwsServiceType.SyncService<?, ?> load(Class<? extends SdkClient> key) throws Exception {
+            public AwsClientType.SyncClient<?, ?> load(Class<? extends SdkClient> key) throws Exception {
               return createSync(key);
             }
           });
 
-  static final LoadingCache<Class<? extends SdkClient>, AwsServiceType.AsyncService<?, ?>> ASYNC_CACHE = CacheBuilder.newBuilder()
+  static final LoadingCache<Class<? extends SdkClient>, AwsClientType.AsyncClient<?, ?>> ASYNC_CACHE = CacheBuilder.newBuilder()
           .build(new CacheLoader<>() {
             @Override
-            public AwsServiceType.AsyncService<?, ?> load(Class<? extends SdkClient> key) throws Exception {
+            public AwsClientType.AsyncClient<?, ?> load(Class<? extends SdkClient> key) throws Exception {
               return createAsync(key);
             }
           });
 
-  private static <C extends SdkClient, B extends AwsClientBuilder<B, C>> AwsServiceType.SyncService<C, B> createSync(Class<C> clientClass) throws NoSuchMethodException {
+  private static <C extends SdkClient, B extends AwsClientBuilder<B, C>> AwsClientType.SyncClient<C, B> createSync(Class<C> clientClass) throws NoSuchMethodException {
     Method builderMethod = clientClass.getMethod("builder");
     String className = clientClass.getSimpleName();
     checkArgument(className.endsWith("Client"), "Client class name must match '<aws-service>[Async]Client'");
     Class<B> builderClass = (Class<B>) builderMethod.getReturnType();
 
     String serviceName = className.substring(0, className.length() - "Client".length()).toLowerCase();
-    return ImmutableSyncService.of(serviceName, clientClass, builderClass, builderMethod);
+    return ImmutableSyncClient.of(serviceName, clientClass, builderClass, builderMethod);
   }
 
-  private static <C extends SdkClient, B extends AwsClientBuilder<B, C> & AwsAsyncClientBuilder<B, C>> AwsServiceType.AsyncService<C, B> createAsync(Class<C> clientClass) throws NoSuchMethodException {
+  private static <C extends SdkClient, B extends AwsClientBuilder<B, C> & AwsAsyncClientBuilder<B, C>> AwsClientType.AsyncClient<C, B> createAsync(Class<C> clientClass) throws NoSuchMethodException {
     Method builderMethod = clientClass.getMethod("builder");
     String className = clientClass.getSimpleName();
     checkArgument(className.endsWith("AsyncClient"), "Client class name must match '<aws-service>[Async]Client'");
     Class<B> builderClass = (Class<B>) builderMethod.getReturnType();
 
     String serviceName = className.substring(0, className.length() - "AsyncClient".length()).toLowerCase();
-    return ImmutableAsyncService.of(serviceName, clientClass, builderClass, builderMethod);
+    return ImmutableAsyncClient.of(serviceName, clientClass, builderClass, builderMethod);
   }
 }
 

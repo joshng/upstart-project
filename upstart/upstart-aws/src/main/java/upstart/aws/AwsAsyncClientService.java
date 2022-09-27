@@ -18,7 +18,7 @@ public class AwsAsyncClientService<C extends SdkClient, B extends AwsClientBuild
 
   @Inject
   public AwsAsyncClientService(
-          @SuppressWarnings("rawtypes") @PrivateBinding AwsServiceType.AsyncService serviceType,
+          @SuppressWarnings("rawtypes") @PrivateBinding AwsClientType.AsyncClient serviceType,
           AwsAsyncClientFactory clientFactory,
           AwsCallbackThreadPool threadPool
   ) {

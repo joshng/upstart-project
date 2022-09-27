@@ -7,6 +7,6 @@ import upstart.config.UpstartModule;
 public class DynamoDbModule extends UpstartModule {
   @Override
   protected void configure() {
-    AwsClientModule.install(binder(), DynamoDbAsyncClient.class);
+    AwsClientModule.installWithDefaultConfig(binder(), DynamoDbAsyncClient.class);
   }
 }
