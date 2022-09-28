@@ -24,9 +24,9 @@ public abstract class DynamoTableInitializer<T> extends AsyncService implements 
   private static final LoadingCache<Class<?>, TableSchema<?>> TABLE_SCHEMAS = CacheBuilder.newBuilder()
           .build(CacheLoader.from(TableSchema::fromBean));
 
-  private final TableSchema<T> tableSchema;
   private final DynamoDbClientService dbService;
   private final String tableName;
+  private final TableSchema<T> tableSchema;
   protected volatile DynamoDbAsyncTable<T> table;
 
   @Inject
@@ -36,9 +36,9 @@ public abstract class DynamoTableInitializer<T> extends AsyncService implements 
           DynamoDbClientService dbService,
           DynamoDbNamespace namespace
   ) {
+    tableName = namespace.tableName(tableNameSuffix);
     tableSchema = getTableSchema(mappedClass);
     this.dbService = dbService;
-    tableName = namespace.tableName(tableNameSuffix);
   }
 
   @SuppressWarnings("unchecked")
@@ -60,10 +60,16 @@ public abstract class DynamoTableInitializer<T> extends AsyncService implements 
 
   @Override
   protected CompletableFuture<?> startUp() throws Exception {
-    return dbService.ensureTableCreated(tableName, tableSchema, prepareCreateTableRequest(CreateTableEnhancedRequest.builder()).build())
-            .thenAccept(table -> this.table = table);
+    var createTableRequest = prepareCreateTableRequest(
+            CreateTableEnhancedRequest.builder()
+    ).build();
+    return dbService.ensureTableCreated(tableName, tableSchema, createTableRequest)
+            .thenApply(t -> table = t);
   }
 
+  /**
+   * override to add indices or provision throughput
+   */
   protected CreateTableEnhancedRequest.Builder prepareCreateTableRequest(CreateTableEnhancedRequest.Builder builder) {
     return builder;
   }
@@ -73,7 +79,7 @@ public abstract class DynamoTableInitializer<T> extends AsyncService implements 
     return CompletableFutures.nullFuture();
   }
 
-  public static <B> Flux<B> consumeItems(PagePublisher<B> pagePublisher) {
+  public static <B> Flux<B> itemFlux(PagePublisher<B> pagePublisher) {
     return Flux.from(pagePublisher.items());
   }
 
@@ -102,10 +108,6 @@ public abstract class DynamoTableInitializer<T> extends AsyncService implements 
 
   public DynamoDbAsyncClientBuilder asyncClientBuilder() {
     return dbService.asyncClientBuilder();
-  }
-
-  public <T> CompletableFuture<DynamoDbAsyncTable<T>> ensureTableCreated(String tableName, TableSchema<T> tableSchema) {
-    return dbService.ensureTableCreated(tableName, tableSchema, CreateTableEnhancedRequest.builder().build());
   }
 
   public CompletableFuture<DescribeTableResponse> describeTable(String tableName) {

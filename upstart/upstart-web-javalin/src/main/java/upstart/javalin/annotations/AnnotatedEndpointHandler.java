@@ -169,7 +169,7 @@ public class AnnotatedEndpointHandler<T> {
                         }));
       } else {
         openApiContent = openApiContent(returnType, ContentType.JSON, openApiResponse);
-        responder = ((BiConsumer<Context, InputStream>) Context::json).andThen(assignStatus);
+        responder = ((BiConsumer<Context, Object>) Context::json).andThen(assignStatus);
       }
 
       documentation = hideApiDoc

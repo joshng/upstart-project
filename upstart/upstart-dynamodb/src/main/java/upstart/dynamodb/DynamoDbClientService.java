@@ -66,13 +66,18 @@ public class DynamoDbClientService extends BaseAwsAsyncClientService<DynamoDbAsy
     enhancedClient = DynamoDbEnhancedAsyncClient.builder().dynamoDbClient(client()).build();
   }
 
+
+  public DynamoDbEnhancedAsyncClient enhancedClient() {
+    return enhancedClient;
+  }
+
   public <T> CompletableFuture<DynamoDbAsyncTable<T>> ensureTableCreated(
           String tableName,
           TableSchema<T> tableSchema,
           CreateTableEnhancedRequest request
   ) {
+    DynamoDbAsyncTable<T> table = enhancedClient.table(tableName, tableSchema);
     return tableCreationActor.requestAsync(() -> {
-      DynamoDbAsyncTable<T> table = enhancedClient.table(tableName, tableSchema);
       // TODO: dynamo doesn't support concurrent DDL operations, but what exception is thrown if a different table is creating?
       LOG.debug("Initiating table creation: {}", tableName);
       return CompletableFutures.recover(
@@ -94,10 +99,6 @@ public class DynamoDbClientService extends BaseAwsAsyncClientService<DynamoDbAsy
 
   public CompletableFuture<DescribeTableResponse> describeTable(String tableName) {
     return client().describeTable(b -> b.tableName(tableName));
-  }
-
-  public DynamoDbEnhancedAsyncClient enhancedClient() {
-    return enhancedClient;
   }
 
   private CompletableFuture<?> pollTableStatus(String tableName, Executor pollDelayExecutor) {
