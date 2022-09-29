@@ -12,9 +12,19 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 
 public sealed abstract class Deadline {
+  public static final Clock SYSTEM_CLOCK = new Clock(InstantSource.system());
+
   public static final Deadline NONE = Deadline.unbounded(Instant.EPOCH);
   private final Instant startInstant;
   protected final InstantSource clock;
+
+  public static Clock clock(InstantSource clock) {
+    return new Clock(clock);
+  }
+
+  public static Clock systemClock() {
+    return SYSTEM_CLOCK;
+  }
 
   public static Deadline withinSeconds(int seconds) {
     return within(Duration.ofSeconds(seconds));
@@ -28,11 +38,11 @@ public sealed abstract class Deadline {
     return within(Duration.ofNanos(unit.toNanos(duration)));
   }
 
-  public static Deadline until(Instant deadline) {
-    return until(deadline, InstantSource.system());
+  public static Deadline at(Instant deadline) {
+    return at(deadline, InstantSource.system());
   }
 
-  public static Deadline until(Instant deadline, InstantSource clock) {
+  public static Deadline at(Instant deadline, InstantSource clock) {
     Instant now = clock.instant();
     return deadline.isBefore(Instant.MAX)
             ? new Bounded(now, Duration.between(now, deadline), deadline, clock)
@@ -43,8 +53,8 @@ public sealed abstract class Deadline {
     return from(clock.instant(), duration, clock);
   }
 
-  public static Deadline unbounded() {
-    return unbounded(Instant.now());
+  public static Deadline unbounded(InstantSource clock) {
+    return unbounded(clock.instant(), clock);
   }
 
   public static Deadline unbounded(Instant startInstant) {
@@ -74,7 +84,7 @@ public sealed abstract class Deadline {
 
   public abstract Instant deadline();
 
-  public Duration expired() {
+  public Duration expiredSinceStart() {
     return Duration.between(startInstant, clock.instant());
   }
 
@@ -245,8 +255,62 @@ public sealed abstract class Deadline {
 
     @Override
     public boolean tryLock(Lock lock) throws InterruptedException {
-      lock.lock();
+      lock.lockInterruptibly();
       return true;
+    }
+  }
+
+  public static class Clock implements InstantSource {
+    private final InstantSource clock;
+
+    public Clock(InstantSource clock) {
+      this.clock = clock;
+    }
+
+    @Override
+    public Instant instant() {
+      return clock.instant();
+    }
+
+    public Deadline deadlineWithinMinutes(long minutes) {
+      return deadlineWithin(Duration.ofMinutes(minutes));
+    }
+
+    public Deadline deadlineWithinSeconds(long seconds) {
+      return deadlineWithin(Duration.ofSeconds(seconds));
+    }
+
+    public Deadline WithinMillis(long millis) {
+      return deadlineWithin(Duration.ofMillis(millis));
+    }
+
+    public Deadline deadlineWithinNanos(long nanos) {
+      return deadlineWithin(Duration.ofNanos(nanos));
+    }
+
+    public Deadline deadlineWithin(Duration duration) {
+      return Deadline.within(duration, clock);
+    }
+
+    public Deadline deadlineWithin(long duration, TimeUnit unit) {
+      return deadlineWithinNanos(unit.toNanos(duration));
+    }
+
+    public Deadline deadlineAt(Instant deadline) {
+      return Deadline.at(deadline, clock);
+    }
+
+    public Deadline deadlineFrom(Instant startInstant, Duration duration) {
+      return Deadline.from(startInstant, duration, clock);
+    }
+
+
+    public Deadline unboundedDeadline() {
+      return Deadline.unbounded(clock);
+    }
+
+    public Deadline unboundedDeadlineFrom(Instant startInstant) {
+      return Deadline.unbounded(startInstant, clock);
     }
   }
 }
