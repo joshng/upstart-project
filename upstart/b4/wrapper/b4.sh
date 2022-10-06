@@ -53,9 +53,8 @@ check_clean() {
     if in_list "$artifact" "${artifacts[@]}"; then
       local proj_dir="$(dirname "$proj")"
       local modified="$(find "$proj_dir" -type f -newer "$PROGRAM_JAR")"
-      newcount=$(( $(echo -n "$modified" | wc -l) ))
-      if ! [ $newcount -eq 0 ] ; then
-        echo -e "Found $newcount modified file(s) in $proj_dir"
+      if ! [  -z "$modified" ] ; then
+        echo "Found modified file(s) in $proj_dir"
         return 1
       fi
     fi
