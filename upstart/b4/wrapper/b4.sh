@@ -17,6 +17,14 @@ PROGRAM_DIR="$B4_PROJECT"
 PROGRAM=${B4_NAME:-"$(basename "$B4_PROJECT")"}
 : "${B4_CONFIG:=B4.conf}"
 
+debug () {
+  if [ -n "$B4_DEBUG" ]; then
+    echo "$@" >&2
+  fi
+}
+
+debug "PROGRAM_ARTIFACT=$PROGRAM_ARTIFACT"
+
 find_b4_home() {
   (
     while [ ! -f "$B4_CONFIG" ] && [ $PWD != / ]; do
@@ -40,7 +48,9 @@ in_list() {
 }
 
 check_clean() {
-  if ! find target/dependency-graph.json -mmin +10 > /dev/null 2>&1 ; then
+  local artifactId="$(echo "$PROGRAM_ARTIFACT" | cut -d: -f2)"
+  debug "Checking for clean working directory for $artifactId"
+  if ! find target/dependency-graph.json -mmin +10 > /dev/null 2>&1 || [ "$(jq .graphName < target/dependency-graph.json)" != "$artifactid" ]; then
     echo "Computing dependency-graph for $PROGRAM_ARTIFACT"
     mvn -q -Pb4 com.github.ferstl:depgraph-maven-plugin:for-artifact  -DgraphFormat=json  -Dartifact=$PROGRAM_ARTIFACT
   fi
@@ -52,8 +62,9 @@ check_clean() {
     artifact=$(xmllint --xpath "//*[local-name()='project']/*[local-name()='artifactId']/text()" "$proj")
     if in_list "$artifact" "${artifacts[@]}"; then
       local proj_dir="$(dirname "$proj")"
-      local modified="$(find "$proj_dir" -type f -newer "$PROGRAM_JAR")"
-      if ! [  -z "$modified" ] ; then
+      local modified="$(find "$proj_dir" -type f -newer "$PROGRAM_JAR" -print -o -name target -prune)"
+      if [ -n "$modified" ] ; then
+        debug "Modified files in $proj_dir: $modified"
         echo "Found modified file(s) in $proj_dir"
         return 1
       fi
