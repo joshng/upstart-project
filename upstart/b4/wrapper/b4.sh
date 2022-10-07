@@ -17,9 +17,22 @@ PROGRAM_DIR="$B4_PROJECT"
 PROGRAM=${B4_NAME:-"$(basename "$B4_PROJECT")"}
 : "${B4_CONFIG:=B4.conf}"
 
+ARTIFACT_ID="$(echo "$PROGRAM_ARTIFACT" | cut -d: -f2)"
+
+report() {
+  if [[ -z $B4_SILENT ]]; then
+    local echoargs=()
+    while getopts "Een" opt; do
+      echoargs+=("-$opt")
+      shift
+    done
+    echo "${echoargs[@]}" "$(date '+%F_%H:%M:%S') $ARTIFACT_ID -" "$@"
+  fi
+}
+
 debug () {
-  if [ -n "$B4_DEBUG" ]; then
-    echo "$@" >&2
+  if [[ -n $B4_DEBUG ]]; then
+    report "$@" >&2
   fi
 }
 
@@ -47,29 +60,51 @@ in_list() {
   return 1
 }
 
+as_bool() {
+  eval "$@" && echo true || echo false
+}
+
 check_clean() {
-  local artifactId="$(echo "$PROGRAM_ARTIFACT" | cut -d: -f2)"
-  debug "Checking for clean working directory for $artifactId"
-  if ! find target/dependency-graph.json -mmin +10 > /dev/null 2>&1 || [ "$(jq .graphName < target/dependency-graph.json)" != "$artifactid" ]; then
-    echo "Computing dependency-graph for $PROGRAM_ARTIFACT"
-    mvn -q -Pb4 com.github.ferstl:depgraph-maven-plugin:for-artifact  -DgraphFormat=json  -Dartifact=$PROGRAM_ARTIFACT
+  local depgraph_basename=$ARTIFACT_ID-depgraph.json
+  local depgraph=target/$depgraph_basename
+
+
+  debug "Checking for clean working directory for $ARTIFACT_ID"
+  local graph_exists=$(as_bool [ -f $depgraph ])
+  local graph_is_current
+  readarray -d '' poms < <(find . -name pom.xml -print0 -o -name build -prune -o -name target -prune)
+  if $graph_exists; then
+    modified_poms="$(find "${poms[@]}" -newer $depgraph)"
+    graph_is_current=$(as_bool [ -z "$modified_poms" ])
+  else
+    graph_is_current=false
+  fi
+
+  if ! $graph_is_current ; then
+    if $graph_exists; then
+      report "(Dependency graph may be stale, recomputing...)"
+    else
+      report "Computing dependency-graph for $PROGRAM_ARTIFACT"
+    fi
+
+    mvn -q -Pb4 com.github.ferstl:depgraph-maven-plugin:for-artifact -DgraphFormat=json -DoutputFileName=$depgraph_basename -Dartifact=$PROGRAM_ARTIFACT || exit 1
   fi
 
   # jq -r '.artifacts[] | "\\(.groupId):\\(.artifactId):\\(.version)"'
-  readarray -t artifacts < <(jq -r '.artifacts[].artifactId' < target/dependency-graph.json)
+  readarray -t artifacts < <(jq -r '.artifacts[].artifactId' < $depgraph)
 
-  for proj in $(find . -name pom.xml -print -o -name build -prune); do
-    artifact=$(xmllint --xpath "//*[local-name()='project']/*[local-name()='artifactId']/text()" "$proj")
+  for pom in "${poms[@]}"; do
+    artifact="$(xmllint --xpath "//*[local-name()='project']/*[local-name()='artifactId']/text()" "$pom")"
     if in_list "$artifact" "${artifacts[@]}"; then
-      local proj_dir="$(dirname "$proj")"
-      local modified="$(find "$proj_dir" -type f -newer "$PROGRAM_JAR" -print -o -name target -prune)"
+      local proj_dir="$(dirname "$pom")"
+      local modified="$(find "$proj_dir" -type f -newer "$PROGRAM_JAR" -print -o -name target -prune | head -1)"
       if [ -n "$modified" ] ; then
-        debug "Modified files in $proj_dir: $modified"
-        echo "Found modified file(s) in $proj_dir"
+        report "Found modified file(s) in $proj_dir"
         return 1
       fi
     fi
   done
+  debug "Working directory is clean for $ARTIFACT_ID"
 }
 
 REBUILD=${REBUILD:-false}
@@ -100,21 +135,21 @@ done
 B4_HOME="${B4_HOME:-"$(find_b4_home)"}"
 cd "$B4_HOME"
 
-#TODO: could alter this to support multiple task-definition jars, by running b4.jar with extension-jars on the classpath
+#TODO: could alter this to support multiple task-definition jars, by running b4.jar with extension-jars on the classpath,
+# and providing colocated config-files
 PROGRAM_JAR="${PROGRAM_JAR:-"$PROGRAM_DIR/target/package/$(basename $PROGRAM_DIR).jar"}"
 
-if [ $REBUILD = true -o ! -f "$PROGRAM_JAR" ] || ! check_clean; then
-  echo "Rebuilding..."
-  rm -f target/dependency-graph.json
+if [[ $REBUILD = true || ! -f "$PROGRAM_JAR" ]] || ! check_clean; then
+  report "Rebuilding..."
   set +e
   out=$(mvn clean package -Pb4 -DskipTests -pl $PROGRAM_DIR -am -T1.5C)
   status=$?
   set -e
   if [ $status != 0 ]; then
-    echo -e "\n$out\n\n$PROGRAM: rebuild failed!"
+    report -e "\n$out\n\n$PROGRAM - Rebuild failed!"
     exit $status
   fi
-  echo
+  report "Rebuilt"
 fi
 
 #if [ -z "$NOLOG" ] && type rotatelogs > /dev/null 2>&1; then
