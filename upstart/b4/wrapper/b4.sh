@@ -8,6 +8,17 @@ if [ $# -lt 2 ]; then
   exit 1
 fi
 
+if ! type -p xmllint > /dev/null; then
+  echo "ERROR: xmllint not found in PATH" >&2
+  exit 1
+fi
+
+if ! type -p jq > /dev/null; then
+  echo "ERROR: jq is required to run b4 (run 'brew install jq' or similar)" >&2
+  exit 1
+fi
+
+
 PROGRAM_DIR="$1"
 shift
 PROGRAM_ARTIFACT="$1"
