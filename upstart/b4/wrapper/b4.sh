@@ -8,13 +8,12 @@ if [ $# -lt 2 ]; then
   exit 1
 fi
 
-B4_PROJECT="$1"
+PROGRAM_DIR="$1"
 shift
 PROGRAM_ARTIFACT="$1"
 shift
 
-PROGRAM_DIR="$B4_PROJECT"
-PROGRAM=${B4_NAME:-"$(basename "$B4_PROJECT")"}
+PROGRAM=${B4_NAME:-"$(basename "$PROGRAM_DIR")"}
 : "${B4_CONFIG:=B4.conf}"
 
 ARTIFACT_ID="$(echo "$PROGRAM_ARTIFACT" | cut -d: -f2)"
@@ -60,29 +59,20 @@ in_list() {
   return 1
 }
 
-as_bool() {
-  eval "$@" && echo true || echo false
-}
-
 check_clean() {
   local depgraph_basename=$ARTIFACT_ID-depgraph.json
   local depgraph=target/$depgraph_basename
 
 
   debug "Checking for clean working directory for $ARTIFACT_ID"
-  local graph_exists=$(as_bool [ -f $depgraph ])
-  local graph_is_current
-  readarray -d '' poms < <(find . -name pom.xml -print0 -o -name build -prune -o -name target -prune)
-  if $graph_exists; then
-    modified_poms="$(find "${poms[@]}" -newer $depgraph)"
-    graph_is_current=$(as_bool [ -z "$modified_poms" ])
-  else
-    graph_is_current=false
-  fi
+  local graph_exists graph_is_current poms
+  graph_exists=$([[ -f $depgraph ]] && echo true || echo false)
+  readarray -d '' poms < <(find . -name pom.xml -print0 -o -name build -prune -o -name target -prune -o -name .git -prune -o -name src -prune)
+  graph_is_current=$($graph_exists && [[ -z "$(find "${poms[@]}" -newer $depgraph)" ]] && echo true || echo false)
 
   if ! $graph_is_current ; then
     if $graph_exists; then
-      report "(Dependency graph may be stale, recomputing...)"
+      report "(Dependency graph may be stale for $PROGRAM_ARTIFACT, recomputing...)"
     else
       report "Computing dependency-graph for $PROGRAM_ARTIFACT"
     fi
@@ -96,8 +86,9 @@ check_clean() {
   for pom in "${poms[@]}"; do
     artifact="$(xmllint --xpath "//*[local-name()='project']/*[local-name()='artifactId']/text()" "$pom")"
     if in_list "$artifact" "${artifacts[@]}"; then
-      local proj_dir="$(dirname "$pom")"
-      local modified="$(find "$proj_dir" -type f -newer "$PROGRAM_JAR" -print -o -name target -prune | head -1)"
+      local proj_dir modified
+      proj_dir="$(dirname "$pom")"
+      modified="$(find "$proj_dir/src/main" -type f -newer "$PROGRAM_JAR" -print | head -1)"
       if [ -n "$modified" ] ; then
         report "Found modified file(s) in $proj_dir"
         return 1
@@ -142,6 +133,7 @@ PROGRAM_JAR="${PROGRAM_JAR:-"$PROGRAM_DIR/target/package/$(basename $PROGRAM_DIR
 if [[ $REBUILD = true || ! -f "$PROGRAM_JAR" ]] || ! check_clean; then
   report "Rebuilding..."
   set +e
+  # TODO: make the build profile (-Pb4) configurable
   out=$(mvn clean package -Pb4 -DskipTests -pl $PROGRAM_DIR -am -T1.5C)
   status=$?
   set -e
