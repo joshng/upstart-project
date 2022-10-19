@@ -4,6 +4,7 @@ import com.google.common.collect.Streams;
 import upstart.util.collect.MoreStreams;
 
 import java.util.Iterator;
+import java.util.function.UnaryOperator;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -90,7 +91,7 @@ public enum NamingStyle {
   StringBuilder join(StringBuilder sb, Stream<String> words, CharacterCase characterCase, char delimiter) {
     int first = sb.length();
     return MoreStreams.foldLeft(sb, words, (b, s) -> {
-      if (b.length() != first) return b.append(delimiter);
+      if (b.length() != first) b.append(delimiter);
       return b.append(characterCase.apply(s));
     });
   }
@@ -103,5 +104,9 @@ public enum NamingStyle {
 
   public String convertTo(NamingStyle newStyle, String str) {
     return newStyle.combineWordsTo(new StringBuilder(), extractWords(str)).toString();
+  }
+
+  public UnaryOperator<String> converterTo(NamingStyle newStyle) {
+    return str -> convertTo(newStyle, str);
   }
 }
