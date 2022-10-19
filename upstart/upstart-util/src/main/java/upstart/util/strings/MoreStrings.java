@@ -17,6 +17,10 @@ public class MoreStrings {
     return splitAroundCharAt(str, str.indexOf(delimiter));
   }
 
+  public static Pair<String,String> splitAroundLast(String str, char delimiter) {
+    return splitAroundCharAt(str, str.lastIndexOf(delimiter));
+  }
+
   public static Pair<String, String> splitAroundCharAt(String str, int idx) {
     return Pair.of(str.substring(0, idx), str.substring(idx + 1));
   }
