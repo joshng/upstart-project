@@ -117,7 +117,7 @@ public abstract class HojackConfigProvider extends UpstartConfigProvider {
       // TODO: if caused by com.fasterxml.jackson.databind.exc.ValueInstantiationException,
       // we could parse the message, and throw a richer exception that could allow prompting for missing values/retrying.
       // message looks like this: "Cannot build KubeApplyConfig, some of required attributes are not set [namespace, spec]"
-      String sourceCleanedConfig = "Invalid config:\n" + rewriteTargetResourcePaths(value.render());
+      String sourceCleanedConfig = "Invalid config at '%s':\n%s".formatted(path, rewriteTargetResourcePaths(value.render()));
       throw new ConfigMappingException(sourceCleanedConfig, e);
     }
   }

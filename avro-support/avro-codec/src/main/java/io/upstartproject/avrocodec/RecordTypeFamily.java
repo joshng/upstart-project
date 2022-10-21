@@ -1,5 +1,6 @@
 package io.upstartproject.avrocodec;
 
+import com.fasterxml.jackson.annotation.JsonValue;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaCompatibility;
 import org.apache.avro.specific.SpecificRecordBase;
@@ -37,6 +38,7 @@ public class RecordTypeFamily {
             .mergedWith(SchemaCompatibility.checkReaderWriterCompatibility(b, a).getResult());
   }
 
+  @JsonValue
   public String getFullName() {
     return fullName;
   }
@@ -89,7 +91,7 @@ public class RecordTypeFamily {
             )
             .filterValues(result -> result.getCompatibility() != SchemaCompatibility.SchemaCompatibilityType.COMPATIBLE)
             .map(SchemaConflict::of)
-            .collect(Collectors.toUnmodifiableList());
+            .toList();
     return Optionals.onlyIfFrom(
             !incompatibilities.isEmpty(),
             () -> new AvroSchemaConflictException(candidate, incompatibilities)
