@@ -28,7 +28,6 @@ import java.util.stream.Collectors;
  * }</pre>
  */
 public abstract class UpstartStaticInitializer {
-  public static final String DEFAULT_DEV_ENVIRONMENT_NAME = "DEV";
 
   static {
     prepareIntellijDevEnvironment();
@@ -58,7 +57,7 @@ public abstract class UpstartStaticInitializer {
               """,
               UpstartStaticInitializer.class.getSimpleName(),
               UpstartEnvironment.UPSTART_ENVIRONMENT,
-              DEFAULT_DEV_ENVIRONMENT_NAME,
+              UpstartEnvironment.DEFAULT_DEV_ENVIRONMENT_NAME,
               stackTrace.stream().skip(1)
                       .filter(ste -> first.getAndSet(false) || !ste.getClassName().startsWith("upstart"))
                       .limit(3)
@@ -66,7 +65,7 @@ public abstract class UpstartStaticInitializer {
                       .collect(Collectors.joining("\n***     at "))
       );
 
-      System.setProperty(UpstartEnvironment.UPSTART_ENVIRONMENT, DEFAULT_DEV_ENVIRONMENT_NAME);
+      System.setProperty(UpstartEnvironment.UPSTART_ENVIRONMENT, UpstartEnvironment.DEFAULT_DEV_ENVIRONMENT_NAME);
     }
   }
 

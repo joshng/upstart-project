@@ -361,7 +361,7 @@ be packaged in a separate artifact that they share. `upstart-env-registry` files
 which may be useful for some scenarios.
 
 The `upstart-app` artifact comes with a predefined [`upstart-env-registry.conf`](./upstart-app/src/main/resources/upstart-env-registry.conf),
-ready to support the `DEV` environment (development-mode), as follows:
+ready to support the `local-dev` environment (development-mode), as follows:
 
 ```
 upstart.application.environments {
@@ -371,7 +371,7 @@ upstart.application.environments {
   # entries in this table are comprised of (environment-name, UpstartDeploymentStage) pairs.
   # the values must match those defined in upstart.UpstartDeploymentStage:
   #     test, dev, stage, prod
-  DEV: dev
+  local-dev: dev
 }
 ```
 
