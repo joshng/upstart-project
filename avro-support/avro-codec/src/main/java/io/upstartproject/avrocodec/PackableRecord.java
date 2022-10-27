@@ -1,5 +1,7 @@
 package io.upstartproject.avrocodec;
 
+import com.fasterxml.jackson.annotation.JsonUnwrapped;
+import com.fasterxml.jackson.annotation.JsonValue;
 import io.upstartproject.avro.PackedRecord;
 import upstart.util.collect.Optionals;
 import upstart.util.reflect.Reflect;
@@ -58,5 +60,24 @@ public interface PackableRecord<T extends GenericRecord> {
 
   default byte[] serialize() {
     return AvroPublisher.serializePackedRecord(packedRecord());
+  }
+
+  @JsonValue
+  default JsonView<T> jsonView() {
+    return new JsonView<>(this);
+  }
+
+  class JsonView<T extends GenericRecord> {
+    public final String $type;
+    public final String $schemaFingerprint;
+
+    @JsonUnwrapped
+    public final T record;
+
+    public JsonView(PackableRecord<T> record) {
+      this.$type = record.getRecordTypeFamily().getFullName();
+      this.$schemaFingerprint = record.getFingerprint().hexValue();
+      this.record = record.record();
+    }
   }
 }
