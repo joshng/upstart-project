@@ -6,6 +6,7 @@ import upstart.util.functions.TriFunction;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -15,6 +16,8 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
+
+import static com.google.common.base.Strings.lenientFormat;
 
 public class OptionalPromise<T> extends ExtendedPromise<Optional<T>, OptionalPromise<T>> {
   static final PromiseFactory OPTIONAL_PROMISE_FACTORY = PromiseFactory.of(
@@ -111,8 +114,18 @@ public class OptionalPromise<T> extends ExtendedPromise<Optional<T>, OptionalPro
     return thenApply(optional -> optional.orElseGet(supplier));
   }
 
-  public Promise<T> orElseThrow() {
-    return thenApply(Optional::orElseThrow);
+  /**
+   * Requires a message, because debugging an asynchronous NoSuchElementException with no context can be tough.
+   */
+  public Promise<T> orElseThrow(String message) {
+    return orElseThrow(() -> new NoSuchElementException(message));
+  }
+
+  /**
+   * Requires a message, because debugging an asynchronous NoSuchElementException with no context can be tough.
+   */
+  public Promise<T> orElseThrow(String format, Object... args) {
+    return orElseThrow(() -> new NoSuchElementException(lenientFormat(format, args)));
   }
 
   public Promise<T> orElseThrow(Supplier<? extends RuntimeException> exceptionSupplier) {
@@ -152,10 +165,11 @@ public class OptionalPromise<T> extends ExtendedPromise<Optional<T>, OptionalPro
           CompletionStage<B> b,
           TriFunction<? super T, ? super A, ? super B, ? extends CompletionStage<O>> mapper
   ) {
-    var futureA = a.toCompletableFuture();
-    var futureB = b.toCompletableFuture();
-    return ofFutureOptional(allOf(this, futureA, futureB).thenComposeGet(
-            () -> toFutureOptional(join().map(v -> mapper.apply(v, futureA.join(), futureB.join())))
+    return ofFutureOptional(combineCompose(
+            this,
+            a.toCompletableFuture(),
+            b.toCompletableFuture(),
+            (opt, aa, bb) -> toFutureOptional(opt.map(v -> mapper.apply(v, aa, bb)))
     ));
   }
 
@@ -187,6 +201,19 @@ public class OptionalPromise<T> extends ExtendedPromise<Optional<T>, OptionalPro
   ) {
     return ofFutureOptional(CompletableFutures.sequence(
             thenCombine(other, (v1, v2) -> v1.<CompletionStage<Optional<O>>>map(v -> mapper.apply(v, v2)).orElse(empty()))));
+  }
+
+  public <A, B, O> OptionalPromise<O> thenFlatMapComposeWith(
+          CompletionStage<A> a,
+          CompletionStage<B> b,
+          TriFunction<? super T, ? super A, ? super B, ? extends CompletionStage<Optional<O>>> mapper
+  ) {
+    return ofFutureOptional(combineCompose(
+            this,
+            a.toCompletableFuture(),
+            b.toCompletableFuture(),
+            (opt, aa, bb) -> mapToFutureOptional(opt, v -> mapper.apply(v, aa, bb))
+    ));
   }
 
   // TODO so many missing permutations of arity, map/flatMap for both optional and future .. need proper monad transformers and tuples :-(

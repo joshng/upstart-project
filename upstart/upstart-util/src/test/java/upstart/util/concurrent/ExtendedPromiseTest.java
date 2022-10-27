@@ -20,7 +20,7 @@ class ExtendedPromiseTest {
                     .thenFoldLeft(0, (n, str) -> n + str.length())
                     .thenApplyOptional(n -> Optionals.onlyIf(n > 2, n))
                     .thenFilter(n -> n > 3)
-                    .orElseThrow()
+                    .orElseThrow("unexpected")
                     .join()
     ).isEqualTo(9);
   }
