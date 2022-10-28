@@ -137,9 +137,11 @@ public class AnnotatedEndpointHandler<T> {
               apiResponse,
               Integer.parseInt(openApiResponse.status())
       );
-      BiConsumer<Context, Object> assignStatus = (ctx, o) -> {
-        if (ctx.status() != successStatus) ctx.status(successStatus);
-      };
+      BiConsumer<Context, Object> assignStatus = successStatus == 200
+              ? (ctx, o) -> {}
+              : (ctx, o) -> {
+                if (ctx.status() == 200) ctx.status(successStatus);
+              };
       BiConsumer<Context, ?> responder;
       Class<?> returnType = method.getReturnType();
       OpenApiContent[] openApiContent;
