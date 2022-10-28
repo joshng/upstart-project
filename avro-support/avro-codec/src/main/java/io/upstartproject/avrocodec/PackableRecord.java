@@ -1,7 +1,7 @@
 package io.upstartproject.avrocodec;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonUnwrapped;
+import com.fasterxml.jackson.annotation.JsonValue;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import io.upstartproject.avro.PackedRecord;
 import upstart.util.collect.Optionals;
@@ -19,7 +19,6 @@ import java.util.Optional;
  * @see SpecificRecordPacker
  */
 @Value.Immutable
-@JsonSerialize
 public interface PackableRecord<T extends GenericRecord> {
   static <T extends GenericRecord> PackableRecord<T> of(T record, RecordPackerApi<T> packer) {
     return PackableRecord.<T>builder().record(record).packer(packer).build();
@@ -30,7 +29,6 @@ public interface PackableRecord<T extends GenericRecord> {
   }
 
   @Value.Auxiliary
-  @JsonIgnore
   RecordPackerApi<T> packer();
 
   T record();
@@ -44,7 +42,6 @@ public interface PackableRecord<T extends GenericRecord> {
 
   @Value.Derived
   @Value.Auxiliary
-  @JsonProperty("type")
   default RecordTypeFamily getRecordTypeFamily() {
     return packer().getTypeFamily();
   }
@@ -65,5 +62,24 @@ public interface PackableRecord<T extends GenericRecord> {
 
   default byte[] serialize() {
     return AvroPublisher.serializePackedRecord(packedRecord());
+  }
+
+  @JsonValue
+  default JsonView<T> jsonView() {
+    return new JsonView<>(this);
+  }
+
+  class JsonView<T extends GenericRecord> {
+    public final String $type;
+    public final String $schemaFingerprint;
+
+    @JsonUnwrapped
+    public final T record;
+
+    public JsonView(PackableRecord<T> record) {
+      this.$type = record.getRecordTypeFamily().getFullName();
+      this.$schemaFingerprint = record.getFingerprint().hexValue();
+      this.record = record.record();
+    }
   }
 }

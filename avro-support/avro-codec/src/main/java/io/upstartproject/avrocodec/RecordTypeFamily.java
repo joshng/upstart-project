@@ -1,6 +1,6 @@
 package io.upstartproject.avrocodec;
 
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.annotation.JsonValue;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaCompatibility;
@@ -23,7 +23,6 @@ import java.util.stream.Stream;
  * when a schema has been updated with multiple versions, all known historical versions will share the
  * same RecordTypeFamily.
  */
-@JsonSerialize(using = ToStringSerializer.class)
 public class RecordTypeFamily {
   private final String fullName;
   private final Map<SchemaFingerprint, SchemaDescriptor> versionsByFingerprint = new ConcurrentHashMap<>();
@@ -40,6 +39,7 @@ public class RecordTypeFamily {
             .mergedWith(SchemaCompatibility.checkReaderWriterCompatibility(b, a).getResult());
   }
 
+  @JsonValue
   public String getFullName() {
     return fullName;
   }
@@ -92,7 +92,7 @@ public class RecordTypeFamily {
             )
             .filterValues(result -> result.getCompatibility() != SchemaCompatibility.SchemaCompatibilityType.COMPATIBLE)
             .map(SchemaConflict::of)
-            .collect(Collectors.toUnmodifiableList());
+            .toList();
     return Optionals.onlyIfFrom(
             !incompatibilities.isEmpty(),
             () -> new AvroSchemaConflictException(candidate, incompatibilities)

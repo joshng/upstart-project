@@ -234,7 +234,7 @@ public final class UpstartService extends BaseComposableService<ManagedServiceGr
     }
 
     private static boolean isConfigException(Throwable cause) {
-      return (cause instanceof ConfigMappingException) || (cause instanceof ConfigException) || (cause instanceof JsonProcessingException);
+      return (cause instanceof ConfigMappingException);// || (cause instanceof ConfigException) || (cause instanceof JsonProcessingException);
     }
 
     private static ConfigMappingException summarizeCreationErrors(RuntimeException e) {

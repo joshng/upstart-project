@@ -1,11 +1,12 @@
 package upstart.util.collect;
 
-import com.google.common.collect.Streams;
+import upstart.util.functions.TriFunction;
 
 import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.Callable;
+import java.util.function.BiFunction;
 import java.util.function.BinaryOperator;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -63,6 +64,23 @@ public class Optionals {
     } catch (Exception e) {
       return Optional.empty();
     }
+  }
+
+  public static <A, B, O> Optional<O> zip(
+          Optional<A> a,
+          Optional<B> b,
+          BiFunction<? super A, ? super B, ? extends O> zipper
+  ) {
+    return a.flatMap(aa -> b.map(bb -> zipper.apply(aa, bb)));
+  }
+
+  public static <A, B, C, O> Optional<O> zip(
+          Optional<A> a,
+          Optional<B> b,
+          Optional<C> c,
+          TriFunction<? super A, ? super B, ? super C, ? extends O> zipper
+  ) {
+    return a.flatMap(aa -> b.flatMap(bb -> c.map(cc -> zipper.apply(aa, bb, cc))));
   }
 
   public static <I, O> Function<Optional<? extends I>, Optional<O>> liftFunction(Function<I ,O> f) {
