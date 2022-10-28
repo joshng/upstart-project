@@ -3,10 +3,11 @@ package upstart.cli;
 import picocli.CommandLine;
 import upstart.UpstartDeploymentStage;
 import upstart.config.UpstartEnvironment;
+import upstart.config.UpstartModule;
 
 import java.nio.file.Path;
 
-public class UpstartContextOptions {
+public class UpstartContextOptions extends UpstartModule {
   @CommandLine.Option(
           names = {"--upstart-config"},
           description = "Upstart config-file (optional)",

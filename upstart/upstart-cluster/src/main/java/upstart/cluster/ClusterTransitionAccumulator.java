@@ -1,16 +1,14 @@
 package upstart.cluster;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import upstart.util.concurrent.BatchAccumulator;
 import upstart.util.concurrent.Deadline;
 import upstart.util.concurrent.Scheduler;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import java.time.Duration;
 import java.util.List;
-import java.util.Optional;
 
 import static upstart.util.concurrent.BatchAccumulator.AccumulationResult.accepted;
 
@@ -24,9 +22,10 @@ public class ClusterTransitionAccumulator implements ClusterTransitionListener {
   public ClusterTransitionAccumulator(
           ClusterMembershipListener membershipListener,
           ClusterMembershipConfig config,
+          BatchAccumulator.Factory batchAccumulatorFactory,
           Scheduler scheduler
   ) {
-    this.accumulator = new BatchAccumulator<>(
+    this.accumulator = batchAccumulatorFactory.create(
             ClusterMembershipTransition::new,
             membershipListener::onClusterMembershipChanged,
             config.idleTransitionTimeout(),

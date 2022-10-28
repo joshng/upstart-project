@@ -8,6 +8,7 @@ import upstart.managedservices.ManagedServiceGraph;
 import upstart.managedservices.ManagedServicesModule;
 import upstart.test.truth.CompletableFutureSubject;
 import upstart.util.concurrent.Deadline;
+import upstart.util.concurrent.Threads;
 import upstart.util.reflect.MultiMethodInvoker;
 import upstart.util.reflect.Reflect;
 import upstart.util.exceptions.ThrowingConsumer;
@@ -60,10 +61,15 @@ public class UpstartServiceExtension implements BeforeEachCallback, AfterTestExe
       Lists.reverse(ExtensionContexts.allNestedTestInstances(context))
               .forEach(instance -> BEFORE_SERVICE_STOP_DISPATCHER.dispatch(instance, false));
       var shutdownFuture = graph.stop();
-      var shutdownAssertion = assertWithMessage("Service shutdown")
-              .about(CompletableFutureSubject.<Service.State>completableFutures())
-              .that(shutdownFuture)
-              .doneWithin(Deadline.within(timeoutNanos, TimeUnit.NANOSECONDS));
+      CompletableFutureSubject<Service.State> shutdownAssertion;
+      try {
+        shutdownAssertion = assertWithMessage("Service shutdown")
+                .about(CompletableFutureSubject.<Service.State>completableFutures())
+                .that(shutdownFuture)
+                .doneWithin(Deadline.within(timeoutNanos, TimeUnit.NANOSECONDS));
+      } catch (AssertionError e) {
+        throw new AssertionError("Timed out waiting to stop:\n" + graph + "\n" + Threads.formatThreadDump(), e);
+      }
       testBuilder.shutdownVisitor().ifPresentOrElse(
               expectation -> expectation.accept(shutdownFuture),
               shutdownAssertion::completedNormally

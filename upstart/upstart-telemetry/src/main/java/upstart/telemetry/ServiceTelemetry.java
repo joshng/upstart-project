@@ -9,6 +9,8 @@ import io.upstartproject.avro.event.ServiceConfigLoadedEvent;
 import io.upstartproject.avro.event.ExceptionEvent;
 import io.upstartproject.avrocodec.upstart.AvroPublicationModule;
 import io.upstartproject.avrocodec.upstart.EventLogger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import upstart.config.ConfigDump;
 import upstart.config.UpstartApplicationConfig;
 import upstart.config.UpstartModule;
@@ -25,6 +27,7 @@ import javax.inject.Singleton;
 @Singleton
 @ServiceLifecycle(ServiceLifecycle.Phase.Infrastructure)
 public class ServiceTelemetry extends IdleService {
+  private static final Logger LOG = LoggerFactory.getLogger(ServiceTelemetry.class);
   private final ExceptionRecordBuilder exceptionRecordBuilder;
   private final EventLogger<ExceptionEvent> errorEventLogger;
   private final EventLogger<ServiceConfigLoadedEvent> configLogger;
@@ -74,8 +77,12 @@ public class ServiceTelemetry extends IdleService {
   @Metered
   synchronized protected void failed(Throwable failure) {
     failureDetected = true;
-    ExceptionEvent exceptionEvent = exceptionRecordBuilder.toExceptionEvent(failure);
-    errorEventLogger.publish(LogLevel.Info, exceptionEvent);
+    if (isRunning()) {
+      ExceptionEvent exceptionEvent = exceptionRecordBuilder.toExceptionEvent(failure);
+      errorEventLogger.publish(LogLevel.Info, exceptionEvent);
+    } else {
+      LOG.error("Service failed outside of normal running-phase", failure);
+    }
   }
 
   public static class Module extends UpstartModule {

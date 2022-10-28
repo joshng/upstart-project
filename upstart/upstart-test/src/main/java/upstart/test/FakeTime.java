@@ -65,6 +65,10 @@ public class FakeTime {
     advance(Duration.ZERO);
   }
 
+  public FakeTimeClock clock() {
+    return clock;
+  }
+
   public Instant instant() {
     return clock.instant();
   }

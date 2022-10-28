@@ -22,6 +22,7 @@ public class FreemarkerTemplateFunction implements B4Function<FreemarkerTemplate
             public Configuration load(Path templateRoot) throws Exception {
               Configuration conf = new Configuration(Configuration.VERSION_2_3_31);
               conf.setInterpolationSyntax(Configuration.SQUARE_BRACKET_INTERPOLATION_SYNTAX);
+              conf.setTagSyntax(Configuration.SQUARE_BRACKET_TAG_SYNTAX);
               conf.setDirectoryForTemplateLoading(templateRoot.toFile());
               conf.setDefaultEncoding("UTF-8");
               conf.setLogTemplateExceptions(false);
