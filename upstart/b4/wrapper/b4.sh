@@ -76,18 +76,11 @@ check_clean() {
 
 
   debug "Checking for clean working directory for $ARTIFACT_ID"
-  local graph_exists graph_is_current poms
-  graph_exists=$([[ -f $depgraph ]] && echo true || echo false)
+  local poms artifacts artifact
   readarray -d '' poms < <(find . -name pom.xml -print0 -o -name build -prune -o -name target -prune -o -name .git -prune -o -name src -prune)
-  graph_is_current=$($graph_exists && [[ -z "$(find "${poms[@]}" -newer $depgraph)" ]] && echo true || echo false)
 
-  if ! $graph_is_current ; then
-    if $graph_exists; then
-      report "(Dependency graph may be stale for $PROGRAM_ARTIFACT, recomputing...)"
-    else
-      report "Computing dependency-graph for $PROGRAM_ARTIFACT"
-    fi
-
+  if ! [[ -f $depgraph && -z "$(find "${poms[@]}" -newer $depgraph)" ]] ; then
+    report "Computing dependency graph for $PROGRAM_ARTIFACT"
     mvn -q -Pb4 com.github.ferstl:depgraph-maven-plugin:for-artifact -DgraphFormat=json -DoutputFileName=$depgraph_basename -Dartifact=$PROGRAM_ARTIFACT || exit 1
   fi
 
