@@ -15,6 +15,7 @@ import io.javalin.core.security.RouteRole;
 import upstart.config.UpstartModule;
 import upstart.guice.PrivateBinding;
 import upstart.guice.TypeLiterals;
+import upstart.javalin.AdminRole;
 import upstart.javalin.JavalinWebInitializer;
 import upstart.javalin.JavalinWebModule;
 import upstart.util.reflect.Reflect;
@@ -36,6 +37,12 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 public class HttpRegistry {
   public static final HttpRegistry INSTANCE = new HttpRegistry();
+
+  static {
+    INSTANCE.registerSecurityAnnotation(RequireAdminRole.class, anno -> SecurityConstraints.builder()
+            .addRequiredRoles(AdminRole.Instance)
+            .build());
+  }
 
   private final LoadingCache<Class<?>, AnnotatedEndpointHandler<?>> handlerCache = CacheBuilder.newBuilder()
           .build(new CacheLoader<>() {
@@ -130,7 +137,6 @@ public class HttpRegistry {
       install(new PrivateModule() {
         @Override
         protected void configure() {
-          bind(HttpRegistry.class).toInstance(HttpRegistry.this);
           bind(targetKey.withAnnotation(PrivateBinding.class)).to(targetKey);
           bind(initializerType);
           expose(initializerType);

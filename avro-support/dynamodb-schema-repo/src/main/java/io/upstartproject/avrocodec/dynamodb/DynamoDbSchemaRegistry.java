@@ -19,7 +19,6 @@ import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbPartitionKey;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSecondaryPartitionKey;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSortKey;
-import software.amazon.awssdk.enhanced.dynamodb.model.PagePublisher;
 import software.amazon.awssdk.enhanced.dynamodb.model.TransactPutItemEnhancedRequest;
 import software.amazon.awssdk.enhanced.dynamodb.model.TransactWriteItemsEnhancedRequest;
 import software.amazon.awssdk.services.dynamodb.model.CancellationReason;
@@ -174,7 +173,7 @@ public class DynamoDbSchemaRegistry implements SchemaRegistry {
     }
 
     public Promise<Void> refresh() {
-      return Promise.of(consumeItems(PagePublisher.create(table.scan(b -> {
+      return Promise.of(itemFlux(table.scan(b -> {
         b.consistentRead(true);
         if (latestObservedSeqNo >= 0) {
           // so verbose ... does anyone at amazon actually work with these APIs?
@@ -185,7 +184,7 @@ public class DynamoDbSchemaRegistry implements SchemaRegistry {
                   .build();
           b.filterExpression(filter);
         }
-      }))).reduce(0, (ignored, item) -> {
+      })).reduce(0, (ignored, item) -> {
         int seqNo = item.getSeqNo();
         assert seqNo > latestObservedSeqNo : "SeqNo was out of order: " + seqNo + " <= " + latestObservedSeqNo;
         latestObservedSeqNo = seqNo;

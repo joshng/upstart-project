@@ -9,7 +9,6 @@ import java.util.function.Supplier;
 
 @FunctionalInterface
 public interface FallibleSupplier<T, E extends Exception> extends Supplier<T>, Callable<T> {
-  Logger LOG = LoggerFactory.getLogger(FallibleSupplier.class);
 
   static <T> Supplier<T> of(FallibleSupplier<T, ?> block) {
     return block;
@@ -32,9 +31,14 @@ public interface FallibleSupplier<T, E extends Exception> extends Supplier<T>, C
       try {
         return Optional.ofNullable(call());
       } catch (Exception e) {
-        LOG.debug("Ignored error in FallibleSupplier.optionalForException", e);
+        LogHolder.LOG.debug("Ignored error in FallibleSupplier.optionalForException", e);
         return Optional.empty();
       }
     };
   }
+
+  class LogHolder {
+    private static final Logger LOG = LoggerFactory.getLogger(FallibleSupplier.class);
+  }
 }
+
