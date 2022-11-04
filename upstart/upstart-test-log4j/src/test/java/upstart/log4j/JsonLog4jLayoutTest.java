@@ -12,6 +12,7 @@ import upstart.ExecutorServiceScheduler;
 import upstart.config.UpstartModule;
 import upstart.log.UpstartLogConfig;
 import upstart.log.UpstartLogProvider;
+import upstart.log4j.test.JsonLogEvent;
 import upstart.test.AfterInjection;
 import upstart.test.UpstartTest;
 import upstart.test.UpstartTestBuilder;
@@ -29,7 +30,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.io.IOException;
-import java.time.Instant;
 import java.util.Optional;
 
 import static com.google.common.truth.Truth.assertThat;
@@ -166,35 +166,6 @@ class JsonLog4jLayoutTest extends UpstartModule {
     }
   }
 
-
-  @Value.Immutable
-  @JsonDeserialize(as = ImmutableJsonLogEvent.class)
-  public interface JsonLogEvent {
-    @JsonProperty("@timestamp")
-    Instant timestamp();
-
-    String message();
-
-    Optional<Object> payload();
-    Optional<Class<?>> payload_type();
-    Optional<JsonExceptionInfo> payload_exception();
-
-    Optional<JsonExceptionInfo> exception();
-    String logger_name();
-    String thread_name();
-    String level();
-
-    @JsonProperty("@version")
-    int version();
-
-    @Value.Immutable
-    @JsonDeserialize(as = ImmutableJsonExceptionInfo.class)
-    interface JsonExceptionInfo {
-      Class<?> exception_class();
-      String exception_message();
-      String stacktrace();
-    }
-  }
 
   @Value.Immutable
   @JsonDeserialize(as = ImmutableTestPayload.class)
