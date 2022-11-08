@@ -2,13 +2,12 @@ package io.upstartproject.jdbi;
 
 import com.google.inject.Binder;
 import com.google.inject.Key;
-import com.google.inject.PrivateModule;
 import com.google.inject.TypeLiteral;
 import com.google.inject.binder.LinkedBindingBuilder;
 import com.google.inject.multibindings.Multibinder;
-import com.zaxxer.hikari.HikariConfig;
 import org.jdbi.v3.core.spi.JdbiPlugin;
 import upstart.config.UpstartModule;
+import upstart.guice.AnnotationKeyedPrivateModule;
 import upstart.proxy.DynamicProxyBindingBuilder;
 
 import java.lang.annotation.Annotation;
@@ -16,64 +15,52 @@ import java.util.Set;
 
 public class JdbiModule extends UpstartModule {
   private static final TypeLiteral<Set<JdbiPlugin>> PLUGIN_SET_TYPE = new TypeLiteral<>(){};
-  private final Key<HikariJdbiService> serviceKey;
-  private final Key<HikariConfig> configKey;
-
-  public static JdbiModule named(String name) {
-    return named(name, Key.get(HikariConfig.class, Databases.of(name)));
-  }
-
-  public static JdbiModule named(
-          String name,
-          final Key<HikariConfig> configKey
-  ) {
-    Databases annotation = Databases.of(name);
-    return new JdbiModule(Key.get(HikariJdbiService.class, annotation), configKey) {
-      @Override
-      protected void configure() {
-        super.configure();
-        bindConfig(name, configKey);
-      }
-    };
-  }
+  private final Key<? extends JdbiService.JdbiInitializer> initializerKey;
+  private final Key<? extends JdbiService> serviceKey;
+  private final Annotation bindingAnnotation;
 
   public JdbiModule(
-          Key<HikariJdbiService> serviceKey,
-          Key<HikariConfig> configKey
+          Key<? extends JdbiService.JdbiInitializer> initializerKey,
+          Annotation bindingAnnotation
   ) {
-    super(serviceKey, configKey);
-    this.serviceKey = serviceKey;
-    this.configKey = configKey;
+    super(initializerKey, bindingAnnotation);
+    this.initializerKey = initializerKey;
+    this.bindingAnnotation = bindingAnnotation;
+    serviceKey = Key.get(JdbiService.class, bindingAnnotation);
   }
 
   @Override
   protected void configure() {
-    install(new PrivateModule() {
+    install(new AnnotationKeyedPrivateModule(bindingAnnotation, JdbiService.class) {
       @Override
-      protected void configure() {
-        bind(serviceKey).to(HikariJdbiService.class);
-        expose(serviceKey);
-        bind(HikariConfig.class).to(configKey);
-        bind(PLUGIN_SET_TYPE).to(Key.get(PLUGIN_SET_TYPE, serviceKey.getAnnotation()));
+      protected void configurePrivateScope() {
+        bindPrivateBinding(JdbiService.JdbiInitializer.class)
+                .to(initializerKey)
+                .asEagerSingleton();
+        bindPrivateBindingToAnnotatedKey(PLUGIN_SET_TYPE);
       }
     });
 
     pluginBinder(binder());
-    serviceManager().manage(serviceKey);
+    serviceManager().manage(Key.get(JdbiService.class, bindingAnnotation));
   }
 
-  public static <T> void bindOnDemandSqlObject(Binder binder, Class<T> sqlClass, Key<? extends AbstractJdbiService> serviceKey) {
+  public static <T> void bindOnDemandSqlObject(Binder binder, Class<T> sqlClass, Key<? extends JdbiService> serviceKey) {
     DynamicProxyBindingBuilder.bindDynamicProxy(binder, sqlClass)
             .initializedFrom(serviceKey, jdbi -> jdbi.onDemand(sqlClass));
   }
 
-  public JdbiModule bindOnDemandSqlObject(Binder binder, Class<?> sqlClass) {
-    bindOnDemandSqlObject(binder, sqlClass, serviceKey);
+  public JdbiModule bindOnDemandSqlObject(Binder binder, Class<?>... sqlClasses) {
+    binder.install(this);
+    for (Class<?> sqlClass : sqlClasses) {
+      bindOnDemandSqlObject(binder, sqlClass, serviceKey);
+    }
+
     return this;
   }
 
   public Multibinder<JdbiPlugin> pluginBinder(Binder binder) {
-    return pluginBinder(binder, serviceKey.getAnnotation());
+    return pluginBinder(binder, bindingAnnotation);
   }
 
   public static Multibinder<JdbiPlugin> pluginBinder(Binder binder, Annotation databaseAnnotation) {

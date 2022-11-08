@@ -1,5 +1,6 @@
 package upstart.test;
 
+import com.google.common.base.Ticker;
 import com.google.common.util.concurrent.ForwardingExecutorService;
 import com.google.inject.Binder;
 import com.google.inject.Binding;
@@ -34,6 +35,14 @@ import static com.google.common.base.Preconditions.checkState;
 
 public class FakeTime {
   private final FakeTimeClock clock;
+  private final Ticker ticker = new Ticker() {
+    @Override
+    public long read() {
+      Instant instant = now;
+      return TimeUnit.MILLISECONDS.toNanos(instant.toEpochMilli() + instant.getNano());
+    }
+  };
+
   private final Queue<ScheduledTask<?>> schedule = new PriorityBlockingQueue<>(11, Comparator.comparing(task -> task.nextDeadline));
   private final AtomicBoolean advancing = new AtomicBoolean(false);
 
@@ -215,6 +224,7 @@ public class FakeTime {
     @Override
     public void configure(Binder binder) {
       binder.bind(Clock.class).toInstance(fakeTime.clock);
+      binder.bind(Ticker.class).toInstance(fakeTime.ticker);
       binder.bind(FakeTime.class).toInstance(fakeTime);
       ExecutorServiceScheduler.Module.bindExecutorService(binder).toInstance(fakeTime.scheduledExecutor(immediateExecutor));
       if (!interceptedSchedules.isEmpty()) {

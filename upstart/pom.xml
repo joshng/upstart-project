@@ -25,6 +25,7 @@
     <module>upstart-metrics</module>
     <module>upstart-telemetry-schemas</module>
     <module>upstart-telemetry</module>
+    <module>upstart-telemetry-test</module>
     <module>upstart-jdbi</module>
     <module>upstart-web</module>
     <module>upstart-web-javalin</module>
@@ -37,7 +38,9 @@
     <module>upstart-example-app</module>
     <module>upstart-kafka-test</module>
     <module>upstart-aws</module>
+    <module>upstart-aws-kinesis</module>
     <module>upstart-aws-test</module>
+    <module>upstart-s3</module>
     <module>upstart-s3-test</module>
     <module>upstart-dynamodb</module>
     <module>upstart-dynamodb-test</module>

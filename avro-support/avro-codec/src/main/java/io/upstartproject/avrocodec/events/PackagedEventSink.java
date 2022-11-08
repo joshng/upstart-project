@@ -7,5 +7,5 @@ import java.util.concurrent.CompletableFuture;
 public interface PackagedEventSink {
   CompletableFuture<?> publish(LogLevel diagnosticLogLevel, PackagedEvent event);
 
-  void flush();
+  CompletableFuture<?> flush();
 }

@@ -10,15 +10,14 @@ import org.slf4j.LoggerFactory;
 
 public class B4 {
   public static final Logger WARN_LOG = LoggerFactory.getLogger("b4.status");
-  public static final String DEFAULT_ENVIRONMENT = "DEV";
 
   public static TargetRegistry buildTargetRegistry(Config appConfig) {
     return new TargetRegistry(loadB4Config(appConfig), HojackConfigMapper.buildDefaultObjectMapper());
   }
 
   public static Config loadB4Config(Config appConfig) {
-    if (!Ambiance.ambientValue(UpstartEnvironment.UPSTART_ENVIRONMENT).isPresent()) {
-      System.setProperty(UpstartEnvironment.UPSTART_ENVIRONMENT, DEFAULT_ENVIRONMENT);
+    if (Ambiance.ambientValue(UpstartEnvironment.UPSTART_ENVIRONMENT).isEmpty()) {
+      System.setProperty(UpstartEnvironment.UPSTART_ENVIRONMENT, UpstartEnvironment.DEFAULT_DEV_ENVIRONMENT_NAME);
     }
 
     return appConfig.withFallback(UpstartEnvironment.ambientEnvironment().baseConfig());

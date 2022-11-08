@@ -1,5 +1,6 @@
 package upstart;
 
+import com.google.common.reflect.TypeToken;
 import com.google.common.util.concurrent.Service;
 import com.google.inject.AbstractModule;
 import com.google.inject.Binder;
@@ -13,6 +14,7 @@ import upstart.config.annotations.ConfigPath;
 import upstart.config.UpstartConfigBinder;
 import upstart.config.UpstartConfigProvider;
 import upstart.guice.GuiceDependencyGraph;
+import upstart.managedservices.ResourceProviderService;
 import upstart.proxy.DynamicProxyBindingBuilder;
 import upstart.proxy.Lazy;
 import upstart.proxy.LazyProvider;
@@ -64,11 +66,7 @@ public interface UpstartModuleExtension {
   }
 
   default <T> T bindConfig(ConfigKey<T> configKey, Key<? super T> key) {
-    return configBinder().bindConfig(binder(), key, configKey);
-  }
-
-  default void install(Class<? extends Module> moduleClass) {
-    sourceCleanedBinder().install(Reflect.newInstance(moduleClass));
+    return configBinder().bindConfig(binder(), configKey, key);
   }
 
   default void install(String className) {
@@ -184,6 +182,16 @@ public interface UpstartModuleExtension {
    */
   default <T> DynamicProxyBindingBuilder<T> bindDynamicProxy(Key<T> proxiedKey) {
     return DynamicProxyBindingBuilder.bindDynamicProxy(binder(), proxiedKey);
+  }
+
+  default <T> void bindResourceFromProviderService(Class<? extends ResourceProviderService<T>> providerServiceClass) {
+    bindResourceFromProviderService(Key.get(providerServiceClass));
+  }
+
+  default <T> void bindResourceFromProviderService(Key<? extends ResourceProviderService<T>> serviceKey) {
+    Class<T> providedType = (Class<T>) TypeToken.of(serviceKey.getTypeLiteral().getType()).resolveType(ResourceProviderService.class.getTypeParameters()[0]).getRawType();
+    bindDynamicProxy(serviceKey.ofType(providedType)).initializedFrom(serviceKey, ResourceProviderService::getResource);
+    serviceManager().manage(serviceKey);
   }
 
   /**

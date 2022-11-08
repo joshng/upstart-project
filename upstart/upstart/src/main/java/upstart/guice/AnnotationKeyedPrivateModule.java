@@ -3,12 +3,13 @@ package upstart.guice;
 import com.google.inject.Key;
 import com.google.inject.PrivateModule;
 import com.google.inject.TypeLiteral;
+import com.google.inject.binder.LinkedBindingBuilder;
 import com.google.inject.binder.ScopedBindingBuilder;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
 
-public class AnnotationKeyedPrivateModule extends PrivateModule {
+public class AnnotationKeyedPrivateModule extends UpstartPrivateModule {
   private final Annotation annotation;
   private final Type[] exposedTypes;
 
@@ -19,22 +20,6 @@ public class AnnotationKeyedPrivateModule extends PrivateModule {
 
   protected void configurePrivateScope() {
 
-  }
-
-  public static Key<?> privateBindingKey(Type type) {
-    return Key.get(type, PrivateBinding.class);
-  }
-
-  public static <T> Key<T> privateBindingKey(Class<T> type) {
-    return Key.get(type, PrivateBinding.class);
-  }
-
-  public static <T> Key<T> privateBindingKey(TypeLiteral<T> type) {
-    return Key.get(type, PrivateBinding.class);
-  }
-
-  public static <T> Key<?> privateBindingKey(Key<T> type) {
-    return type.withAnnotation(PrivateBinding.class);
   }
 
 
@@ -85,7 +70,7 @@ public class AnnotationKeyedPrivateModule extends PrivateModule {
   protected final void configure() {
     configurePrivateScope();
 
-    bind(privateBindingKey(Annotation.class)).toInstance(annotation);
+    bindPrivateBinding(Annotation.class).toInstance(annotation);
     for (Type exposedType : exposedTypes) {
       exposeWithAnnotatedKey(exposedType);
     }

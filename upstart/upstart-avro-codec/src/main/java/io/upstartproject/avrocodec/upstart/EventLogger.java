@@ -38,6 +38,16 @@ public class EventLogger<T extends SpecificRecordBase> implements PackagedEvent.
     return eventLog.publishRecord(diagnosticLogLevel, makePackable(eventRecord));
   }
 
+  public void unreliablePublishOrWarn(LogLevel logLevel, T eventRecord, Logger errorLogger, PackagedEvent.Decorator initializer) {
+    eventLog.publish(logLevel, b -> initializer.decorate(b.event(makePackable(eventRecord))))
+            .whenComplete((ignored, e) -> Optional.ofNullable(e).ifPresent(err -> errorLogger.warn(
+                    "Error while logging event: {}{}",
+                    eventRecord.getClass().getName(),
+                    eventRecord,
+                    e
+            )));
+  }
+
   public void unreliablePublishOrWarn(LogLevel logLevel, T eventRecord, Logger errorLogger) {
     publish(logLevel, eventRecord).whenComplete((ignored, e) -> {
       Optional.ofNullable(e).ifPresent(err -> errorLogger.warn("Error while logging event: {}{}", eventRecord.getClass().getName(), eventRecord, e));

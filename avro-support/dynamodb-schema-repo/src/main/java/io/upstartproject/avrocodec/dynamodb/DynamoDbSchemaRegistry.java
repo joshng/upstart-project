@@ -34,6 +34,7 @@ import upstart.dynamodb.DynamoDbNamespace;
 import upstart.dynamodb.DynamoTableInitializer;
 import upstart.guice.AnnotationKeyedPrivateModule;
 import upstart.guice.PrivateBinding;
+import upstart.util.collect.PairStream;
 import upstart.util.concurrent.BlockingBoundedActor;
 import upstart.util.concurrent.CompletableFutures;
 import upstart.util.concurrent.Promise;
@@ -91,7 +92,7 @@ public class DynamoDbSchemaRegistry implements SchemaRegistry {
   }
 
   @Singleton
-  static class SchemaTable extends DynamoTableInitializer<SchemaTable.SchemaDocument> {
+  public static class SchemaTable extends DynamoTableInitializer<SchemaTable.SchemaDocument> {
 
     public static final String FINGERPRINT_IDX = "byFingerprint";
     public static final Expression WHERE_NOT_EXISTS = Expression.builder().expression("attribute_not_exists(seqNo)").build();
@@ -170,6 +171,10 @@ public class DynamoDbSchemaRegistry implements SchemaRegistry {
               .item(new SchemaDocument(schemaDescriptor, seqNo))))
               .thenReplace(true)
               .recover(ConditionalCheckFailedException.class, e -> false);
+    }
+
+    public PairStream<SchemaDescriptor, Integer> getKnownSchemas() {
+      return PairStream.of(knownSchemas);
     }
 
     public Promise<Void> refresh() {
@@ -298,18 +303,19 @@ public class DynamoDbSchemaRegistry implements SchemaRegistry {
     @Override
     protected void configure() {
       install(new AvroTaxonomyModule(annotation));
-      install(DynamoDbModule.class);
+      install(new DynamoDbModule());
 
       install(new AnnotationKeyedPrivateModule(
               annotation,
               SchemaRegistry.class,
-              DynamoDbSchemaRegistry.class
+              DynamoDbSchemaRegistry.class,
+              SchemaTable.class
       ) {
         @Override
         protected void configurePrivateScope() {
           bind(DynamoDbRegistryConfig.class).toInstance(config);
           bind(SchemaRegistry.class).to(DynamoDbSchemaRegistry.class);
-          bind(privateBindingKey(DynamoDbNamespace.class)).toInstance(namespace);
+          bindPrivateBinding(DynamoDbNamespace.class).toInstance(namespace);
         }
       });
     }
@@ -324,8 +330,8 @@ public class DynamoDbSchemaRegistry implements SchemaRegistry {
     static DynamoDbRegistryConfig bind(Binder binder, String configPath, Annotation dataStoreAnnotation) {
       return UpstartConfigBinder.get().bindConfig(
               binder,
-              com.google.inject.Key.get(DynamoDbRegistryConfig.class, dataStoreAnnotation),
-              ConfigKey.of(configPath, DynamoDbRegistryConfig.class)
+              ConfigKey.of(configPath, DynamoDbRegistryConfig.class),
+              com.google.inject.Key.get(DynamoDbRegistryConfig.class, dataStoreAnnotation)
       );
     }
 

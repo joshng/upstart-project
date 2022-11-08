@@ -20,7 +20,7 @@ import javax.inject.Inject;
  *   @Inject ServiceDependencyChecker dependencyChecker;
  *
  *   public void configure() {
- *     install(MyApplicationModule.class);
+ *     install(new MyApplicationModule());
  *   }
  *
  *   @Test

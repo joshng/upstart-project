@@ -2,6 +2,7 @@ package io.upstartproject.avrocodec;
 
 import com.fasterxml.jackson.annotation.JsonUnwrapped;
 import com.fasterxml.jackson.annotation.JsonValue;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import io.upstartproject.avro.PackedRecord;
 import upstart.util.collect.Optionals;
 import upstart.util.reflect.Reflect;
@@ -29,6 +30,7 @@ public interface PackableRecord<T extends GenericRecord> {
 
   @Value.Auxiliary
   RecordPackerApi<T> packer();
+
   T record();
 
   PackableRecord<T> withRecord(T record);

@@ -1,0 +1,12 @@
+{
+  "namespace": "io.upstartproject.avro.event",
+  "name": "UpstartContextAnnotation",
+  "published": true,
+  "type": "record",
+  "fields": [
+    {"name": "environment", "type": "string"},
+    {"name": "application", "type": "string"},
+    {"name": "deploymentStage", "type": "string"},
+    {"name": "owner", "type": "string"}
+  ]
+}

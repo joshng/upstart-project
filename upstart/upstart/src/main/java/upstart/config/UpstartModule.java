@@ -28,6 +28,8 @@ import java.util.List;
  * @see #deduplicateBy
  */
 public abstract class UpstartModule extends AbstractModule implements UpstartModuleExtension {
+  private final List<Object> identity = new ArrayList<>();
+
   /**
    * we override `configure` here just to better surface its IDE autocompletion
    */
@@ -52,7 +54,6 @@ public abstract class UpstartModule extends AbstractModule implements UpstartMod
     deduplicateBy(identityInputs);
   }
 
-  private final List<Object> identity = new ArrayList<>();
 
   /**
    * we override `binder` to expose it as public, so that mixin-interfaces can access it
@@ -60,7 +61,6 @@ public abstract class UpstartModule extends AbstractModule implements UpstartMod
   public Binder binder() {
     return super.binder().skipSources(UpstartModule.class);
   }
-
 
   /**
    * @deprecated this method interfere's with upstart's service-lifecycle management; use {@link #bindInterceptorFactory} instead.

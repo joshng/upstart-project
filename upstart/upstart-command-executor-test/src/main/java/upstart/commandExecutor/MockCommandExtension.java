@@ -21,7 +21,7 @@ import org.junit.jupiter.api.extension.ExtensionContext;
  *
  *   @Override
  *   protected void configure() {
- *     install(MyModule.class);
+ *     install(new MyModule());
  *   }
  *
  *   @Test

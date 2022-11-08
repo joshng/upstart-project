@@ -27,6 +27,7 @@ public class Slf4jEventSink implements PackagedEventSink {
   }
 
   @Override
-  public void flush() {
+  public CompletableFuture<?> flush() {
+    return CompletableFutures.nullFuture();
   }
 }

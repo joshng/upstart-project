@@ -3,14 +3,14 @@ package io.upstartproject.avrocodec.events;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.upstartproject.avro.MessageEnvelope;
 import io.upstartproject.avrocodec.EnvelopeCodec;
 import io.upstartproject.avrocodec.MessageMetadata;
 import io.upstartproject.avrocodec.PackableRecord;
-import io.upstartproject.avro.MessageEnvelope;
 import io.upstartproject.avrocodec.RecordTypeFamily;
-import upstart.util.collect.PairStream;
-import upstart.util.SelfType;
 import org.immutables.value.Value;
+import upstart.util.SelfType;
+import upstart.util.collect.PairStream;
 import upstart.util.strings.RandomId;
 
 import java.time.Instant;
@@ -111,5 +111,6 @@ public abstract class PackagedEvent {
     }
   }
 
-  public static class Builder extends ImmutablePackagedEvent.Builder { }
+  public static class Builder extends ImmutablePackagedEvent.Builder {
+  }
 }

@@ -59,11 +59,11 @@ public class UpstartConfigBinder {
   public <T> T bindConfig(Binder binder, Class<T> configClass) {
     ConfigKey<T> configKey = ConfigKey.of(configClass);
     Key<T> key = Key.get(configKey.mappedType());
-    return bindConfig(binder, key, configKey);
+    return bindConfig(binder, configKey, key);
   }
 
   @SuppressWarnings("unchecked")
-  public <T> T bindConfig(Binder binder, Key<? super T> key, ConfigKey<T> configKey) {
+  public <T> T bindConfig(Binder binder, ConfigKey<T> configKey, Key<? super T> key) {
     return (T) boundKeys.computeIfAbsent(key, k -> {
       T mappedValue = configKey.cast(boundConfigObjects.computeIfAbsent(configKey, this::load).mappedObject());
       binder.bind(key).toInstance(mappedValue);

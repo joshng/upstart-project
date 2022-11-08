@@ -95,6 +95,7 @@ import static com.google.common.base.Preconditions.checkState;
  */
 @Singleton
 public class AvroPublisher {
+  public static final DecoderFactory DECODER_FACTORY = DecoderFactory.get();
   private final Logger LOG = LoggerFactory.getLogger(getClass());
   private static final DatumWriter<PackedRecord> PACKED_RECORD_WRITER = new SpecificDatumWriter<>(PackedRecord.getClassSchema());
   private static final String SCHEMA_PUBLISHED_PROPERTY = "published";
@@ -177,7 +178,7 @@ public class AvroPublisher {
   public CompletableFuture<GenericRecord> convertFromJson(String typeName, InputStream json) {
     return taxonomy.refresh().thenApply(__ -> UncheckedIO.getUnchecked(() -> {
       Schema schema = taxonomy.findTypeFamily(typeName).requireLatestSchema().schema();
-      return new GenericDatumReader<GenericRecord>(schema).read(null, DecoderFactory.get().jsonDecoder(schema, json));
+      return new GenericDatumReader<GenericRecord>(schema).read(null, DECODER_FACTORY.jsonDecoder(schema, json));
     }));
   }
 
@@ -320,12 +321,10 @@ public class AvroPublisher {
    * @return a {@link CompletableFuture} which completes when the fingerprint has been resolved (which should usually be
    * immediate).
    * <p/>
-   * Note that this method requires the requested fingerprint to be <em>immediately</em> present in the SchemaRepo.
-   * If the SchemaRepo is being asynchronously replicated from an upstream source in a manner that could be reordered
-   * vs. messages being consumed via this codec, this method may fail. In such scenarios, {@link #findRegisteredPacker}
-   * may be a better choice.
+   * Note that this method requires the requested fingerprint to be <em>immediately</em> accessible via the {@link SchemaRegistry}.
+   *
    * @throws IllegalStateException if the {@link AvroTaxonomy} is not {@link AvroTaxonomy#isRunning running} (either because it has
-   * not been {@link AvroTaxonomy#start started} or because it has encountered an unrecoverable error accessing the SchemaRepo)
+   * not been {@link AvroTaxonomy#start started} or because it has encountered an unrecoverable error accessing the SchemaRegistry)
    * @throws IllegalStateException via the returned {@link CompletableFuture} if the {@code fingerprint} could not be
    * resolved with the refreshed contents of the {@link SchemaRegistry}.
    */
@@ -397,7 +396,7 @@ public class AvroPublisher {
 
 
   static BinaryDecoder binaryDecoder(InputStream in) {
-    return DecoderFactory.get().binaryDecoder(in, null);
+    return DECODER_FACTORY.binaryDecoder(in, null);
   }
 
   public CompletableFuture<Void> ensureReplicatedFrom(AvroPublisher other) {

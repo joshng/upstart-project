@@ -11,7 +11,7 @@ import java.util.concurrent.ScheduledExecutorService;
 public class InstrumentedSystemSchedulerModule extends UpstartModule {
   @Override
   protected void configure() {
-    install(ExecutorServiceScheduler.Module.class);
+    install(new ExecutorServiceScheduler.Module());
     ExecutorServiceScheduler.Module.bindExecutorService(binder()).toProvider(InstrumentedSchedulerProvider.class);
   }
 

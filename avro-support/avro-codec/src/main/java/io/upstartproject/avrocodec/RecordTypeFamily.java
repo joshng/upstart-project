@@ -1,6 +1,7 @@
 package io.upstartproject.avrocodec;
 
 import com.fasterxml.jackson.annotation.JsonValue;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaCompatibility;
 import org.apache.avro.specific.SpecificRecordBase;
@@ -132,6 +133,11 @@ public class RecordTypeFamily {
   @Override
   public int hashCode() {
     return getFullName().hashCode();
+  }
+
+  @Override
+  public String toString() {
+    return fullName;
   }
 
   @Value.Immutable

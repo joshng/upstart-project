@@ -218,6 +218,24 @@ class AsyncLocalPromiseTest {
     assertThat(result).doneWithin(Deadline.withinSeconds(5)).havingResultThat(OptionalSubject.optionals()).hasValue("foobar");
   }
 
+  @Test
+  void flatMapComposeWith() throws InterruptedException {
+    Promise<String> p1 = new Promise<>();
+    OptionalPromise<String> p2 = p1.thenApplyOptional(Optional::ofNullable);
+    OptionalPromise<String> result = p2.thenFlatMapComposeWith(p1, p1, (v, foo, foo2) -> Promise.of(CompletableFuture.completedFuture(Optional.of(v + foo + "bar"))));
+    p1.complete("foo");
+    assertThat(result).doneWithin(Deadline.withinSeconds(5)).havingResultThat(OptionalSubject.optionals()).hasValue("foofoobar");
+  }
+
+  void emptyFlatMapComposeWith() throws InterruptedException {
+    Promise<String> p1 = new Promise<>();
+    OptionalPromise<String> p2 = new OptionalPromise<>();
+    OptionalPromise<String> result = p2.thenFlatMapComposeWith(p1, p1, (v, foo, foo2) -> Promise.of(CompletableFuture.completedFuture(Optional.of(v + foo + "bar"))));
+    p1.complete("foo");
+    p2.complete(Optional.empty());
+    assertThat(result).doneWithin(Deadline.withinSeconds(5)).havingResultThat(OptionalSubject.optionals()).isEmpty();
+  }
+
   static ThreadLocalReference<Integer> threadValue = new ThreadLocalReference<>();
   static AsyncLocal<Integer> asyncValue = AsyncLocal.newAsyncLocal("test");
 

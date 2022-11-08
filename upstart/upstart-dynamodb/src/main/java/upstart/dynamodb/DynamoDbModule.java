@@ -1,15 +1,12 @@
 package upstart.dynamodb;
 
-import upstart.aws.AwsAsyncModule;
+import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient;
+import upstart.aws.AwsClientModule;
 import upstart.config.UpstartModule;
 
 public class DynamoDbModule extends UpstartModule {
   @Override
   protected void configure() {
-    install(AwsAsyncModule.class);
-    bindConfig(DynamoDbConfig.class);
-    serviceManager()
-            .manage(DynamoDbClientService.DynamoThreadPoolService.class)
-            .manage(DynamoDbClientService.class);
+    AwsClientModule.installWithDefaultConfig(binder(), DynamoDbAsyncClient.class);
   }
 }

@@ -1,6 +1,5 @@
 package io.upstartproject.avrocodec;
 
-import com.google.common.collect.ImmutableList;
 import io.upstartproject.avro.PackedRecord;
 import org.apache.avro.specific.SpecificData;
 import upstart.util.exceptions.UncheckedIO;
@@ -10,10 +9,7 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.DatumReader;
 import org.apache.avro.specific.SpecificDatumReader;
 import org.apache.avro.specific.SpecificRecordBase;
-import org.apache.avro.util.ByteBufferInputStream;
 
-import java.io.InputStream;
-import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -91,11 +87,9 @@ public class UnpackableRecord {
   <T extends GenericRecord> T read(DatumReader<T> reader) {
     reader.setSchema(writerSchema.schema());
 
-    return UncheckedIO.getUnchecked(() -> reader.read(null, AvroPublisher.binaryDecoder(byteBufferInputStream(record.getData()))));
-  }
-
-  private static InputStream byteBufferInputStream(ByteBuffer message) {
-    return new ByteBufferInputStream(ImmutableList.of(message.duplicate()));
+    return UncheckedIO.getUnchecked(() -> reader.read(null, AvroPublisher.binaryDecoder(
+            AvroDecoder.byteBufferInputStream(record.getData())
+    )));
   }
 
   @Override

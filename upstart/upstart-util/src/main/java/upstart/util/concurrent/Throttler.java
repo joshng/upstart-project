@@ -5,6 +5,7 @@ import com.google.common.base.Ticker;
 import upstart.util.LogLevel;
 import org.slf4j.Logger;
 
+import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -12,6 +13,14 @@ public class Throttler {
   private final AtomicLong nextAvailableTime = new AtomicLong();
   private final long intervalMillis;
   private final Ticker ticker;
+
+  public Throttler(Duration interval) {
+    this(interval, Ticker.systemTicker());
+  }
+
+  public Throttler(Duration interval, Ticker ticker) {
+    this(interval.toNanos(), TimeUnit.NANOSECONDS, ticker);
+  }
 
   public Throttler(long interval, TimeUnit intervalUnit) {
     this(interval, intervalUnit, Ticker.systemTicker());

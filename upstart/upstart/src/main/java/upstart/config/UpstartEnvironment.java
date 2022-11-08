@@ -42,6 +42,7 @@ public abstract class UpstartEnvironment {
   public static final String UPSTART_ENVIRONMENT = "UPSTART_ENVIRONMENT";
   public static final String UPSTART_OVERRIDES = "UPSTART_OVERRIDES";
   public static final String UPSTART_DEPLOYMENT_STAGE = "UPSTART_DEPLOYMENT_STAGE";
+  public static final String DEFAULT_DEV_ENVIRONMENT_NAME = "local-dev";
   private static final Config HOSTNAME_CONFIG = ConfigFactory.parseMap(ImmutableMap.of(
           "upstart.localhost.hostname", LocalHost.getLocalHostname(),
           "upstart.localhost.ipAddress", LocalHost.getLocalIpAddress()

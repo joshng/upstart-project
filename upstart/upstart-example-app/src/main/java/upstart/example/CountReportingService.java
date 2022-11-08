@@ -70,7 +70,7 @@ public class CountReportingService extends ExecutionThreadService {
     @Override
     protected void configure() {
       // ensure that dependencies are configured
-      install(CountingService.CountingModule.class);
+      install(new CountingService.CountingModule());
 
       bindConfig(ReportingConfig.class);
       serviceManager().manage(CountReportingService.class);

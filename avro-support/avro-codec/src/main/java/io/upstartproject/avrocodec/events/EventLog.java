@@ -27,7 +27,7 @@ public abstract class EventLog implements PackagedEvent.Decorator, PackagedEvent
     return publish(diagnosticLogLevel, builder -> builder.event(eventRecord));
   }
 
-  public abstract void flush();
+  public abstract CompletableFuture<?> flush();
 
   protected abstract EventPublisher directPublisher();
 
@@ -51,8 +51,8 @@ public abstract class EventLog implements PackagedEvent.Decorator, PackagedEvent
     }
 
     @Override
-    public void flush() {
-      publisher.flush();
+    public CompletableFuture<?> flush() {
+      return publisher.flush();
     }
 
     @Override

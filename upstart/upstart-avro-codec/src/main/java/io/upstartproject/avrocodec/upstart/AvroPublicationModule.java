@@ -160,7 +160,7 @@ public class AvroPublicationModule extends UpstartModule {
       notifyStopped();
     }
 
-    AvroPublisher getPublisher() {
+    public AvroPublisher getPublisher() {
       return publisher;
     }
 

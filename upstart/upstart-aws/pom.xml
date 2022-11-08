@@ -12,9 +12,6 @@
 
   <artifactId>upstart-aws</artifactId>
 
-  <properties>
-  </properties>
-
   <dependencyManagement>
     <dependencies>
       <dependency>
