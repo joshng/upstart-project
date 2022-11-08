@@ -2,6 +2,7 @@ package upstart.javalin;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.javalin.plugin.json.JavalinJackson;
+import upstart.UpstartDeploymentStage;
 import upstart.javalin.annotations.Web;
 import upstart.util.collect.PairStream;
 import upstart.util.concurrent.services.IdleService;
@@ -19,17 +20,20 @@ public class JavalinWebServer extends IdleService {
   private final ObjectMapper objectMapper;
   private final WebServerConfig serverConfig;
   private final Set<JavalinWebInitializer> plugins;
+  private final boolean allowCorsForAllOrigins;
   private Javalin javalin;
 
   @Inject
   public JavalinWebServer(
           @Web ObjectMapper objectMapper,
           WebServerConfig serverConfig,
+          UpstartDeploymentStage deploymentStage,
           Set<JavalinWebInitializer> plugins
   ) {
     this.objectMapper = objectMapper;
     this.serverConfig = serverConfig;
     this.plugins = plugins;
+    allowCorsForAllOrigins = serverConfig.allowCorsForAllOrigins() || deploymentStage.isDevelopmentMode();
   }
 
   @Override
@@ -37,7 +41,7 @@ public class JavalinWebServer extends IdleService {
     javalin = Javalin.create(
             config -> {
               config.contextPath = serverConfig.contextPath();
-              if (serverConfig.allowCorsForAllOrigins()) {
+              if (allowCorsForAllOrigins) {
                 config.enableCorsForAllOrigins();
               } else {
                 String[] corsAllowedOrigins = serverConfig.corsAllowedOriginsArray();
