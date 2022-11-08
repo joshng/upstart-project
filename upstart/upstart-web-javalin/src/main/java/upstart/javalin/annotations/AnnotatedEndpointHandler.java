@@ -281,7 +281,10 @@ public class AnnotatedEndpointHandler<T> {
         return UrlParamStrategy.Query.resolver(parameter);
       } else if (parameter.isAnnotationPresent(Session.class)) {
         String name = paramName(parameter.getAnnotation(Session.class).value(), parameter);
-        return ParamResolver.nonUrlParam(parameter, Optional.empty(), ctx -> checkNotNull(ctx.sessionAttribute(name), "missing session attribute '%s'", name));
+        return ParamResolver.nonUrlParam(parameter, Optional.empty(), ctx -> checkNotNull(ctx.sessionAttribute(name), "missing session attribute '%s' for %s", name, this));
+      } else if (parameter.isAnnotationPresent(Request.class)) {
+        String name = paramName(parameter.getAnnotation(Request.class).value(), parameter);
+        return ParamResolver.nonUrlParam(parameter, Optional.empty(), ctx -> checkNotNull(ctx.attribute(name), "missing request attribute '%s' for %s", name, this));
       } else {
         checkArgument(!mappedBody, "Method has multiple unannotated parameters", method);
         mappedBody = true;
@@ -332,6 +335,14 @@ public class AnnotatedEndpointHandler<T> {
       } else {
         return annotatedName;
       }
+    }
+
+    @Override
+    public String toString() {
+      return "Endpoint{" + handlerType +
+              " " + path +
+              ", method=" + method +
+              '}';
     }
 
     private static class ParamResolver implements OpenApiUpdater<OpenApiDocumentation> {

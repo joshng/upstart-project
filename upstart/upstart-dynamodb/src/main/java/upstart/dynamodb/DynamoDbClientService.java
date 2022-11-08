@@ -18,6 +18,7 @@ import upstart.aws.Aws;
 import upstart.aws.AwsAsyncClientFactory;
 import upstart.aws.BaseAwsAsyncClientService;
 import upstart.managedservices.ServiceLifecycle;
+import upstart.util.concurrent.Promise;
 import upstart.util.concurrent.services.ThreadPoolService;
 import upstart.util.concurrent.BlockingBoundedActor;
 import upstart.util.concurrent.CompletableFutures;
@@ -71,7 +72,7 @@ public class DynamoDbClientService extends BaseAwsAsyncClientService<DynamoDbAsy
     return enhancedClient;
   }
 
-  public <T> CompletableFuture<DynamoDbAsyncTable<T>> ensureTableCreated(
+  public <T> Promise<DynamoDbAsyncTable<T>> ensureTableCreated(
           String tableName,
           TableSchema<T> tableSchema,
           CreateTableEnhancedRequest request
@@ -80,21 +81,23 @@ public class DynamoDbClientService extends BaseAwsAsyncClientService<DynamoDbAsy
     return tableCreationActor.requestAsync(() -> {
       // TODO: dynamo doesn't support concurrent DDL operations, but what exception is thrown if a different table is creating?
       LOG.debug("Initiating table creation: {}", tableName);
-      return CompletableFutures.recover(
-              table.createTable(request),
-              DynamoDbException.class,
-              e -> (e instanceof ResourceInUseException) || (e instanceof TableAlreadyExistsException),
-              e -> null
-      ).thenComposeAsync(ignored -> pollTableStatus(
-                                 tableName,
-                                 CompletableFuture.delayedExecutor(
-                                         config.tableCreationPollPeriod().toMillis(),
-                                         TimeUnit.MILLISECONDS,
-                                         directExecutor
+      return Promise.of(table.createTable(request))
+              .recover(
+                      DynamoDbException.class,
+                      e -> (e instanceof ResourceInUseException) || (e instanceof TableAlreadyExistsException),
+                      e -> null
+              ).thenComposeAsync(ignored -> pollTableStatus(
+                                         tableName,
+                                         CompletableFuture.delayedExecutor(
+                                                 config.tableCreationPollPeriod().toMillis(),
+                                                 TimeUnit.MILLISECONDS,
+                                                 directExecutor
+                                         )
                                  )
-                         )
-      ).thenApply(ignored -> table);
-    }, directExecutor);
+              ).thenApply(ignored -> table);
+    }, directExecutor).recover(Exception.class, e -> {
+      throw new RuntimeException("Error ensuring table readiness: " + tableName, e);
+    });
   }
 
   public CompletableFuture<DescribeTableResponse> describeTable(String tableName) {

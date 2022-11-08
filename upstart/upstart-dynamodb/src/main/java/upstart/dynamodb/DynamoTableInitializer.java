@@ -20,7 +20,7 @@ import upstart.util.concurrent.CompletableFutures;
 import javax.inject.Inject;
 import java.util.concurrent.CompletableFuture;
 
-public abstract class DynamoTableInitializer<T> extends AsyncService implements HealthCheck {
+public class DynamoTableInitializer<T> extends AsyncService implements HealthCheck {
   private static final LoadingCache<Class<?>, TableSchema<?>> TABLE_SCHEMAS = CacheBuilder.newBuilder()
           .build(CacheLoader.from(TableSchema::fromBean));
 
