@@ -85,7 +85,6 @@ public class DynamoDbClientService {
     }, directExecutor).recover(Exception.class, e -> {
       throw new RuntimeException("Error ensuring table readiness: " + tableName, e);
     });
-	;
   }
 
   public CompletableFuture<DescribeTableResponse> describeTable(String tableName) {
