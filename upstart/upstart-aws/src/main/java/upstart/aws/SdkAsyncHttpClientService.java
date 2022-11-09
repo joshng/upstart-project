@@ -5,6 +5,7 @@ import software.amazon.awssdk.http.async.AsyncExecuteRequest;
 import software.amazon.awssdk.http.async.SdkAsyncHttpClient;
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient;
 import upstart.config.annotations.ConfigPath;
+import upstart.util.concurrent.NamedThreadFactory;
 import upstart.util.concurrent.services.IdleService;
 import upstart.managedservices.ServiceLifecycle;
 
@@ -12,6 +13,7 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
 
 @Singleton
 @ServiceLifecycle(ServiceLifecycle.Phase.Infrastructure)
@@ -34,8 +36,16 @@ public class SdkAsyncHttpClientService extends IdleService implements SdkAsyncHt
   }
 
   @Override
+  protected boolean shutDownOnSeparateThread() {
+    return false;
+  }
+
+  @Override
   protected void shutDown() throws Exception {
-    delegate.close();
+    // this shutdown routine takes a full 2 seconds for some reason, and we shouldn't be concerned about waiting for it,
+    // so just do it in a separate thread
+    Executors.newSingleThreadExecutor(new NamedThreadFactory("NettyNioAsyncHttpClient[D]").daemonize())
+            .submit(delegate::close);
   }
 
   @Override
