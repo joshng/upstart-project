@@ -1,5 +1,6 @@
 package upstart.util.collect;
 
+import upstart.util.functions.QuadFunction;
 import upstart.util.functions.TriFunction;
 
 import javax.annotation.Nullable;
@@ -71,7 +72,19 @@ public class Optionals {
           Optional<B> b,
           BiFunction<? super A, ? super B, ? extends O> zipper
   ) {
-    return a.flatMap(aa -> b.map(bb -> zipper.apply(aa, bb)));
+    return a.isPresent() && b.isPresent()
+            ? Optional.of(zipper.apply(a.get(), b.get()))
+            : Optional.empty();
+  }
+
+  public static <A, B, O> Optional<O> flatZip(
+          Optional<A> a,
+          Optional<B> b,
+          BiFunction<? super A, ? super B, ? extends Optional<O>> zipper
+  ) {
+    return a.isPresent() && b.isPresent()
+            ? zipper.apply(a.get(), b.get())
+            : Optional.empty();
   }
 
   public static <A, B, C, O> Optional<O> zip(
@@ -80,7 +93,44 @@ public class Optionals {
           Optional<C> c,
           TriFunction<? super A, ? super B, ? super C, ? extends O> zipper
   ) {
-    return a.flatMap(aa -> b.flatMap(bb -> c.map(cc -> zipper.apply(aa, bb, cc))));
+    return a.isPresent() && b.isPresent() && c.isPresent()
+            ? Optional.of(zipper.apply(a.get(), b.get(), c.get()))
+            : Optional.empty();
+  }
+
+  public static <A, B, C, O> Optional<O> flatZip(
+          Optional<A> a,
+          Optional<B> b,
+          Optional<C> c,
+          TriFunction<? super A, ? super B, ? super C, ? extends Optional<O>> zipper
+  ) {
+    return a.isPresent() && b.isPresent() && c.isPresent()
+            ? zipper.apply(a.get(), b.get(), c.get())
+            : Optional.empty();
+  }
+
+  public static <A, B, C, D, O> Optional<O> zip(
+          Optional<A> a,
+          Optional<B> b,
+          Optional<C> c,
+          Optional<D> d,
+          QuadFunction<? super A, ? super B, ? super C, ? super D, ? extends O> zipper
+  ) {
+    return a.isPresent() && b.isPresent() && c.isPresent() && d.isPresent()
+            ? Optional.of(zipper.apply(a.get(), b.get(), c.get(), d.get()))
+            : Optional.empty();
+  }
+
+  public static <A, B, C, D, O> Optional<O> flatZip(
+          Optional<A> a,
+          Optional<B> b,
+          Optional<C> c,
+          Optional<D> d,
+          QuadFunction<? super A, ? super B, ? super C, ? super D, ? extends Optional<O>> zipper
+  ) {
+    return a.isPresent() && b.isPresent() && c.isPresent() && d.isPresent()
+            ? zipper.apply(a.get(), b.get(), c.get(), d.get())
+            : Optional.empty();
   }
 
   public static <I, O> Function<Optional<? extends I>, Optional<O>> liftFunction(Function<I ,O> f) {
