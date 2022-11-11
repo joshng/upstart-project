@@ -2,5 +2,6 @@
 
 B4_ROOT="$(dirname "$(dirname "$0")")"
 export B4_ROOT
-exec $B4_ROOT/upstart/b4/wrapper/b4.sh upstart/b4-devops "$@"
+cd "$B4_ROOT" || exit 1
+exec upstart/b4/wrapper/b4.sh upstart/b4-devops io.upstartproject:b4-devops:0-SNAPSHOT "$@"
 
