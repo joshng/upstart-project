@@ -68,8 +68,8 @@ public class Optionals {
   }
 
   public static <A, B, O> Optional<O> zip(
-          Optional<A> a,
-          Optional<B> b,
+          Optional<? extends A> a,
+          Optional<? extends B> b,
           BiFunction<? super A, ? super B, ? extends O> zipper
   ) {
     return a.isPresent() && b.isPresent()
@@ -77,9 +77,17 @@ public class Optionals {
             : Optional.empty();
   }
 
+  public static <A, B, O> BiFunction<Optional<A>, Optional<B>, Optional<O>> zipper(BiFunction<? super A, ? super B, ? extends O> zipper) {
+    return (a, b) -> zip(a, b, zipper);
+  }
+
+  public static <A, B, O> BiFunction<Optional<A>, Optional<B>, Optional<O>> flatZipper(BiFunction<? super A, ? super B, ? extends Optional<O>> zipper) {
+    return (a, b) -> flatZip(a, b, zipper);
+  }
+
   public static <A, B, O> Optional<O> flatZip(
-          Optional<A> a,
-          Optional<B> b,
+          Optional<? extends A> a,
+          Optional<? extends B> b,
           BiFunction<? super A, ? super B, ? extends Optional<O>> zipper
   ) {
     return a.isPresent() && b.isPresent()
