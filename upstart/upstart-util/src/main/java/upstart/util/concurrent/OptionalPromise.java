@@ -147,8 +147,18 @@ public class OptionalPromise<T> extends ExtendedPromise<Optional<T>, OptionalPro
     return thenComposeOptional(value -> value.<CompletionStage<Optional<T>>>map(OptionalPromise::of).orElseGet(supplier));
   }
 
-  public <I, O> OptionalPromise<O> thenMapWith(CompletionStage<I> other, BiFunction<? super T, ? super I, O> mapper) {
+  public <A, O> OptionalPromise<O> thenMapWith(CompletionStage<A> other, BiFunction<? super T, ? super A, O> mapper) {
     return thenCombinePromise(OPTIONAL_PROMISE_FACTORY, other, Contextualized.liftBiFunction((v1, v2) -> v1.map(v -> mapper.apply(v, v2))));
+  }
+
+  public <A, B, O> OptionalPromise<O> thenMapWith(CompletionStage<A> a, CompletionStage<B> b, TriFunction<? super T, ? super A, ? super B, O> mapper) {
+    Promise<Optional<O>> combined = combine(
+            this,
+            a.toCompletableFuture(),
+            b.toCompletableFuture(),
+            (v1, v2, v3) -> v1.map(v -> mapper.apply(v, v2, v3))
+    );
+    return ofFutureOptional(combined);
   }
 
   public <I, O> OptionalPromise<O> thenZipWith(CompletionStage<? extends Optional<? extends I>> other, BiFunction<? super T, ? super I, O> mapper) {
