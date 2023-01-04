@@ -18,6 +18,11 @@ if ! type -p jq > /dev/null; then
   exit 1
 fi
 
+if [[ $BASH_VERSION =~ ^[0-3]\. ]]; then
+  echo "ERROR: b4 requires bash 4 or newer (run 'brew install bash' or similar)" >&2
+  exit 1
+fi
+
 
 PROGRAM_DIR="$1"
 shift
