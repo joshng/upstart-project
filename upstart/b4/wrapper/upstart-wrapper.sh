@@ -17,6 +17,12 @@ if ! type -p jq > /dev/null; then
   echo "ERROR: jq is required to run b4 (run 'brew install jq' or similar)" >&2
   exit 1
 fi
+
+if [[ $BASH_VERSION =~ ^[0-3]\. ]]; then
+  echo "ERROR: b4 requires bash 4 or newer (run 'brew install bash' or similar)" >&2
+  exit 1
+fi
+
 PROGRAM_DIR="$1"
 shift
 PROGRAM_ARTIFACT="$1"
@@ -56,8 +62,7 @@ in_list() {
 
 check_clean() {
   local depgraph_basename=$ARTIFACT_ID-depgraph.json
-  local depgraph=target/$depgraph_basename
-
+  local depgraph=tmp/dependency-graphs/$depgraph_basename
 
   debug "Checking for clean working directory for $ARTIFACT_ID"
   local poms artifacts artifact
@@ -65,7 +70,9 @@ check_clean() {
 
   if ! [[ -f $depgraph && -z "$(find "${poms[@]}" -newer $depgraph)" ]] ; then
     report "Computing dependency graph for $PROGRAM_ARTIFACT"
+    mkdir -p "$(dirname "$depgraph")"
     mvn -q ${MVN_PROFILES} com.github.ferstl:depgraph-maven-plugin:for-artifact -DgraphFormat=json -DoutputFileName=$depgraph_basename -Dartifact=$PROGRAM_ARTIFACT || exit 1
+    mv target/$depgraph_basename $depgraph
   fi
 
   # jq -r '.artifacts[] | "\\(.groupId):\\(.artifactId):\\(.version)"'
@@ -116,7 +123,6 @@ PROGRAM_JAR="${PROGRAM_JAR:-"$PROGRAM_DIR/target/package/$(basename $PROGRAM_DIR
 if [[ $REBUILD = true || ! -f "$PROGRAM_JAR" ]] || ! check_clean; then
   report "Rebuilding..."
   set +e
-  # TODO: make the build profile (-Pb4) configurable
   out=$(mvn clean package ${MVN_PROFILES} -DskipTests -Dmaven.javadoc.skip=true -pl $PROGRAM_DIR -am -T1.5C)
   status=$?
   set -e
