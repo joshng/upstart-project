@@ -13,6 +13,8 @@ import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import static java.lang.annotation.RetentionPolicy.RUNTIME;
+
 /**
  * Arranges to provide an ephemeral in-memory {@link FileSystem} (implemented by {@link com.google.common.jimfs.Jimfs})
  * for parameter-injection into test-methods, as well as into any upstart-managed components that {@link Inject @Inject FileSystem}
@@ -29,14 +31,40 @@ import java.nio.file.Paths;
  */
 @Target({ElementType.TYPE, ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
-@ExtendWith(FakeFileSystem.class)
+@ExtendWith(FakeFileSystemExtension.class)
 public @interface FakeFileSystemTest {
+  String DEFAULT_WORKING_DIRECTORY = "/work";
+  long DEFAULT_WATCH_SERVICE_POLL_INTERVAL_MS = 1000;
+
   /**
    * The working-directory from which to compute {@link Path#toAbsolutePath} results for relative paths.
+   * <p/>
+   * If empty, defaults to {@link #DEFAULT_WORKING_DIRECTORY}.
    * <p/>
    * Set this to the special value "<code>$PWD</code>" to use the actual working-directory of the running JVM process,
    * as determined by <code>System.getProperty("user.dir")</code>.
    */
-  String workingDirectory() default "/work";
-  long watchServicePollIntervalMs() default 1000;
+
+
+  String workingDirectory() default "";
+  long watchServicePollIntervalMs() default -1;
+
+  Fixture[] value() default {};
+
+  @Retention(RUNTIME)
+  @Target({})
+  @interface Fixture {
+    String path();
+    String fromResource();
+  //  String content() default "";
+  //  boolean isDirectory() default false;
+  //  boolean isExecutable() default false;
+  //  boolean isReadable() default true;
+  //  boolean isWritable() default true;
+  //  boolean isHidden() default false;
+  //  boolean isSymbolicLink() default false;
+  //  String symbolicLinkTarget() default "";
+  //  long lastModifiedTime() default 0;
+  //  long size() default 0;
+  }
 }

@@ -159,7 +159,7 @@ public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Th
   public static <A, B, O> Promise<O> combineCompose(
           CompletableFuture<A> a,
           CompletableFuture<B> b,
-          BiFunction<? super A, ? super B,  ? extends CompletionStage<O>> combiner
+          BiFunction<? super A, ? super B, ? extends CompletionStage<O>> combiner
   ) {
     return allOf(a, b).thenCompose(results -> combiner.apply(a.join(), b.join()));
   }

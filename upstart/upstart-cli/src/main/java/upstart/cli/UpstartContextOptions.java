@@ -19,20 +19,26 @@ public class UpstartContextOptions extends UpstartModule {
   @CommandLine.Option(
           names = "--upstart-env",
           description = "Upstart environment",
-          defaultValue = "dev",
           scope = CommandLine.ScopeType.INHERIT,
           showDefaultValue = CommandLine.Help.Visibility.ALWAYS,
           order = Integer.MAX_VALUE - 1
   )
-  public String upstartEnv;
+  public String upstartEnv = UpstartEnvironment.DEFAULT_DEV_ENVIRONMENT_NAME;
 
   @CommandLine.Option(
           names = "--upstart-stage",
           description = "Upstart deployment stage (${COMPLETION-CANDIDATES})",
-          defaultValue = "dev",
           scope = CommandLine.ScopeType.INHERIT,
           showDefaultValue = CommandLine.Help.Visibility.ALWAYS,
           order = Integer.MAX_VALUE
   )
   public UpstartDeploymentStage deploymentStage = UpstartDeploymentStage.dev;
+
+  public UpstartContextOptions defaultUpstartEnv(String upstartEnv, UpstartDeploymentStage deploymentStage) {
+    this.upstartEnv = upstartEnv;
+    this.deploymentStage = deploymentStage;
+
+    if (deploymentStage != UpstartDeploymentStage.dev) configFile = null;
+    return this;
+  }
 }

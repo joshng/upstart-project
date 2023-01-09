@@ -7,8 +7,6 @@ import java.util.Optional;
 
 @Value.Immutable
 public interface FakeFilesystemConfig {
-  FakeFilesystemConfig Default = builder().build();
-
   static ImmutableFakeFilesystemConfig.Builder builder() {
     return ImmutableFakeFilesystemConfig.builder();
   }

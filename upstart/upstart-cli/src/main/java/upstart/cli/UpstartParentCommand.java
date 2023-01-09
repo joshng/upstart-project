@@ -9,7 +9,15 @@ import java.util.Optional;
 
 public abstract class UpstartParentCommand extends UpstartCommand {
   @CommandLine.ArgGroup
-  public UpstartContextOptions contextOptions = new UpstartContextOptions();
+  public UpstartContextOptions contextOptions;
+
+  protected UpstartParentCommand() {
+    contextOptions = contextOptions();
+  }
+
+  protected UpstartContextOptions contextOptions() {
+    return new UpstartContextOptions();
+  }
 
   @Override
   protected UpstartDeploymentStage upstartDeploymentStage() {

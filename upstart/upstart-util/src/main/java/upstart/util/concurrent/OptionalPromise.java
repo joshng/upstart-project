@@ -1,5 +1,6 @@
 package upstart.util.concurrent;
 
+import upstart.util.collect.Optionals;
 import upstart.util.context.Contextualized;
 import upstart.util.functions.QuadFunction;
 import upstart.util.functions.TriFunction;
@@ -146,8 +147,26 @@ public class OptionalPromise<T> extends ExtendedPromise<Optional<T>, OptionalPro
     return thenComposeOptional(value -> value.<CompletionStage<Optional<T>>>map(OptionalPromise::of).orElseGet(supplier));
   }
 
-  public <I, O> OptionalPromise<O> thenMapWith(CompletionStage<I> other, BiFunction<? super T, ? super I, O> mapper) {
+  public <A, O> OptionalPromise<O> thenMapWith(CompletionStage<A> other, BiFunction<? super T, ? super A, O> mapper) {
     return thenCombinePromise(OPTIONAL_PROMISE_FACTORY, other, Contextualized.liftBiFunction((v1, v2) -> v1.map(v -> mapper.apply(v, v2))));
+  }
+
+  public <A, B, O> OptionalPromise<O> thenMapWith(CompletionStage<A> a, CompletionStage<B> b, TriFunction<? super T, ? super A, ? super B, O> mapper) {
+    Promise<Optional<O>> combined = combine(
+            this,
+            a.toCompletableFuture(),
+            b.toCompletableFuture(),
+            (v1, v2, v3) -> v1.map(v -> mapper.apply(v, v2, v3))
+    );
+    return ofFutureOptional(combined);
+  }
+
+  public <I, O> OptionalPromise<O> thenZipWith(CompletionStage<? extends Optional<? extends I>> other, BiFunction<? super T, ? super I, O> mapper) {
+    return thenCombinePromise(OPTIONAL_PROMISE_FACTORY, other, Contextualized.liftBiFunction((v1, v2) -> Optionals.zip(v1, v2, mapper)));
+  }
+
+  public <I, O> OptionalPromise<O> thenFlatZipWith(CompletionStage<? extends Optional<? extends I>> other, BiFunction<? super T, ? super I, Optional<O>> mapper) {
+    return thenCombinePromise(OPTIONAL_PROMISE_FACTORY, other, Contextualized.liftBiFunction((v1, v2) -> Optionals.flatZip(v1, v2, mapper)));
   }
 
   public <I, O> OptionalPromise<O> thenMapComposeWith(
@@ -215,6 +234,26 @@ public class OptionalPromise<T> extends ExtendedPromise<Optional<T>, OptionalPro
             (opt, aa, bb) -> mapToFutureOptional(opt, v -> mapper.apply(v, aa, bb))
     ));
   }
+
+  public <I, O> OptionalPromise<O> thenZipComposeWith(
+          CompletionStage<? extends Optional<? extends I>> other,
+          BiFunction<? super T, ? super I, ? extends CompletionStage<O>> mapper
+  ) {
+    return ofFutureOptional(combineCompose(this, other.toCompletableFuture(), (v1, v2) -> toFutureOptional(
+            Optionals.zip(v1, v2, mapper)
+    )));
+  }
+
+  public <I, O> OptionalPromise<O> thenFlatZipComposeWith(
+          CompletionStage<? extends Optional<? extends I>> other,
+          BiFunction<? super T, ? super I, ? extends CompletionStage<Optional<O>>> mapper
+  ) {
+    return ofFutureOptional(combineCompose(this, other.toCompletableFuture(), (v1, v2) -> Optionals
+            .zip(v1, v2, mapper)
+            .map(OptionalPromise::ofFutureOptional)
+            .orElse(empty())));
+  }
+
 
   // TODO so many missing permutations of arity, map/flatMap for both optional and future .. need proper monad transformers and tuples :-(
   // https://medium.com/@johnmcclean/simulating-higher-kinded-types-in-java-b52a18b72c74
