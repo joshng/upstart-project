@@ -54,7 +54,7 @@ class AvroPublisherTest {
     MessageMetadata metadata = MessageMetadata.builder()
             .application("test-app")
             .owner("test-owner")
-            .environment("TEST")
+            .environment("test")
             .deploymentStage(DeploymentStage.stage)
             .putTag("tag1", "value1").build();
     TestExceptionEvent event = new TestExceptionEvent(Instant.EPOCH, new TestExceptionRecord(exceptionMessage));

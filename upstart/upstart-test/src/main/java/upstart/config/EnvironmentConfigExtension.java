@@ -24,8 +24,7 @@ public class EnvironmentConfigExtension extends SingletonParameterResolver<Envir
   @Override
   protected EnvironmentConfigBuilder createContext(ExtensionContext extensionContext) {
     // TODO: allow configMapper to be customized
-//    EnvironmentConfigBuilder configBuilder = new EnvironmentConfigBuilder("TEST", new HojackConfigMapper());
-    EnvironmentConfigBuilder configBuilder = new EnvironmentConfigBuilder("TEST", new HojackConfigMapper(ObjectMapperFactory.buildAmbientObjectMapper()));
+    EnvironmentConfigBuilder configBuilder = new EnvironmentConfigBuilder("test", new HojackConfigMapper(ObjectMapperFactory.buildAmbientObjectMapper()));
 
     ExtensionContexts.findRepeatableTestAnnotations(
             EnvironmentConfig.Fixture.class,

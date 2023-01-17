@@ -20,7 +20,7 @@ class UpstartConfigBindingsTest {
   @Test
   void configWiringWorks() {
     String hocon = "upstart { context {application: fake, owner: test}, test.fake {connectionString: testCoords, duration: 10s, size: 1k, size2: 1GB}}";
-    System.setProperty("UPSTART_ENVIRONMENT", "TEST");
+    System.setProperty("UPSTART_ENVIRONMENT", "test");
     UpstartConfigProvider environment = UpstartEnvironment.ambientEnvironment().configProvider()
             .withOverrideConfig(ConfigFactory.parseReader(new StringReader(hocon)));
 
