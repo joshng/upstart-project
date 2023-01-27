@@ -117,7 +117,7 @@ extension for [junit-jupiter](https://junit.org/junit5/docs/current/user-guide/)
      environment-specific configuration file in a HOCON resource called `upstart-environments/<environment-name>.conf`
 1. Start your application by invoking your main-method, and ensure that the _mandatory_ **`UPSTART_ENVIRONMENT`**
 environment-variable (or system-property) is defined externally to determine which environment's configuration to apply
-   - `@UpstartTest`, `@UpstartServiceTest`, and `@UpstartClusterTest` automatically start your tests with `UPSTART_ENVIRONMENT=TEST`
+   - `@UpstartTest`, `@UpstartServiceTest`, and `@UpstartClusterTest` automatically start your tests with `UPSTART_ENVIRONMENT=test`
 
 ## Upstart's Artifacts
 

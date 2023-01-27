@@ -13,7 +13,7 @@ import java.util.Optional;
 import java.util.function.Consumer;
 
 public interface TestConfigBuilder<S extends TestConfigBuilder<S>> extends SelfType<S> {
-  String TEST_OVERRIDE_ORIGIN = "Test EnvironmentConfig";
+  String TEST_OVERRIDE_ORIGIN = "test EnvironmentConfig";
   ConfigParseOptions OVERRIDE_PARSE_OPTIONS = ConfigParseOptions.defaults().setOriginDescription(TEST_OVERRIDE_ORIGIN);
   String DEFAULT_CONFIG_PLACEHOLDER = "<test-placeholder>";
 

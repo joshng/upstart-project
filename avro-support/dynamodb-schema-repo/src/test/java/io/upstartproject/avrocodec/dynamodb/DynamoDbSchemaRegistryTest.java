@@ -64,7 +64,7 @@ class DynamoDbSchemaRegistryTest extends UpstartModule {
     @Inject DynamoRegistrySpy dynamoRepoSpy;
 
     @BeforeEach
-    void injectRepoSpy(UpstartTestBuilder testBuilder, @Named("TEST.schemarepo") DynamoDbTable<DynamoDbSchemaRegistry.SchemaTable.SchemaDocument> schemaTable) {
+    void injectRepoSpy(UpstartTestBuilder testBuilder, @Named("test.schemarepo") DynamoDbTable<DynamoDbSchemaRegistry.SchemaTable.SchemaDocument> schemaTable) {
       this.schemaTable = schemaTable;
       testBuilder.overrideBindings(binder -> {
         binder.bind(SchemaRegistry.class).annotatedWith(DataStore.Factory.dataStore(TEST_DATASTORE)).to(DynamoRegistrySpy.class);

@@ -102,7 +102,7 @@ public class ServiceTelemetryTest extends UpstartModule {
     List<MessageEnvelope> envelopes = capturePublishedEvents(2);
 
     assertThat(unpack(envelopes.get(0), ServiceConfigLoadedEvent.class)
-            .getConfigEntries()).containsEntry("upstart.context.environment", new ConfigValueRecord("TEST", "UPSTART_ENVIRONMENT"));
+            .getConfigEntries()).containsEntry("upstart.context.environment", new ConfigValueRecord("test", "UPSTART_ENVIRONMENT"));
 
     assertThat(unpack(envelopes.get(1), ExceptionEvent.class).getException().getMessage())
             .isEqualTo(ERROR_MESSAGE);
