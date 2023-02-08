@@ -93,9 +93,8 @@ public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Th
     return promise.consumeFailure(() -> initializer.accept(promise));
   }
 
-  @SuppressWarnings("unchecked")
   public static <T> Promise<T> of(CompletionStage<T> stage) {
-    return (stage instanceof Promise promise) ? promise : new Promise<>(ContextualizedFuture.captureContext(stage));
+    return (stage instanceof Promise<T> promise) ? promise : new Promise<>(ContextualizedFuture.captureContext(stage));
   }
 
   public static <T> Promise<T> completed(T result) {

@@ -13,7 +13,7 @@ public enum NamingStyle {
   UpperCamelCase {
     @Override
     public Stream<String> extractWords(String str) {
-      return Pattern.compile("(?<!^)(?=[A-Z])").splitAsStream(str);
+      return CAMEL.splitAsStream(str);
     }
 
     @Override
@@ -88,6 +88,11 @@ public enum NamingStyle {
   }
   ;
 
+//  public static final Pattern CAMEL = Pattern.compile("(?<!^)(?=[A-Z])");
+  public static final Pattern CAMEL = Pattern.compile("(?<!(^|[A-Z]))(?=[A-Z])|(?<!^)(?=[A-Z][a-z])");
+  public static final Pattern SNAKE = Pattern.compile("_+");
+  public static final Pattern HYPHEN = Pattern.compile("-+");
+
   StringBuilder join(StringBuilder sb, Stream<String> words, CharacterCase characterCase, char delimiter) {
     int first = sb.length();
     return MoreStreams.foldLeft(sb, words, (b, s) -> {
@@ -95,9 +100,6 @@ public enum NamingStyle {
       return b.append(characterCase.apply(s));
     });
   }
-
-  public static final Pattern SNAKE = Pattern.compile("_+");
-  public static final Pattern HYPHEN = Pattern.compile("-+");
 
   public abstract Stream<String> extractWords(String str);
   public abstract StringBuilder combineWordsTo(StringBuilder sb, Stream<String> words);

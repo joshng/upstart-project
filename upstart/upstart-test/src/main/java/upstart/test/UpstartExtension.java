@@ -73,7 +73,7 @@ public class UpstartExtension extends SingletonParameterResolver<UpstartTestBuil
   }
 
   public static void configureTestEnvironment() {
-    System.setProperty(UpstartEnvironment.UPSTART_ENVIRONMENT, "test");
+    System.setProperty(UpstartEnvironment.UPSTART_ENVIRONMENT, UpstartTest.TEST_ENVIRONMENT_NAME);
   }
 
   @Override

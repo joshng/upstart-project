@@ -85,5 +85,7 @@ import java.lang.annotation.Target;
 @ExtendWith({EnvironmentConfigExtension.class, UpstartExtension.class})
 @Inherited
 public @interface UpstartTest {
+  String TEST_ENVIRONMENT_NAME = "test";
+
   Class<? extends Module> value() default Module.class;
 }

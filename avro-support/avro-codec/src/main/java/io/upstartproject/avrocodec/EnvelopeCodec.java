@@ -205,7 +205,7 @@ public class EnvelopeCodec {
     return packableMessageEnvelope(timestamp, uniqueId, record, metadata, Arrays.asList(annotations));
   }
 
-  public PackableRecord<MessageEnvelope> packableMessageEnvelope(Instant timestamp, Optional<String> uniqueId, PackableRecord<?> record, MessageMetadata metadata, List<PackableRecord<?>> annotations) {
+  public PackableRecord<MessageEnvelope> packableMessageEnvelope(Instant timestamp, Optional<String> uniqueId, PackableRecord<?> record, MessageMetadata metadata, List<? extends PackableRecord<?>> annotations) {
     return makePackable(buildMessageEnvelope(timestamp, uniqueId, record.packedRecord(), metadata, Lists.transform(annotations, PackableRecord::packedRecord)));
   }
 
