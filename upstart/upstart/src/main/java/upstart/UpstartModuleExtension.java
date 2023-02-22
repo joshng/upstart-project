@@ -184,14 +184,16 @@ public interface UpstartModuleExtension {
     return DynamicProxyBindingBuilder.bindDynamicProxy(binder(), proxiedKey);
   }
 
-  default <T> void bindResourceFromProviderService(Class<? extends ResourceProviderService<T>> providerServiceClass) {
-    bindResourceFromProviderService(Key.get(providerServiceClass));
+  default <T> Key<T> bindResourceFromProviderService(Class<? extends ResourceProviderService<T>> providerServiceClass) {
+    return bindResourceFromProviderService(Key.get(providerServiceClass));
   }
 
-  default <T> void bindResourceFromProviderService(Key<? extends ResourceProviderService<T>> serviceKey) {
+  default <T> Key<T> bindResourceFromProviderService(Key<? extends ResourceProviderService<T>> serviceKey) {
     Class<T> providedType = (Class<T>) TypeToken.of(serviceKey.getTypeLiteral().getType()).resolveType(ResourceProviderService.class.getTypeParameters()[0]).getRawType();
-    bindDynamicProxy(serviceKey.ofType(providedType)).initializedFrom(serviceKey, ResourceProviderService::getResource);
+    Key<T> proxiedKey = serviceKey.ofType(providedType);
+    bindDynamicProxy(proxiedKey).initializedFrom(serviceKey, ResourceProviderService::getResource);
     serviceManager().manage(serviceKey);
+    return proxiedKey;
   }
 
   /**

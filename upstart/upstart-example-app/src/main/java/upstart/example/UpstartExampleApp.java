@@ -28,7 +28,7 @@ public class UpstartExampleApp extends UpstartApplication {
   public static void main(String[] args) {
     // UPSTART_ENVIRONMENT must be assigned externally
 //        System.setProperty(UpstartEnvironment.UPSTART_ENVIRONMENT, "local-dev");
-    new UpstartExampleApp().runSupervised();
+    new UpstartExampleApp().runSupervised(args);
   }
 
   @Override

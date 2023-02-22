@@ -3,26 +3,36 @@ package upstart.dynamodb;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbAsyncTable;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedAsyncClient;
+import software.amazon.awssdk.enhanced.dynamodb.OperationContext;
+import software.amazon.awssdk.enhanced.dynamodb.TableMetadata;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
+import software.amazon.awssdk.enhanced.dynamodb.internal.operations.CreateTableOperation;
 import software.amazon.awssdk.enhanced.dynamodb.model.CreateTableEnhancedRequest;
 import software.amazon.awssdk.enhanced.dynamodb.model.PagePublisher;
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient;
-import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClientBuilder;
+import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
 import software.amazon.awssdk.services.dynamodb.model.DescribeTableResponse;
 import software.amazon.awssdk.services.dynamodb.model.TableStatus;
+import upstart.aws.SdkPojoSerializer;
 import upstart.healthchecks.HealthCheck;
-import upstart.util.concurrent.services.AsyncService;
-import upstart.util.concurrent.CompletableFutures;
+import upstart.provisioning.BaseProvisionedResource;
+import upstart.util.concurrent.Promise;
+import upstart.util.concurrent.ShutdownException;
 
 import javax.inject.Inject;
+import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 
-public class DynamoTableInitializer<T> extends AsyncService implements HealthCheck {
+public class DynamoTableInitializer<T> extends BaseProvisionedResource implements HealthCheck {
+  private static final Logger LOG = LoggerFactory.getLogger(DynamoTableInitializer.class);
   private static final LoadingCache<Class<?>, TableSchema<?>> TABLE_SCHEMAS = CacheBuilder.newBuilder()
           .build(CacheLoader.from(TableSchema::fromBean));
+  public static final ResourceType PROVISIONED_RESOURCE_TYPE = new ResourceType("dynamodb_table");
 
   private final DynamoDbClientService dbService;
   private final String tableName;
@@ -58,13 +68,73 @@ public class DynamoTableInitializer<T> extends AsyncService implements HealthChe
     return table;
   }
 
+  private Promise<Void> initTable(Promise<DynamoDbAsyncTable<T>> tablePromise) {
+    return tablePromise.thenCompose(t -> {
+      this.table = t;
+      return onTableInitializedAsync(t);
+    });
+  }
+
+  protected Promise<Void> onTableInitializedAsync(DynamoDbAsyncTable<T> table) {
+    onTableInitialized(table);
+    return Promise.nullPromise();
+  }
+
+  protected void onTableInitialized(DynamoDbAsyncTable<T> table) {
+  }
+
+
   @Override
-  protected CompletableFuture<?> startUp() throws Exception {
-    var createTableRequest = prepareCreateTableRequest(
+  public String resourceId() {
+    return tableName;
+  }
+
+  @Override
+  public ResourceType resourceType() {
+    return PROVISIONED_RESOURCE_TYPE;
+  }
+
+  @Override
+  public Object resourceConfig() {
+    CreateTableRequest request = CreateTableOperation.<T>create(createTableRequest()).generateRequest(
+            tableSchema,
+            new OperationContext() {
+              @Override
+              public String tableName() {
+                return tableName;
+              }
+
+              @Override
+              public String indexName() {
+                return TableMetadata.primaryIndexName();
+              }
+            },
+            null
+    );
+
+    return SdkPojoSerializer.serialize(request);
+  }
+
+  @Override
+  public Promise<Void> provisionIfNotExists() {
+    return dbService.ensureTableCreated(tableName, tableSchema, createTableRequest());
+  }
+
+  @Override
+  public Promise<Void> waitUntilProvisioned() {
+    return initTable(dbService.waitUntilTableExists(tableName, tableSchema, Duration.ofSeconds(1), promise -> {
+      if (wasStartupCanceled()) {
+        promise.completeExceptionally(new ShutdownException("Startup was canceled"));
+      } else {
+        LOG.warn("Waiting for table '{}' to be ready...", tableName);
+      }
+    }));
+  }
+
+  private CreateTableEnhancedRequest createTableRequest() {
+    return prepareCreateTableRequest(
             CreateTableEnhancedRequest.builder()
     ).build();
-    return dbService.ensureTableCreated(tableName, tableSchema, createTableRequest)
-            .thenApply(t -> table = t);
   }
 
   /**
@@ -72,11 +142,6 @@ public class DynamoTableInitializer<T> extends AsyncService implements HealthChe
    */
   protected CreateTableEnhancedRequest.Builder prepareCreateTableRequest(CreateTableEnhancedRequest.Builder builder) {
     return builder;
-  }
-
-  @Override
-  protected CompletableFuture<?> shutDown() throws Exception {
-    return CompletableFutures.nullFuture();
   }
 
   public static <B> Flux<B> itemFlux(PagePublisher<B> pagePublisher) {

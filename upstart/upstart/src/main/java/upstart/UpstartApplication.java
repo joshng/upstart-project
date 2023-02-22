@@ -1,9 +1,17 @@
 package upstart;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.util.concurrent.Service;
 import com.google.inject.AbstractModule;
+import com.google.inject.Guice;
+import upstart.config.ObjectMapperFactory;
 import upstart.config.UpstartModule;
+import upstart.provisioning.ProvisionedResource;
+import upstart.provisioning.ProvisioningService;
 import upstart.util.concurrent.services.ServiceSupervisor;
+import upstart.util.exceptions.UncheckedIO;
+
+import java.util.List;
 
 /**
  * A managed upstart Application!
@@ -35,8 +43,46 @@ public abstract class UpstartApplication extends UpstartModule {
    *
    * @see ServiceSupervisor
    */
-  public void runSupervised() {
-    buildServiceSupervisor().startAndAwaitTermination();
+  public void runSupervised(String[] args) {
+    switch (args.length) {
+      case 0 -> {
+        buildServiceSupervisor().startAndAwaitTermination();
+      }
+      case 1 -> {
+        switch (args[0]) {
+          case "help" -> {
+            System.out.println("Usage: java -jar <jarfile> [help|provisioned-resources]");
+            System.exit(0);
+          }
+          case "provisioned-resources" -> {
+            System.setProperty("UPSTART_OVERRIDES", """
+            upstart {
+              log { rootLogger: WARN, levels.upstart: WARN }
+              autoModules.enabled = false
+            }
+            """);
+            ProvisioningService provisioningService = builder().buildInjector()
+                    .getInstance(ProvisioningService.class);
+
+            List<ProvisionedResource.ResourceRequirement> requirements = provisioningService.getResources().stream()
+                    .map(ProvisionedResource::resourceRequirement)
+                    .toList();
+
+            UncheckedIO.runUnchecked(() -> {
+              ObjectMapperFactory.buildAmbientObjectMapper()
+                      .writerWithDefaultPrettyPrinter()
+                      .writeValuesAsArray(System.out)
+                      .writeAll(requirements)
+                      .close();
+            });
+            System.exit(0);
+          }
+          default -> throw new IllegalArgumentException("Unknown argument: " + args[0]);
+        }
+
+      }
+      default -> throw new IllegalArgumentException("Too many arguments: " + args.length);
+    }
   }
 
   @Override

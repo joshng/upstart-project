@@ -1,6 +1,7 @@
 package upstart.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.jsontype.DefaultBaseTypeLimitingValidator;
 import io.upstartproject.hojack.HojackConfigMapper;
 import upstart.json.ImmutablesModule;
 import upstart.util.Ambiance;

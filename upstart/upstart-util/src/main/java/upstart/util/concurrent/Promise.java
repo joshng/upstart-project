@@ -1,6 +1,7 @@
 package upstart.util.concurrent;
 
 
+import com.google.common.base.Throwables;
 import upstart.util.collect.Optionals;
 import upstart.util.context.AsyncContext;
 import upstart.util.context.AsyncLocal;
@@ -749,7 +750,9 @@ public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Th
 
   @Override
   public Promise<T> orTimeout(long timeout, TimeUnit unit) {
-    completion.orTimeout(timeout, unit);
+    CompletableFuture.delayedExecutor(timeout, unit).execute(() -> {
+      if (!isDone()) completeExceptionally(new TimeoutException());
+    });
     return this;
   }
 

@@ -32,7 +32,7 @@ public abstract class AbstractAwsClientService<C extends SdkClient, B extends Aw
 
   @Override
   public String serviceName() {
-    return super.serviceName() + '(' + serviceName + ')';
+    return super.serviceName() + '{' + serviceName + '}';
   }
 
   public C client() {

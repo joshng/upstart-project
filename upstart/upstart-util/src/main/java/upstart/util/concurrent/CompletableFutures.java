@@ -72,6 +72,10 @@ public class CompletableFutures {
     }
   }
 
+  public static <T> Promise<T> composeAsync(Callable<? extends CompletableFuture<T>> asyncSupplier, Executor executor) {
+    return sequence(CompletableFuture.supplyAsync(() -> callSafely(asyncSupplier), executor));
+  }
+
   public static boolean isDoneWithin(Duration timeout, Future<?> future) throws InterruptedException {
     if (!future.isDone()) {
       try {

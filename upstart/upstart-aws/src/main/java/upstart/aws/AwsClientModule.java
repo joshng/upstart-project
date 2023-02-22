@@ -17,6 +17,9 @@ import java.util.Optional;
 @Value.Immutable
 public abstract class AwsClientModule<C extends SdkClient> extends UpstartModule {
 
+  public static final ConfigKey<AwsConfig.DefaultAwsConfig> DEFAULT_CONFIG_KEY = ConfigKey.of("upstart.aws.defaults", AwsConfig.DefaultAwsConfig.class);
+  public static final Key<AwsConfig.DefaultAwsConfig> DEFAULT_KEY = Key.get(AwsConfig.DefaultAwsConfig.class);
+
   public static void installWithDefaultConfig(Binder binder, Class<? extends SdkClient> clientClass) {
     binder.install(withDefaultConfig(binder, clientClass));
   }
@@ -32,11 +35,16 @@ public abstract class AwsClientModule<C extends SdkClient> extends UpstartModule
   }
 
   public static AwsConfig bindAwsConfig(Binder binder, String configPath, Key<AwsConfig> boundKey) {
-    return UpstartConfigBinder.get().bindConfig(
+    UpstartConfigBinder configBinder = UpstartConfigBinder.get();
+    AwsConfig.DefaultAwsConfig defaults = configBinder.bindConfig(binder, DEFAULT_CONFIG_KEY, DEFAULT_KEY);
+    AwsConfig.DefaultAwsConfig overrideConfigs = configBinder.bindConfig(
             binder,
             ConfigKey.of(configPath, AwsConfig.DefaultAwsConfig.class),
-            boundKey
+            boundKey.ofType(AwsConfig.DefaultAwsConfig.class)
     );
+    AwsConfig result = overrideConfigs.withDefaults(defaults);
+    binder.bind(boundKey).toInstance(result);
+    return result;
   }
 
   public abstract AwsClientType<C, ?> clientType();

@@ -8,34 +8,28 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedAsyncClient;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
 import software.amazon.awssdk.enhanced.dynamodb.model.CreateTableEnhancedRequest;
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient;
-import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClientBuilder;
 import software.amazon.awssdk.services.dynamodb.model.DescribeTableResponse;
 import software.amazon.awssdk.services.dynamodb.model.DynamoDbException;
 import software.amazon.awssdk.services.dynamodb.model.ResourceInUseException;
 import software.amazon.awssdk.services.dynamodb.model.TableAlreadyExistsException;
-import upstart.aws.AwsAsyncClientService;
 import upstart.managedservices.ServiceLifecycle;
-import upstart.util.concurrent.Promise;
-import upstart.util.concurrent.services.ThreadPoolService;
 import upstart.util.concurrent.BlockingBoundedActor;
-import upstart.util.concurrent.NamedThreadFactory;
+import upstart.util.concurrent.Promise;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
-import static com.google.common.base.Preconditions.checkState;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 @Singleton
 @ServiceLifecycle(ServiceLifecycle.Phase.Infrastructure)
 public class DynamoDbClientService {
   private static final Logger LOG = LoggerFactory.getLogger(DynamoDbClientService.class);
   public static final int MAX_ITEMS_PER_DYNAMODB_BATCH = 25;
-  private static final Executor directExecutor = MoreExecutors.directExecutor();
   private final BlockingBoundedActor tableCreationActor = new BlockingBoundedActor(10);
   private DynamoDbEnhancedAsyncClient enhancedClient;
   private final DynamoDbAsyncClient client;
@@ -48,12 +42,6 @@ public class DynamoDbClientService {
     this.client = client;
   }
 
-//  @Override
-//  protected void startUp() throws Exception {
-//    super.startUp();
-//    enhancedClient = DynamoDbEnhancedAsyncClient.builder().dynamoDbClient(client()).build();
-//  }
-
   public DynamoDbAsyncClient client() {
     return client;
   }
@@ -63,46 +51,70 @@ public class DynamoDbClientService {
     return enhancedClient;
   }
 
-  public <T> Promise<DynamoDbAsyncTable<T>> ensureTableCreated(
+  public Promise<Void> ensureTableCreated(
           String tableName,
-          TableSchema<T> tableSchema,
+          TableSchema<?> tableSchema,
           CreateTableEnhancedRequest request
   ) {
-    DynamoDbAsyncTable<T> table = enhancedClient.table(tableName, tableSchema);
+    DynamoDbAsyncTable<?> table = enhancedClient.table(tableName, tableSchema);
     return tableCreationActor.requestAsync(() -> {
-      // TODO: dynamo doesn't support concurrent DDL operations, but what exception is thrown if a different table is creating?
-      LOG.debug("Initiating table creation: {}", tableName);
-      return Promise.of(table.createTable(request))
-              .recover(
-                      DynamoDbException.class,
-                      e -> (e instanceof ResourceInUseException) || (e instanceof TableAlreadyExistsException),
-                      e -> null
-              ).thenReplaceFuture(() -> {
-                                    LOG.debug("Polling table status: {}", tableName);
-                                    return client().waiter().waitUntilTableExists(b -> b.tableName(tableName));
-                                  }
-              ).thenReplace(table);
-    }, directExecutor).recover(Exception.class, e -> {
-      throw new RuntimeException("Error ensuring table readiness: " + tableName, e);
-    });
+              // TODO: dynamo doesn't support concurrent DDL operations, but what exception is thrown if a different table is creating?
+              LOG.debug("Initiating table creation: {}", table.tableName());
+              return Promise.of(table.createTable(request))
+                      .recover(
+                              DynamoDbException.class,
+                              e -> (e instanceof ResourceInUseException) || (e instanceof TableAlreadyExistsException),
+                              e -> null
+                      );
+            }, MoreExecutors.directExecutor())
+            .recover(Exception.class, e -> {
+              throw new RuntimeException("Error ensuring table readiness: " + tableName, e);
+            });
+  }
+
+  public <T> Promise<DynamoDbAsyncTable<T>> waitUntilTableExists(
+          String tableName,
+          TableSchema<T> tableSchema,
+          Duration incompleteStatusTimeout,
+          Consumer<? super Promise<DynamoDbAsyncTable<T>>> incompleteStatusCallback
+  ) {
+    DynamoDbAsyncTable<T> table = enhancedClient.table(tableName, tableSchema);
+    return new IncompleteFuturePoller<>(
+            Promise.of(client().waiter().waitUntilTableExists(b -> b.tableName(table.tableName()))).thenReplace(table),
+            incompleteStatusCallback,
+            incompleteStatusTimeout
+    ).start();
   }
 
   public CompletableFuture<DescribeTableResponse> describeTable(String tableName) {
     return client().describeTable(b -> b.tableName(tableName));
-
   }
 
-  @Singleton
-  @ServiceLifecycle(ServiceLifecycle.Phase.Infrastructure)
-  static class DynamoThreadPoolService extends ThreadPoolService {
+  static class IncompleteFuturePoller<F extends Future<?>> implements Runnable {
+    private final Executor callbackExecutor;
+    private final F future;
+    private final Consumer<? super F> incompleteStatusCallback;
 
-    protected DynamoThreadPoolService() {
-      super(Duration.ofSeconds(5));
+    IncompleteFuturePoller(F future,
+            Consumer<? super F> incompleteStatusCallback,
+            Duration incompleteStatusTimeout
+    ) {
+      this.future = future;
+      this.incompleteStatusCallback = incompleteStatusCallback;
+      callbackExecutor = CompletableFuture.delayedExecutor(incompleteStatusTimeout.toNanos(), TimeUnit.NANOSECONDS);
+    }
+
+    public F start() {
+      if (!future.isDone()) callbackExecutor.execute(this);
+      return future;
     }
 
     @Override
-    protected ExecutorService buildExecutorService() {
-      return Executors.newCachedThreadPool(new NamedThreadFactory("dynamo-cb"));
+    public void run() {
+      if (!future.isDone()) {
+        incompleteStatusCallback.accept(future);
+        start();
+      }
     }
   }
 }

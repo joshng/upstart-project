@@ -4,10 +4,12 @@ package upstart.telemetry;
 import com.google.inject.Binder;
 import com.google.inject.binder.LinkedBindingBuilder;
 import com.google.inject.multibindings.Multibinder;
+import io.upstartproject.avro.MessageEnvelope;
 import io.upstartproject.avrocodec.events.EventLog;
 import io.upstartproject.avrocodec.events.EventPublisher;
 import io.upstartproject.avrocodec.events.PackagedEvent;
 import io.upstartproject.avrocodec.events.PackagedEventSink;
+import io.upstartproject.avrocodec.upstart.AvroPublicationModule;
 import io.upstartproject.avrocodec.upstart.DataStore;
 import upstart.config.UpstartModule;
 
@@ -36,5 +38,12 @@ public class EventLogModule extends UpstartModule {
 
     bindEventSink(binder()).to(Slf4jEventSink.class);
     bind(EventLog.class).to(EventPublisher.class);
+
+    Binder binder = binder();
+    publishMessageEnvelopeSchema(binder);
+  }
+
+  public static void publishMessageEnvelopeSchema(Binder binder) {
+    AvroPublicationModule.publishAvroClasses(binder, TELEMETRY_DATA_STORE, MessageEnvelope.class);
   }
 }
