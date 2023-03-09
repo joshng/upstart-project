@@ -5,9 +5,12 @@ import com.amazonaws.services.dynamodbv2.local.server.DynamoDBProxyServer;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import upstart.UpstartService;
 import upstart.config.EnvironmentConfigFixture;
 import upstart.config.TestConfigBuilder;
+import upstart.dynamodb.DynamoTableInitializer;
 import upstart.test.AvailablePortAllocator;
+import upstart.test.UpstartApplicationSandbox;
 import upstart.test.systemStreams.SystemOutCaptor;
 import upstart.util.concurrent.LazyReference;
 import upstart.util.concurrent.services.IdleService;
@@ -18,7 +21,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.stream.Stream;
 
-public class DynamoDbFixture extends IdleService implements EnvironmentConfigFixture {
+public class DynamoDbFixture extends IdleService implements EnvironmentConfigFixture, UpstartApplicationSandbox.Initializer {
 
   public static final String SQLITE_4_JAVA_LIBRARY_PATH = "sqlite4java.library.path";
   private int port;
@@ -92,5 +95,10 @@ public class DynamoDbFixture extends IdleService implements EnvironmentConfigFix
               server.join();
             })
     )).throwRuntimeIfAny();
+  }
+
+  @Override
+  public void initializeSandbox(UpstartService.Builder builder) {
+    builder.installModule(DynamoTableInitializer.PROVISIONED_RESOURCE_TYPE.startupProvisioningModule());
   }
 }

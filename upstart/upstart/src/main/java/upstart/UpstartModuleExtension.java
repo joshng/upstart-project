@@ -69,10 +69,6 @@ public interface UpstartModuleExtension {
     return configBinder().bindConfig(binder(), configKey, key);
   }
 
-  default void install(String className) {
-    sourceCleanedBinder().install(Reflect.newInstance(className, Module.class));
-  }
-
   /**
    * Obtains the {@link ManagedServicesModule.ServiceManager} for managing the lifecycles of {@link Service} classes.
    * <p/>

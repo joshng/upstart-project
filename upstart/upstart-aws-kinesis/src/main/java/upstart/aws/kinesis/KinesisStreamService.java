@@ -13,9 +13,10 @@ import upstart.config.annotations.DeserializedImmutable;
 import upstart.guice.AnnotationKeyedPrivateModule;
 import upstart.guice.PrivateBinding;
 import upstart.provisioning.BaseProvisionedResource;
-import upstart.provisioning.ProvisioningService;
+import upstart.provisioning.ProvisionedResource;
 import upstart.util.annotations.Tuple;
 import upstart.util.concurrent.Promise;
+import upstart.util.strings.NamingStyle;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -66,7 +67,9 @@ public class KinesisStreamService extends BaseProvisionedResource {
 
   @Override
   public Object resourceConfig() {
-    return SdkPojoSerializer.serialize(createStreamRequest(CreateStreamRequest.builder()).build());
+    return SdkPojoSerializer.serialize(createStreamRequest(CreateStreamRequest.builder()).build(),
+            NamingStyle.LowerCamelCaseSplittingAcronyms
+    );
   }
 
   @Override
@@ -108,7 +111,7 @@ public class KinesisStreamService extends BaseProvisionedResource {
         }
       };
       install(privateModule);
-      ProvisioningService.bindProvisionedResource(binder(), privateModule.annotatedKey(KinesisStreamService.class));
+      ProvisionedResource.bindProvisionedResource(binder(), privateModule.annotatedKey(KinesisStreamService.class));
     }
   }
 
@@ -126,6 +129,7 @@ public class KinesisStreamService extends BaseProvisionedResource {
 
     String name();
     OptionalInt shardCount();
+//    Optional<Duration> retentionPeriod(); // TODO support specifying retention , which might require a two-step init?
 
     default CreateStreamRequest.Builder apply(CreateStreamRequest.Builder b) {
       b.streamName(name());
@@ -145,6 +149,7 @@ public class KinesisStreamService extends BaseProvisionedResource {
               VALID_NAME_PATTERN.pattern()
       );
       checkArgument(shardCount().isEmpty() || shardCount().getAsInt() >= 1, "Shard count must be >= 1");
+//      checkArgument(retentionPeriod().filter(retention -> retention.toHours() < 1 || retention.toHours() > 8760).isEmpty(), "Retention period must be in [1, 8760] hours");
     }
   }
 }

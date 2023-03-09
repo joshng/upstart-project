@@ -1,13 +1,12 @@
 package upstart;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.util.concurrent.Service;
 import com.google.inject.AbstractModule;
-import com.google.inject.Guice;
 import upstart.config.ObjectMapperFactory;
+import upstart.config.UpstartApplicationConfig;
 import upstart.config.UpstartModule;
 import upstart.provisioning.ProvisionedResource;
-import upstart.provisioning.ProvisioningService;
+import upstart.provisioning.ResourceProvisioningCoordinator;
 import upstart.util.concurrent.services.ServiceSupervisor;
 import upstart.util.exceptions.UncheckedIO;
 
@@ -50,21 +49,18 @@ public abstract class UpstartApplication extends UpstartModule {
       }
       case 1 -> {
         switch (args[0]) {
+          // todo: make this extensible by registering a set of services that can be run from the command line
+          // upstart-cli might even use this facility, instead of the clumsy parent/sub-command approach
           case "help" -> {
-            System.out.println("Usage: java -jar <jarfile> [help|provisioned-resources]");
+            System.out.println("Usage: java -jar <jarfile> [help|provisioned-resources|dump-config]");
             System.exit(0);
           }
           case "provisioned-resources" -> {
-            System.setProperty("UPSTART_OVERRIDES", """
-            upstart {
-              log { rootLogger: WARN, levels.upstart: WARN }
-              autoModules.enabled = false
-            }
-            """);
-            ProvisioningService provisioningService = builder().buildInjector()
-                    .getInstance(ProvisioningService.class);
+            enableToolMode();
+            ResourceProvisioningCoordinator provisioningCoordinator = builder().buildInjector()
+                    .getInstance(ResourceProvisioningCoordinator.class);
 
-            List<ProvisionedResource.ResourceRequirement> requirements = provisioningService.getResources().stream()
+            List<ProvisionedResource.ResourceRequirement> requirements = provisioningCoordinator.getResources().stream()
                     .map(ProvisionedResource::resourceRequirement)
                     .toList();
 
@@ -77,12 +73,25 @@ public abstract class UpstartApplication extends UpstartModule {
             });
             System.exit(0);
           }
+          case "dump-config" -> {
+            enableToolMode();
+            System.out.println(builder().buildInjector().getInstance(UpstartApplicationConfig.class).describeConfig());
+            System.exit(0);
+          }
           default -> throw new IllegalArgumentException("Unknown argument: " + args[0]);
         }
 
       }
       default -> throw new IllegalArgumentException("Too many arguments: " + args.length);
     }
+  }
+
+  private static void enableToolMode() {
+    System.setProperty("UPSTART_OVERRIDES", """
+    upstart {
+      log { rootLogger: WARN, levels.upstart: WARN }
+    }
+    """);
   }
 
   @Override

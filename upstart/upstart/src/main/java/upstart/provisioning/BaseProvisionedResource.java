@@ -7,12 +7,12 @@ import javax.inject.Inject;
 import java.util.concurrent.CompletableFuture;
 
 public abstract class BaseProvisionedResource extends AsyncService implements ProvisionedResource {
-  private ProvisioningService provisioningService;
+  private ResourceProvisioningCoordinator provisioningService;
 
   @Inject
-  void registerProvisionedResource(ProvisioningService provisioningService) {
-    this.provisioningService = provisioningService;
-    provisioningService.addResource(this);
+  void registerProvisionedResource(ResourceProvisioningCoordinator provisioningCoordinator) {
+    this.provisioningService = provisioningCoordinator;
+    provisioningCoordinator.addResource(this);
   }
 
   @Override

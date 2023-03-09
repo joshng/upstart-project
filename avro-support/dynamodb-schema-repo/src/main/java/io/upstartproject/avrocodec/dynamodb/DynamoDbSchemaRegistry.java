@@ -11,8 +11,6 @@ import io.upstartproject.avrocodec.upstart.DataStore;
 import org.immutables.value.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.enhanced.dynamodb.DynamoDbAsyncIndex;
-import software.amazon.awssdk.enhanced.dynamodb.DynamoDbAsyncTable;
 import software.amazon.awssdk.enhanced.dynamodb.Expression;
 import software.amazon.awssdk.enhanced.dynamodb.Key;
 import software.amazon.awssdk.enhanced.dynamodb.internal.AttributeValues;
@@ -35,7 +33,7 @@ import upstart.dynamodb.DynamoDbNamespace;
 import upstart.dynamodb.DynamoTableInitializer;
 import upstart.guice.AnnotationKeyedPrivateModule;
 import upstart.guice.PrivateBinding;
-import upstart.provisioning.ProvisioningService;
+import upstart.provisioning.ProvisionedResource;
 import upstart.util.collect.PairStream;
 import upstart.util.concurrent.BlockingBoundedActor;
 import upstart.util.concurrent.CompletableFutures;
@@ -322,7 +320,7 @@ public class DynamoDbSchemaRegistry implements SchemaRegistry {
         }
       };
       install(privateModule);
-      ProvisioningService.bindProvisionedResource(binder(), privateModule.annotatedKey(SchemaTable.class));
+      ProvisionedResource.bindProvisionedResource(binder(), privateModule.annotatedKey(SchemaTable.class));
     }
   }
 

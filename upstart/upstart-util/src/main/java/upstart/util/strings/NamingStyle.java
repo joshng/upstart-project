@@ -10,10 +10,10 @@ import java.util.stream.Stream;
 
 // TODO: these would probably benefit from a streaming toLowerCase/toUpperCase implementation
 public enum NamingStyle {
-  UpperCamelCase {
+  UpperCamelCaseSplittingAcronyms {
     @Override
     public Stream<String> extractWords(String str) {
-      return CAMEL.splitAsStream(str);
+      return CAMEL_SPLITTING_ACRONYMS.splitAsStream(str);
     }
 
     @Override
@@ -24,10 +24,10 @@ public enum NamingStyle {
       );
     }
   },
-  LowerCamelCase {
+  LowerCamelCaseSplittingAcronyms {
     @Override
     public Stream<String> extractWords(String str) {
-      return UpperCamelCase.extractWords(str);
+      return UpperCamelCaseSplittingAcronyms.extractWords(str);
     }
 
     @Override
@@ -39,7 +39,39 @@ public enum NamingStyle {
         return sb;
       }
 
-      return UpperCamelCase.combineWordsTo(sb, Streams.stream(iterator));
+      return UpperCamelCaseSplittingAcronyms.combineWordsTo(sb, Streams.stream(iterator));
+    }
+  },
+  UpperCamelCaseGroupingAcronyms {
+    @Override
+    public Stream<String> extractWords(String str) {
+      return CAMEL_GROUPING_ACRONYMS.splitAsStream(str);
+    }
+
+    @Override
+    public StringBuilder combineWordsTo(StringBuilder sb, Stream<String> words) {
+      return words.reduce(sb,
+                          (b, w) -> b.append(w.substring(0, 1).toUpperCase()).append(w.substring(1).toLowerCase()),
+                          StringBuilder::append
+      );
+    }
+  },
+  LowerCamelCaseGroupingAcronyms {
+    @Override
+    public Stream<String> extractWords(String str) {
+      return UpperCamelCaseGroupingAcronyms.extractWords(str);
+    }
+
+    @Override
+    public StringBuilder combineWordsTo(StringBuilder sb, Stream<String> words) {
+      Iterator<String> iterator = words.iterator();
+      if (iterator.hasNext()) {
+        sb.append(iterator.next().toLowerCase());
+      } else {
+        return sb;
+      }
+
+      return UpperCamelCaseSplittingAcronyms.combineWordsTo(sb, Streams.stream(iterator));
     }
   },
   LowerSnakeCase {
@@ -88,10 +120,13 @@ public enum NamingStyle {
   }
   ;
 
-//  public static final Pattern CAMEL = Pattern.compile("(?<!^)(?=[A-Z])");
-  public static final Pattern CAMEL = Pattern.compile("(?<!(^|[A-Z]))(?=[A-Z])|(?<!^)(?=[A-Z][a-z])");
-  public static final Pattern SNAKE = Pattern.compile("_+");
-  public static final Pattern HYPHEN = Pattern.compile("-+");
+  public static final NamingStyle UpperCamelCase = UpperCamelCaseGroupingAcronyms;
+  public static final NamingStyle LowerCamelCase = LowerCamelCaseGroupingAcronyms;
+
+  private static final Pattern CAMEL_SPLITTING_ACRONYMS = Pattern.compile("(?<!^)(?=[A-Z])");
+  private static final Pattern CAMEL_GROUPING_ACRONYMS = Pattern.compile("(?<!(^|[A-Z]))(?=[A-Z])|(?<!^)(?=[A-Z][a-z])");
+  private static final Pattern SNAKE = Pattern.compile("_+");
+  private static final Pattern HYPHEN = Pattern.compile("-+");
 
   StringBuilder join(StringBuilder sb, Stream<String> words, CharacterCase characterCase, char delimiter) {
     int first = sb.length();
@@ -105,7 +140,9 @@ public enum NamingStyle {
   public abstract StringBuilder combineWordsTo(StringBuilder sb, Stream<String> words);
 
   public String convertTo(NamingStyle newStyle, String str) {
-    return newStyle.combineWordsTo(new StringBuilder(), extractWords(str)).toString();
+    return newStyle != this
+            ? newStyle.combineWordsTo(new StringBuilder(), extractWords(str)).toString()
+            : str;
   }
 
   public UnaryOperator<String> converterTo(NamingStyle newStyle) {

@@ -1,6 +1,5 @@
 package upstart.aws.test.dynamodb;
 
-import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBTable;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -11,13 +10,11 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import upstart.dynamodb.DynamoTableInitializer;
 import upstart.provisioning.ProvisionedResource;
-import upstart.provisioning.ProvisioningService;
 import upstart.test.SingletonExtension;
 import upstart.test.UpstartExtension;
 import upstart.util.reflect.Reflect;
 
 import javax.inject.Named;
-import java.lang.reflect.Type;
 import java.util.Optional;
 
 public class LocalDynamoDbExtension extends SingletonExtension<DynamoDbFixture> implements BeforeEachCallback, AfterEachCallback, ParameterResolver {
@@ -35,7 +32,7 @@ public class LocalDynamoDbExtension extends SingletonExtension<DynamoDbFixture> 
     DynamoDbFixture fixture = getOrCreateContext(extensionContext);
     UpstartExtension.applyOptionalEnvironmentValues(extensionContext, fixture);
     UpstartExtension.getOptionalTestBuilder(extensionContext)
-            .ifPresent(testBuilder -> testBuilder.installModule(binder -> ProvisioningService
+            .ifPresent(testBuilder -> testBuilder.installModule(binder -> ProvisionedResource
                     .provisionAtStartup(binder, DynamoTableInitializer.PROVISIONED_RESOURCE_TYPE)));
   }
 

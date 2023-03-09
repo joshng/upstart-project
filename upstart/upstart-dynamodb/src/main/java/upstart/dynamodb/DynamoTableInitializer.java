@@ -23,6 +23,7 @@ import upstart.healthchecks.HealthCheck;
 import upstart.provisioning.BaseProvisionedResource;
 import upstart.util.concurrent.Promise;
 import upstart.util.concurrent.ShutdownException;
+import upstart.util.strings.NamingStyle;
 
 import javax.inject.Inject;
 import java.time.Duration;
@@ -112,7 +113,7 @@ public class DynamoTableInitializer<T> extends BaseProvisionedResource implement
             null
     );
 
-    return SdkPojoSerializer.serialize(request);
+    return SdkPojoSerializer.serialize(request, NamingStyle.LowerCamelCaseSplittingAcronyms);
   }
 
   @Override
@@ -122,7 +123,7 @@ public class DynamoTableInitializer<T> extends BaseProvisionedResource implement
 
   @Override
   public Promise<Void> waitUntilProvisioned() {
-    return initTable(dbService.waitUntilTableExists(tableName, tableSchema, Duration.ofSeconds(1), promise -> {
+    return initTable(dbService.waitUntilTableExists(tableName, tableSchema, Duration.ofSeconds(5), promise -> {
       if (wasStartupCanceled()) {
         promise.completeExceptionally(new ShutdownException("Startup was canceled"));
       } else {
