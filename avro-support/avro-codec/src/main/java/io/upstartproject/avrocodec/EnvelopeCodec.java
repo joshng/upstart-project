@@ -7,7 +7,7 @@ import io.upstartproject.avro.EventTimestampResolution;
 import io.upstartproject.avro.MessageEnvelope;
 import io.upstartproject.avro.MessageEnvelopePayload;
 import io.upstartproject.avro.PackedRecord;
-import upstart.util.concurrent.CompletableFutures;
+import upstart.util.concurrent.ListPromise;
 import upstart.util.exceptions.UncheckedIO;
 import org.apache.avro.file.DataFileReader;
 import org.apache.avro.file.DataFileStream;
@@ -141,10 +141,9 @@ public class EnvelopeCodec {
             .deploymentStage(envelope.getDeploymentStage())
             .build();
 
-    CompletableFuture<List<UnpackableRecord>> annotationRecords = CompletableFutures.allAsList(
-            envelope.getAnnotations().stream()
-                    .map(decoder::toUnpackable)
-    );
+    ListPromise<UnpackableRecord> annotationRecords = envelope.getAnnotations().stream()
+            .map(decoder::toUnpackable)
+            .collect(ListPromise.toListPromise());
 
     return decoder.toUnpackable(envelope.getMessage()).thenCombine(
             annotationRecords,

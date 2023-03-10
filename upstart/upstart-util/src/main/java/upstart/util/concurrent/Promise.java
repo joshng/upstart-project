@@ -1,7 +1,6 @@
 package upstart.util.concurrent;
 
 
-import com.google.common.base.Throwables;
 import upstart.util.collect.Optionals;
 import upstart.util.context.AsyncContext;
 import upstart.util.context.AsyncLocal;
@@ -33,6 +32,8 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -127,6 +128,10 @@ public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Th
 
   public static Promise<Void> allOf(Stream<? extends CompletableFuture<?>> futures) {
     return allOf(CompletableFutures.toArray(futures));
+  }
+
+  public static <T, U> Collector<CompletableFuture<? extends T>, ?, Promise<U>> collector(Collector<? super T, ?, U> collector) {
+    return Collectors.collectingAndThen(ListPromise.toListPromise(), listPromise -> listPromise.thenApply(results -> results.stream().collect(collector)));
   }
 
   public static <A, B, O> Promise<O> combine(

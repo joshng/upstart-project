@@ -26,6 +26,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import static com.google.common.truth.OptionalSubject.optionals;
 import static com.google.common.truth.Truth.assertThat;
@@ -116,10 +117,9 @@ class AsyncLocalPromiseTest {
       AsyncContext.emptyContext().runOrThrowInContext(() -> {
         AsyncLocal<PSet<String>> state = AsyncLocal.newAsyncLocal("strs", HashTreePSet.empty(), PSet::plusAll);
         List<String> expectedValues = List.of("a", "b", "c", "d", "e", "f", "g");
-        ListPromise<PSet<String>> setsPromise = ListPromise.allAsList(
-                expectedValues.stream()
-                        .map(x -> Promise.callAsync(() -> state.updateAndGet(list -> list.plus(x)), executor))
-        );
+        ListPromise<PSet<String>> setsPromise = expectedValues.stream()
+                .map(x -> Promise.callAsync(() -> state.updateAndGet(list -> list.plus(x)), executor))
+                .collect(ListPromise.toListPromise());
         ListPromise<String> strs = setsPromise.thenStreamToList(sets -> sets.stream().flatMap(Set::stream));
         assertThat(strs).doneWithin(deadline).havingResultThat(MoreTruth.iterables())
                 .containsExactlyElementsIn(expectedValues);

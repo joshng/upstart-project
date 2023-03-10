@@ -6,7 +6,7 @@ import com.google.inject.binder.LinkedBindingBuilder;
 import com.google.inject.multibindings.MapBinder;
 import upstart.util.collect.Pair;
 import upstart.util.collect.PairStream;
-import upstart.util.concurrent.CompletableFutures;
+import upstart.util.concurrent.ListPromise;
 import upstart.util.concurrent.OptionalPromise;
 import upstart.util.concurrent.Promise;
 
@@ -61,9 +61,10 @@ public class HealthChecker {
   }
 
   public Promise<Map<String, HealthCheck.Unhealthy>> checkHealth() {
-    return CompletableFutures.allAsList(
-            PairStream.of(healthChecks).map(this::runHealthCheck)
-    ).thenApply(results -> PairStream.of(results.stream().flatMap(Optional::stream)).toImmutableMap());
+    return PairStream.of(healthChecks)
+            .map(this::runHealthCheck)
+            .collect(ListPromise.toListPromise())
+            .thenApply(results -> PairStream.of(results.stream().flatMap(Optional::stream)).toImmutableMap());
   }
 
   private OptionalPromise<Pair<String, HealthCheck.Unhealthy>> runHealthCheck(String name, HealthCheck healthCheck) {

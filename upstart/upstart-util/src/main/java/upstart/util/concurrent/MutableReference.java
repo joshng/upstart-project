@@ -5,6 +5,7 @@ import upstart.util.context.TransientContext;
 
 import java.util.Optional;
 import java.util.concurrent.Callable;
+import java.util.function.BiFunction;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
@@ -45,6 +46,9 @@ public interface MutableReference<T> extends Supplier<T>, Callable<T> {
     return newValue;
   }
 
+  default <U> T mergeAndGet(U input, BiFunction<? super T, U, ? extends T> transformer) {
+    return updateAndGet(current -> transformer.apply(current, input));
+  }
 
   @Override
   default T call() {

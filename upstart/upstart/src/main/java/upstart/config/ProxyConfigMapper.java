@@ -19,6 +19,7 @@ import com.google.common.reflect.TypeToken;
 import io.upstartproject.hojack.Size;
 import upstart.config.annotations.ConfigPath;
 import upstart.proxy.Proxies;
+import upstart.util.concurrent.ListPromise;
 import upstart.util.reflect.Modifiers;
 import upstart.util.collect.MoreCollectors;
 import upstart.util.collect.Optionals;
@@ -26,7 +27,6 @@ import upstart.util.collect.PairStream;
 import upstart.util.reflect.Reflect;
 import upstart.util.exceptions.ThrowingFunction;
 import upstart.util.annotations.Tuple;
-import upstart.util.concurrent.CompletableFutures;
 import upstart.util.concurrent.Promise;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigMemorySize;
@@ -287,7 +287,7 @@ public class ProxyConfigMapper {
               .filter(ProxyConfigMapper::isMappedMethod)
               .filter(m -> uniqueNames.add(m.getName()))
               .map(ProxyConfigMapper::methodMapper);
-      return CompletableFutures.allAsList(methodMappers)
+      return methodMappers.collect(ListPromise.toListPromise())
               .thenApply(mappers -> new ConfigObjectProxyMapper(mappedType, mappers));
     }
 

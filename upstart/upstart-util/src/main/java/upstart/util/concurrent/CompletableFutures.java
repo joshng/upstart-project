@@ -122,18 +122,8 @@ public class CompletableFutures {
     return a.<B, Void>thenCombine(b, (x, y) -> null).toCompletableFuture();
   }
 
-  @SuppressWarnings("unchecked")
-  public static <T> ListPromise<T> allAsList(Collection<? extends CompletableFuture<? extends T>> futures) {
-    return allAsList(futures.toArray(new CompletableFuture[0]));
-  }
-
   public static <T> ListPromise<T> allAsList(Stream<? extends CompletableFuture<? extends T>> futures) {
-    return ListPromise.allAsList(futures);
-  }
-
-  @SafeVarargs
-  public static <T> ListPromise<T> allAsList(CompletableFuture<? extends T>... array) {
-    return ListPromise.allAsList(array);
+    return futures.collect(ListPromise.toListPromise());
   }
 
   public static <T, U> Promise<U> foldLeft(CompletionStage<U> identity, Stream<T> items, BiFunction<? super U, ? super T, ? extends CompletionStage<U>> combiner) {

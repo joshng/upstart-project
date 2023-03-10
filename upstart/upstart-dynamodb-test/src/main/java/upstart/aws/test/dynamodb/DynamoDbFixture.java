@@ -24,6 +24,7 @@ import java.util.stream.Stream;
 public class DynamoDbFixture extends IdleService implements EnvironmentConfigFixture, UpstartApplicationSandbox.Initializer {
 
   public static final String SQLITE_4_JAVA_LIBRARY_PATH = "sqlite4java.library.path";
+  public static final Region REGION = Region.US_WEST_2;
   private int port;
   private DynamoDBProxyServer server;
   private String endpoint;
@@ -31,7 +32,7 @@ public class DynamoDbFixture extends IdleService implements EnvironmentConfigFix
     try {
       return DynamoDbClient.builder()
               .endpointOverride(new URI(endpoint))
-              .region(Region.US_EAST_1)
+              .region(REGION)
               .credentialsProvider(new FakeCredentialsProvider())
               .build();
     } catch (URISyntaxException e) {
@@ -71,7 +72,12 @@ public class DynamoDbFixture extends IdleService implements EnvironmentConfigFix
 
   @Override
   public void applyEnvironmentValues(TestConfigBuilder<?> config) {
-    config.overrideConfig("upstart.aws.dynamodb.endpoint", endpoint);
+    config.overrideConfig("""
+                          upstart.aws.dynamodb {
+                            endpoint: "%s"
+                            region: %s
+                          }
+                          """.formatted(endpoint, REGION));
   }
 
   public DynamoDbClient client() {

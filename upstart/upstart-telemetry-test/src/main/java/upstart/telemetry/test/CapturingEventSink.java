@@ -56,7 +56,7 @@ public class CapturingEventSink implements PackagedEventSink {
   }
 
   public List<UnpackableMessageEnvelope> unpackableEvents() {
-    return ListPromise.allAsList(events.stream().map(offlineCodec::makeUnpackable)).join();
+    return events.stream().map(offlineCodec::makeUnpackable).collect(ListPromise.toListPromise()).join();
   }
 
   public Stream<UnpackableMessageEnvelope> findEvents(Class<? extends SpecificRecordBase> eventClass) {
