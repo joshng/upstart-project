@@ -16,6 +16,7 @@ import upstart.util.concurrent.services.ComposableService;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletionStage;
 
@@ -43,7 +44,7 @@ public interface UpstartApplicationSandbox {
     CompletableFutures.allOf(fixtureServices.stream().map(ComposableService::start)).join();
 
     for (EnvironmentConfigFixture fixture : configFixtures()) {
-      fixture.applyEnvironmentValues(configBuilder);
+      fixture.applyEnvironmentValues(configBuilder, Optional.empty());
     }
 
     HojackConfigProvider configProvider = configBuilder.buildConfigProvider();

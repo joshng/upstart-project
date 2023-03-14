@@ -1,11 +1,13 @@
 package upstart.config;
 
+import org.junit.jupiter.api.extension.ExtensionContext;
 import upstart.config.annotations.ConfigPath;
 import upstart.test.UpstartContextFixture;
 import upstart.test.UpstartTest;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.google.common.truth.Truth.assertThat;
@@ -61,7 +63,7 @@ public class EnvironmentConfigValidatorTestTest extends EnvironmentConfigValidat
     static final AtomicInteger INVOCATION_COUNTER = new AtomicInteger();
 
     @Override
-    public void applyEnvironmentValues(TestConfigBuilder<?> config) {
+    public void applyEnvironmentValues(TestConfigBuilder<?> config, Optional<ExtensionContext> testExtensionContext) {
       config.overrideConfig("example.config.intValue", INVOCATION_COUNTER.incrementAndGet());
     }
   }

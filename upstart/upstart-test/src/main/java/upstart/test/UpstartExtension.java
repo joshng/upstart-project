@@ -58,7 +58,7 @@ public class UpstartExtension extends SingletonParameterResolver<UpstartTestBuil
   }
 
   public static void applyOptionalEnvironmentValues(ExtensionContext extensionContext, EnvironmentConfigFixture fixture) {
-    getOptionalTestBuilder(extensionContext).ifPresent(fixture::applyEnvironmentValues);
+    getOptionalTestBuilder(extensionContext).ifPresent(config -> fixture.applyEnvironmentValues(config, Optional.of(extensionContext)));
   }
 
   public static UpstartTestBuilder getRequiredTestBuilder(ExtensionContext extensionContext) {

@@ -2,6 +2,7 @@ package upstart.aws.s3.test;
 
 import akka.actor.ActorSystem;
 import com.amazonaws.services.s3.model.ObjectMetadata;
+import org.junit.jupiter.api.extension.ExtensionContext;
 import software.amazon.awssdk.services.s3.S3Client;
 import upstart.aws.AwsClientType;
 import upstart.aws.s3.S3Key;
@@ -173,7 +174,7 @@ public class MockS3 implements EnvironmentConfigFixture {
   }
 
   @Override
-  public void applyEnvironmentValues(TestConfigBuilder<?> config) {
+  public void applyEnvironmentValues(TestConfigBuilder<?> config, Optional<ExtensionContext> testExtensionContext) {
     config.overrideConfig(AwsClientType.of(S3Client.class).defaultConfigPath(), Map.of(
                                   "endpoint", endpointUri,
                                   "region", getRegion(),

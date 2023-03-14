@@ -4,7 +4,6 @@ import upstart.cluster.zk.CuratorService;
 import upstart.cluster.zk.ZkConfig;
 import upstart.config.EnvironmentConfigFixture;
 import upstart.config.TestConfigBuilder;
-import upstart.test.UpstartTestBuilder;
 import upstart.test.SingletonExtension;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.test.TestingServer;
@@ -12,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.Optional;
 
 public class ZookeeperFixture implements EnvironmentConfigFixture {
   private final TestingServer server = new TestingServer(true);
@@ -24,7 +24,7 @@ public class ZookeeperFixture implements EnvironmentConfigFixture {
   }
 
   @Override
-  public void applyEnvironmentValues(TestConfigBuilder<?> config) {
+  public void applyEnvironmentValues(TestConfigBuilder<?> config, Optional<ExtensionContext> testExtensionContext) {
     config.overrideConfig("upstart.cluster.zk", zkConfig());
   }
 

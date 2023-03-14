@@ -15,6 +15,7 @@ import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
@@ -30,7 +31,7 @@ public class UpstartClusterExtension extends SingletonParameterResolver<UpstartT
   @Override
   public void beforeEach(ExtensionContext context) throws Exception {
     UpstartTestClusterBuilder configurator = getOrCreateContext(context);
-    ZookeeperFixture.getInstance(context).applyEnvironmentValues(configurator.allNodes());
+    ZookeeperFixture.getInstance(context).applyEnvironmentValues(configurator.allNodes(), Optional.of(context));
   }
 
   @Override

@@ -2,6 +2,7 @@ package upstart.aws.test.dynamodb;
 
 import com.amazonaws.services.dynamodbv2.local.main.ServerRunner;
 import com.amazonaws.services.dynamodbv2.local.server.DynamoDBProxyServer;
+import org.junit.jupiter.api.extension.ExtensionContext;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
@@ -19,6 +20,7 @@ import upstart.util.exceptions.MultiException;
 import javax.annotation.Nonnull;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 public class DynamoDbFixture extends IdleService implements EnvironmentConfigFixture, UpstartApplicationSandbox.Initializer {
@@ -71,7 +73,7 @@ public class DynamoDbFixture extends IdleService implements EnvironmentConfigFix
   }
 
   @Override
-  public void applyEnvironmentValues(TestConfigBuilder<?> config) {
+  public void applyEnvironmentValues(TestConfigBuilder<?> config, Optional<ExtensionContext> testExtensionContext) {
     config.overrideConfig("""
                           upstart.aws.dynamodb {
                             endpoint: "%s"
