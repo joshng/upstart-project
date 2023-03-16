@@ -10,6 +10,7 @@ import upstart.provisioning.ResourceProvisioningCoordinator;
 import upstart.util.concurrent.services.ServiceSupervisor;
 import upstart.util.exceptions.UncheckedIO;
 
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -60,8 +61,12 @@ public abstract class UpstartApplication extends UpstartModule {
             ResourceProvisioningCoordinator provisioningCoordinator = builder().buildInjector()
                     .getInstance(ResourceProvisioningCoordinator.class);
 
+            var comparator = Comparator.<ProvisionedResource.ResourceRequirement, String>
+                            comparing(res -> res.resourceType().resourceType())
+                    .thenComparing(ProvisionedResource.ResourceRequirement::resourceId);
             List<ProvisionedResource.ResourceRequirement> requirements = provisioningCoordinator.getResources().stream()
                     .map(ProvisionedResource::resourceRequirement)
+                    .sorted(comparator)
                     .toList();
 
             UncheckedIO.runUnchecked(() -> {

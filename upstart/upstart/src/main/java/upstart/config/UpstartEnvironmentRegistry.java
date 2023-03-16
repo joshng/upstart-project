@@ -10,6 +10,7 @@ import upstart.util.Ambiance;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import org.immutables.value.Value;
+import upstart.util.collect.Optionals;
 
 import java.util.List;
 import java.util.Map;
@@ -38,10 +39,10 @@ public abstract class UpstartEnvironmentRegistry {
           .build(new CacheLoader<>() {
             @Override
             public UpstartEnvironment load(String name) {
-              UpstartDeploymentStage stage = appEnvConfig().hasPath(name)
-                      ? appEnvConfig().getEnum(UpstartDeploymentStage.class, name)
-                      : UpstartDeploymentStage.valueOf(Ambiance.ambientValue(UpstartEnvironment.UPSTART_DEPLOYMENT_STAGE).orElseThrow(
-                              () -> new IllegalStateException("Missing environment value: " + UpstartEnvironment.UPSTART_DEPLOYMENT_STAGE + " for environment '" + name + "'")));
+              UpstartDeploymentStage stage = Ambiance.ambientValue(UpstartEnvironment.UPSTART_DEPLOYMENT_STAGE)
+                      .map(UpstartDeploymentStage::valueOf)
+                      .or(() -> Optionals.onlyIfFrom(appEnvConfig().hasPath(name), () -> appEnvConfig().getEnum(UpstartDeploymentStage.class, name)))
+                      .orElseThrow(() -> new IllegalStateException("Missing environment value: " + UpstartEnvironment.UPSTART_DEPLOYMENT_STAGE + " for environment '" + name + "'"));
               return ImmutableUpstartEnvironment.builder()
                       .name(name)
                       .classLoader(classLoader())
