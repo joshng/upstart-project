@@ -61,8 +61,7 @@ public abstract class UpstartApplication extends UpstartModule {
             ResourceProvisioningCoordinator provisioningCoordinator = builder().buildInjector()
                     .getInstance(ResourceProvisioningCoordinator.class);
 
-            var comparator = Comparator.<ProvisionedResource.ResourceRequirement, String>
-                            comparing(res -> res.resourceType().resourceType())
+            var comparator = Comparator.comparing((ProvisionedResource.ResourceRequirement res) -> res.resourceType().resourceType())
                     .thenComparing(ProvisionedResource.ResourceRequirement::resourceId);
             List<ProvisionedResource.ResourceRequirement> requirements = provisioningCoordinator.getResources().stream()
                     .map(ProvisionedResource::resourceRequirement)
