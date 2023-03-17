@@ -66,6 +66,11 @@ public class CompletableFutureSubject<T> extends Subject {
     return check("join()").about(assertThat);
   }
 
+  public <S extends Subject> S completedWithResult(Factory<S, ? super T> subjectFactory) {
+    isDone();
+    return check("join()").about(subjectFactory).that(actual.join());
+  }
+
   public <S extends Subject, F extends Factory<S, ? super T>> S havingResultThat(F factory) {
     isDone();
     return check("join()").about((Factory<S, ? super T>)factory).that(actual.join());

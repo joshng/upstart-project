@@ -8,12 +8,7 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedAsyncClient;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
 import software.amazon.awssdk.enhanced.dynamodb.model.CreateTableEnhancedRequest;
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient;
-import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClientBuilder;
-import software.amazon.awssdk.services.dynamodb.model.DescribeTableResponse;
-import software.amazon.awssdk.services.dynamodb.model.DynamoDbException;
-import software.amazon.awssdk.services.dynamodb.model.ResourceInUseException;
-import software.amazon.awssdk.services.dynamodb.model.TableAlreadyExistsException;
-import upstart.aws.AwsAsyncClientService;
+import software.amazon.awssdk.services.dynamodb.model.*;
 import upstart.managedservices.ServiceLifecycle;
 import upstart.util.concurrent.Promise;
 import upstart.util.concurrent.services.ThreadPoolService;
@@ -69,22 +64,36 @@ public class DynamoDbClientService {
           CreateTableEnhancedRequest request
   ) {
     DynamoDbAsyncTable<T> table = enhancedClient.table(tableName, tableSchema);
-    return tableCreationActor.requestAsync(() -> {
-      // TODO: dynamo doesn't support concurrent DDL operations, but what exception is thrown if a different table is creating?
-      LOG.debug("Initiating table creation: {}", tableName);
-      return Promise.of(table.createTable(request))
-              .recover(
+    return tableCreationActor
+        .requestAsync(
+            () -> {
+              // TODO: dynamo doesn't support concurrent DDL operations, but what exception is
+              // thrown if a different table is creating?
+              LOG.debug("Initiating table creation: {}", tableName);
+              return Promise.of(table.createTable(request))
+                  .recover(
                       DynamoDbException.class,
-                      e -> (e instanceof ResourceInUseException) || (e instanceof TableAlreadyExistsException),
-                      e -> null
-              ).thenReplaceFuture(() -> {
-                                    LOG.debug("Polling table status: {}", tableName);
-                                    return client().waiter().waitUntilTableExists(b -> b.tableName(tableName));
-                                  }
-              ).thenReplace(table);
-    }, directExecutor).recover(Exception.class, e -> {
-      throw new RuntimeException("Error ensuring table readiness: " + tableName, e);
-    });
+                      e ->
+                          (e instanceof ResourceInUseException)
+                              || (e instanceof TableAlreadyExistsException),
+                      e -> null)
+                  .thenReplaceFuture(
+                      () -> {
+                        LOG.debug("Polling table status: {}", tableName);
+                        return client().waiter().waitUntilTableExists(b -> b.tableName(tableName));
+                      })
+                  .thenReplace(table);
+            },
+            directExecutor)
+        .recover(
+            Exception.class,
+            e -> {
+              throw new RuntimeException("Error ensuring table readiness: " + tableName, e);
+            });
+  }
+
+  public CompletableFuture<UpdateTimeToLiveResponse> updateTimeToLive(String tableName, String attributeName) {
+    return client.updateTimeToLive(b -> b.tableName(tableName).timeToLiveSpecification(s -> s.attributeName(attributeName).enabled(true)));
   }
 
   public CompletableFuture<DescribeTableResponse> describeTable(String tableName) {
