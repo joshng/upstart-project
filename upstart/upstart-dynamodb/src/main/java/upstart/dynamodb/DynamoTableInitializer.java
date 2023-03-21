@@ -1,18 +1,16 @@
 package upstart.dynamodb;
 
+import static com.google.common.base.Preconditions.checkState;
+
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import java.beans.BeanInfo;
-import java.beans.Introspector;
-import java.beans.PropertyDescriptor;
-import java.lang.reflect.Method;
-import java.util.Arrays;
+import com.google.common.collect.MoreCollectors;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Function;
+import java.util.function.Supplier;
 import javax.inject.Inject;
-import com.google.common.collect.MoreCollectors;import reactor.core.publisher.Flux;
+import reactor.core.publisher.Flux;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbAsyncTable;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedAsyncClient;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
@@ -24,15 +22,17 @@ import software.amazon.awssdk.services.dynamodb.model.*;
 import upstart.healthchecks.HealthCheck;
 import upstart.util.concurrent.CompletableFutures;
 import upstart.util.concurrent.Promise;
-import upstart.util.concurrent.services.AsyncService;import upstart.util.reflect.Reflect;
+import upstart.util.concurrent.services.AsyncService;
+import upstart.util.reflect.Reflect;
+import upstart.util.strings.NamingStyle;
 
 public class DynamoTableInitializer<T> extends AsyncService implements HealthCheck {
   private static final LoadingCache<Class<?>, TableSchema<?>> TABLE_SCHEMAS =
       CacheBuilder.newBuilder().build(CacheLoader.from(TableSchema::fromBean));
 
   private final DynamoDbClientService dbService;
-  private final String tableName;
-  private final TableSchema<T> tableSchema;
+  protected final String tableName;
+  protected final TableSchema<T> tableSchema;
   protected volatile DynamoDbAsyncTable<T> table;
   protected final Class<T> mappedClass;
 
@@ -75,40 +75,33 @@ public class DynamoTableInitializer<T> extends AsyncService implements HealthChe
   }
 
   protected Promise<DynamoDbAsyncTable<T>> tableCreated(DynamoDbAsyncTable<T> table) {
-    final Function<Void, DynamoDbAsyncTable<T>> setTable = __ -> this.table = table;
+    final Supplier<DynamoDbAsyncTable<T>> setTable = () -> this.table = table;
     return getTtlAttribute()
         .map(
             n ->
-                Promise.of(dbService.updateTimeToLive(tableName, n))
-                    .thenApply(r -> setTable.apply(null)))
-        .orElseGet(() -> Promise.completed(setTable.apply(null)));
+                Promise.of(dbService.updateTimeToLive(tableName, n)).thenApply(r -> setTable.get()))
+        .orElseGet(() -> Promise.completed(setTable.get()));
   }
 
   private Optional<String> getTtlAttribute() {
-//    Reflect.allAnnotatedMethods(mappedClass, TimeToLiveAttribute.class, Reflect.LineageOrder.SubclassBeforeSuperclass)
-//            .collect(MoreCollectors.toOptional())
-//            .map(meth -> meth.getAnnotation()
-    return Arrays.stream(mappedClass.getDeclaredMethods())
-        .filter(
-            m ->
-                m.isAnnotationPresent(TimeToLiveAttribute.class)
-                    && m.isAnnotationPresent(DynamoDbAttribute.class))
-        .findFirst()
-        .flatMap(DynamoTableInitializer::extractPropertyName);
+    return Reflect.allAnnotatedMethods(
+            mappedClass, TimeToLiveAttribute.class, Reflect.LineageOrder.SubclassBeforeSuperclass)
+        .collect(MoreCollectors.toOptional())
+        .map(
+            meth ->
+                Optional.ofNullable(meth.getAnnotation(DynamoDbAttribute.class))
+                    .map(DynamoDbAttribute::value)
+                    .orElseGet(
+                        () -> {
+                          checkState(
+                              meth.getName().startsWith("get"),
+                              "Annotated bean method should start with 'get': %s",
+                              meth.getName());
+                          return NamingStyle.UpperCamelCase.convertTo(
+                              NamingStyle.LowerCamelCase, meth.getName().substring(3));
+                        }));
   }
 
-  public static Optional<String> extractPropertyName(Method method) {
-    try {
-      Class<?> clazz = method.getDeclaringClass();
-      BeanInfo info = Introspector.getBeanInfo(clazz);
-      return Arrays.stream(info.getPropertyDescriptors())
-          .filter(pd -> pd.getReadMethod().equals(method))
-          .findFirst()
-          .map(PropertyDescriptor::getName);
-    } catch (Throwable ignore) {
-    }
-    return Optional.empty();
-  }
   /** override to add indices or provision throughput */
   protected CreateTableEnhancedRequest.Builder prepareCreateTableRequest(
       CreateTableEnhancedRequest.Builder builder) {
