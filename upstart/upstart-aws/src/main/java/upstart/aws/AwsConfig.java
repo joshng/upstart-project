@@ -6,12 +6,14 @@ import org.immutables.value.Value;
 import software.amazon.awssdk.auth.credentials.AnonymousCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.WebIdentityTokenFileCredentialsProvider;
 import software.amazon.awssdk.awscore.client.builder.AwsClientBuilder;
 import software.amazon.awssdk.core.retry.RetryPolicy;
 import software.amazon.awssdk.regions.Region;
 import upstart.config.annotations.DeserializedImmutable;
 
 import java.net.URI;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -80,12 +82,23 @@ public interface AwsConfig {
       AwsCredentialsProvider getProvider(AwsConfig config) {
         return DefaultCredentialsProvider.create();
       }
-    }, Anonymous {
+    },
+    Anonymous {
       @Override
       AwsCredentialsProvider getProvider(AwsConfig config) {
         return AnonymousCredentialsProvider.create();
       }
-    }, Supplied {
+    },
+    WebIdentityTokenFile {
+      @Override
+      AwsCredentialsProvider getProvider(AwsConfig config) {
+        return WebIdentityTokenFileCredentialsProvider.builder()
+                .roleArn(System.getenv("AWS_ROLE_ARN"))
+                .webIdentityTokenFile(Paths.get(System.getenv("AWS_WEB_IDENTITY_TOKEN_FILE")))
+                .build();
+      }
+    },
+    Supplied {
       @Override
       AwsCredentialsProvider getProvider(AwsConfig config) {
         try {

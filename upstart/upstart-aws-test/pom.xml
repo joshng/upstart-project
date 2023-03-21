@@ -21,11 +21,6 @@
         <type>pom</type>
         <scope>import</scope>
       </dependency>
-      <dependency>
-        <groupId>com.amazonaws</groupId>
-        <artifactId>aws-java-sdk-s3</artifactId>
-        <version>1.11.907</version>
-      </dependency>
     </dependencies>
   </dependencyManagement>
 

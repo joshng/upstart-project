@@ -22,6 +22,20 @@
         <scope>import</scope>
       </dependency>
       <dependency>
+        <groupId>com.amazonaws</groupId>
+        <artifactId>aws-java-sdk-bom</artifactId>
+        <version>${awssdkv1.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+
+      <dependency>
+        <groupId>commons-codec</groupId>
+        <artifactId>commons-codec</artifactId>
+        <version>1.15</version>
+      </dependency>
+
+      <dependency>
         <groupId>software.amazon.awssdk</groupId>
         <artifactId>netty-nio-client</artifactId>
         <version>${awssdk.version}</version>

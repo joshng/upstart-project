@@ -23,6 +23,7 @@
     <avro.version>1.11.0</avro.version>
 <!--    <awssdk.version>2.20.8</awssdk.version>-->
     <awssdk.version>2.17.196</awssdk.version>
+    <awssdkv1.version>1.12.430</awssdkv1.version>
     <curator-test.version>5.1.0</curator-test.version>
     <curator.version>5.1.0</curator.version>
     <guava.version>30.1.1-jre</guava.version>
