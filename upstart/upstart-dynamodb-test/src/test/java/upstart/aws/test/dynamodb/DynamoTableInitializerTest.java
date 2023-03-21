@@ -1,5 +1,6 @@
 package upstart.aws.test.dynamodb;
 
+import static com.google.common.truth.Truth.assertThat;
 import static org.awaitility.Awaitility.await;
 import static upstart.test.truth.CompletableFutureSubject.assertThat;
 
@@ -39,12 +40,10 @@ public class DynamoTableInitializerTest extends UpstartModule {
         .atMost(Duration.ofSeconds(5))
         .untilAsserted(
             () -> {
-              assertThat(testInitializer.describeTable())
+              assertThat(testInitializer.describeTable().thenApply(r -> r.table().tableName()))
                   .doneWithin(deadline)
-                  .completedWithResultSatisfying(
-                      result ->
-                          Truth.assertThat(
-                              result.table().tableName().equals(testInitializer.tableName())));
+                  .completedWithResultSatisfying(Truth::assertThat)
+                  .isEqualTo(testInitializer.tableName());
 
               var ttlDesc =
                   assertThat(
@@ -53,9 +52,9 @@ public class DynamoTableInitializerTest extends UpstartModule {
                               .describeTimeToLive(b -> b.tableName(testInitializer.tableName())))
                       .doneWithin(deadline)
                       .completedNormally();
-              Truth.assertThat(ttlDesc.timeToLiveDescription().timeToLiveStatus())
+              assertThat(ttlDesc.timeToLiveDescription().timeToLiveStatus())
                   .isEqualTo(TimeToLiveStatus.ENABLED);
-               Truth.assertThat(ttlDesc.timeToLiveDescription().attributeName()).isEqualTo("ttl");
+              assertThat(ttlDesc.timeToLiveDescription().attributeName()).isEqualTo("ttl");
             });
   }
 
