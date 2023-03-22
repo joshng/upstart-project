@@ -376,7 +376,7 @@ public class AvroPublisher {
     return exception.<CompletableFuture<RecordPacker>>map(CompletableFutures::failedFuture)
             .orElseGet(() -> {
               Promise<RecordPacker> promise = knownPackersByFingerprint.getUnchecked(descriptor.fingerprint());
-              if (!promise.isDone()) {
+              if (!promise.isDone()) { // TODO should this somehow check if the task has been STARTED, rather than done?
                 pendingRegistrations.offer(descriptor);
                 return CompletableFutures.recoverCompose(promise, AvroSchemaConflictException.class, conflictException ->
                         CompletableFutures.sequence(taxonomy.delete(descriptor).handle((__, e2) -> {

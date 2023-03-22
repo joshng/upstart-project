@@ -118,8 +118,9 @@ public class AvroTaxonomy extends NotifyingService {
   protected void doStop() {
     registry.shutDown().whenComplete((__, e) -> {
       knownFingerprints.asMap().forEach((fingerprint, promise) -> {
-        if (!promise.isDone())
+        if (!promise.isDone()) {
           promise.completeExceptionally(new ShutdownException("AvroTaxonomy was shut down while awaiting schema: " + fingerprint.hexValue()));
+        }
       });
       try {
         listener.onShutdown();

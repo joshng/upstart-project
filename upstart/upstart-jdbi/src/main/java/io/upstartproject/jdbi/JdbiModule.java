@@ -6,6 +6,7 @@ import com.google.inject.TypeLiteral;
 import com.google.inject.binder.LinkedBindingBuilder;
 import com.google.inject.multibindings.Multibinder;
 import org.jdbi.v3.core.spi.JdbiPlugin;
+import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import upstart.config.UpstartModule;
 import upstart.guice.AnnotationKeyedPrivateModule;
 import upstart.proxy.DynamicProxyBindingBuilder;
@@ -45,7 +46,7 @@ public class JdbiModule extends UpstartModule {
     serviceManager().manage(Key.get(JdbiService.class, bindingAnnotation));
   }
 
-  public static <T> void bindOnDemandSqlObject(Binder binder, Class<T> sqlClass, Key<? extends JdbiService> serviceKey) {
+  private <T> void bindOnDemandSqlObject(Binder binder, Class<T> sqlClass, Key<? extends JdbiService> serviceKey) {
     DynamicProxyBindingBuilder.bindDynamicProxy(binder, sqlClass)
             .initializedFrom(serviceKey, jdbi -> jdbi.onDemand(sqlClass));
   }

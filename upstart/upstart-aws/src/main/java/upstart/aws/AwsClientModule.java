@@ -36,7 +36,7 @@ public abstract class AwsClientModule<C extends SdkClient> extends UpstartModule
 
   public static AwsConfig bindAwsConfig(Binder binder, String configPath, Key<AwsConfig> boundKey) {
     UpstartConfigBinder configBinder = UpstartConfigBinder.get();
-    AwsConfig.DefaultAwsConfig defaults = configBinder.bindConfig(binder, DEFAULT_CONFIG_KEY, DEFAULT_KEY);
+    AwsConfig.DefaultAwsConfig defaults = configBinder.bindConfig(binder, DEFAULT_CONFIG_KEY, DEFAULT_KEY).validateDefaults();
     AwsConfig.DefaultAwsConfig overrideConfigs = configBinder.bindConfig(
             binder,
             ConfigKey.of(configPath, AwsConfig.DefaultAwsConfig.class),
