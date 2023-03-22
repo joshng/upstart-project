@@ -21,6 +21,7 @@ import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient;
 import software.amazon.awssdk.services.dynamodb.model.*;
 import upstart.healthchecks.HealthCheck;
 import upstart.util.concurrent.CompletableFutures;
+import upstart.util.concurrent.OptionalPromise;
 import upstart.util.concurrent.Promise;
 import upstart.util.concurrent.services.AsyncService;
 import upstart.util.reflect.Reflect;
@@ -76,11 +77,21 @@ public class DynamoTableInitializer<T> extends AsyncService implements HealthChe
 
   protected Promise<DynamoDbAsyncTable<T>> tableCreated(DynamoDbAsyncTable<T> table) {
     final Supplier<DynamoDbAsyncTable<T>> setTable = () -> this.table = table;
-    return getTtlAttribute()
-        .map(
-            n ->
-                Promise.of(dbService.updateTimeToLive(tableName, n)).thenApply(r -> setTable.get()))
-        .orElseGet(() -> Promise.completed(setTable.get()));
+    return OptionalPromise.toFutureOptional(getTtlAttribute().map(this::applyTtl))
+        .thenMap(___ -> setTable.get())
+        .orElse(setTable.get());
+  }
+
+  private Promise<Void> applyTtl(String ttlAttr) {
+    return Promise.of(dbService.client().describeTimeToLive(b -> b.tableName(tableName)))
+        .thenFilterOptional(
+            r -> r.timeToLiveDescription().timeToLiveStatus() != TimeToLiveStatus.ENABLED)
+        .thenMapCompose(
+            __ ->
+                Promise.of(dbService.updateTimeToLive(tableName, ttlAttr))
+                    .thenFilterOptional(r -> r.timeToLiveSpecification().enabled())
+                    .orElseThrow(() -> new RuntimeException("Failed to enable TTL"))
+        ).toVoid();
   }
 
   private Optional<String> getTtlAttribute() {
