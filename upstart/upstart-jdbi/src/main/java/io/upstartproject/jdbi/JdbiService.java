@@ -39,7 +39,7 @@ public class JdbiService extends InitializingService {
     jdbi = initializer.buildJdbi();
     jdbi.installPlugin(new SqlObjectPlugin());
     plugins.forEach(jdbi::installPlugin);
-    jdbi.useHandle(h -> h.execute("SELECT 1")); // test connectivity
+    jdbi.useHandle(h -> h.createQuery("SELECT 1").mapTo(Integer.class).one()); // test connectivity
   }
 
   public Jdbi getJdbi() {
