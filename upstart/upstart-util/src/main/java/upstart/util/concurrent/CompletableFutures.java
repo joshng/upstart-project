@@ -24,6 +24,7 @@ import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -309,4 +310,10 @@ public class CompletableFutures {
     checkState(future.isDone(), notDoneMessage);
     return future.join();
   }
+
+  public static <X, T extends CompletableFuture<X>>
+      Collector<T, ?, ListPromise<X>> listCollector() {
+    return Collectors.collectingAndThen(Collectors.toList(), ListPromise::allAsList);
+  }
+
 }

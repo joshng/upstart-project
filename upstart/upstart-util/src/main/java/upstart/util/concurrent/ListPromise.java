@@ -6,6 +6,7 @@ import upstart.util.context.Contextualized;
 
 import javax.annotation.Nonnull;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -13,6 +14,7 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collector;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class ListPromise<T> extends ExtendedPromise<List<T>, ListPromise<T>> {
@@ -53,8 +55,17 @@ public class ListPromise<T> extends ExtendedPromise<List<T>, ListPromise<T>> {
     return allAsList(CompletableFutures.toArray(futures));
   }
 
+  @SuppressWarnings("unchecked")
+  public static <T> ListPromise<T> allAsList(Collection<? extends CompletableFuture<? extends T>> futures) {
+    return allAsList(futures.toArray(CompletableFuture[]::new));
+  }
+
   public ListPromise<T> distinct() {
     return thenApplyList(list -> list.stream().distinct().toList());
+  }
+
+  public ListPromise<T> distinctBy(Function<? super T, ?> keyExtractor) {
+    return thenApplyList(list -> list.stream().collect(Collectors.toMap(keyExtractor, Function.identity())).values().stream().toList());
   }
 
   public OptionalPromise<T> toOptionalOnlyElement() {
