@@ -26,6 +26,7 @@ import upstart.managedservices.ServiceLifecycle;
 import upstart.metrics.TaggedMetricRegistry;
 import upstart.telemetry.test.CapturingEventSink;
 import upstart.test.StacklessTestException;
+import upstart.test.UpstartLibraryTest;
 import upstart.test.UpstartTest;
 import upstart.util.concurrent.Deadline;
 import upstart.util.concurrent.services.NotifyingService;
@@ -45,7 +46,7 @@ import static upstart.test.truth.CompletableFutureSubject.assertThat;
 
 //@ShowServiceGraph
 @SuppressLogs({LifecycleCoordinator.class, TaggedMetricRegistry.class})
-@UpstartTest
+@UpstartLibraryTest(ServiceTelemetry.Module.class)
 public class ServiceTelemetryTest extends UpstartModule {
   private static final String ERROR_MESSAGE = "Testing service-failure";
   @Inject CapturingEventSink capturingEventSink;
@@ -67,8 +68,6 @@ public class ServiceTelemetryTest extends UpstartModule {
     install(new AvroEnvelopeModule(EventLogModule.TELEMETRY_DATA_STORE));
     bind(SchemaRegistry.class).annotatedWith(EventLogModule.TELEMETRY_DATA_STORE).to(MemorySchemaRegistry.class);
     install(new CapturingEventSink.Module());
-
-    install(new ServiceTelemetry.Module());
     serviceManager().manage(FailingService.class);
   }
 

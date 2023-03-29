@@ -2,7 +2,7 @@ package upstart.config;
 
 import org.junit.jupiter.api.extension.ExtensionContext;
 import upstart.config.annotations.ConfigPath;
-import upstart.test.UpstartContextFixture;
+import upstart.test.UpstartLibraryTest;
 import upstart.test.UpstartTest;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -12,8 +12,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.google.common.truth.Truth.assertThat;
 
-@UpstartContextFixture
-@UpstartTest
+@UpstartLibraryTest
 public class EnvironmentConfigValidatorTestTest extends EnvironmentConfigValidatorTest {
   private ExampleConfig exampleConfig;
 

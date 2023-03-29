@@ -1,6 +1,9 @@
 package upstart.test;
 
 import com.google.common.base.Preconditions;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.google.inject.Injector;
 import com.google.inject.Module;
 import upstart.InternalTestBuilder;
@@ -44,10 +47,13 @@ public class UpstartExtension extends SingletonParameterResolver<UpstartTestBuil
   }
 
   public static void installTestModules(ExtensionContext context, UpstartTestBuilder builder) {
-    ExtensionContexts.findTestAnnotations(UpstartTest.class, Reflect.LineageOrder.SuperclassBeforeSubclass, context)
-            .map(UpstartTest::value)
-            .filter(not(isEqual(Module.class)))
-            .forEach(builder::installModule);
+    UpstartTestInitializer.installAnnotatedModule(UpstartTest.class, UpstartTest::value, builder, context);
+
+    ExtensionContexts.findTestAnnotations(UpstartTestAnnotation.class, Reflect.LineageOrder.SuperclassBeforeSubclass, context)
+            .map(UpstartTestAnnotation::value)
+            .distinct()
+            .map(Reflect::newInstance)
+            .forEach(initializer -> initializer.initialize(builder, context));
 
     MoreStreams.filter(ExtensionContexts.allNestedTestInstances(context).stream(), Module.class)
             .forEach(builder::installModule);

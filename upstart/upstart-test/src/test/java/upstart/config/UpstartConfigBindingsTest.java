@@ -7,7 +7,7 @@ import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigMemorySize;
 import org.junit.jupiter.api.Test;
 import upstart.config.annotations.ConfigPath;
-import upstart.test.UpstartContextFixture;
+import upstart.test.UpstartLibraryTest;
 import upstart.test.UpstartTest;
 
 import java.io.StringReader;
@@ -16,7 +16,6 @@ import java.time.Duration;
 import static com.google.common.truth.Truth.assertThat;
 
 
-@UpstartContextFixture
 class UpstartConfigBindingsTest {
   @Test
   void configWiringWorks() {

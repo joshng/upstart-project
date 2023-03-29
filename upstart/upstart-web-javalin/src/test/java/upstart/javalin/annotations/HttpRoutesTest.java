@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import upstart.config.UpstartModule;
 import upstart.javalin.JavalinWebModule;
+import upstart.test.UpstartLibraryTest;
 import upstart.test.UpstartServiceTest;
 import upstart.test.UpstartTestBuilder;
 import upstart.web.test.WebTest;
@@ -66,6 +67,7 @@ class HttpRoutesTest {
 
   @Nested
   @UpstartServiceTest
+  @UpstartLibraryTest
   @WebTest
   class WithUpstartApp extends UpstartModule implements JavalinWebModule {
     @Override

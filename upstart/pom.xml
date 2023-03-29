@@ -29,7 +29,7 @@
     <module>upstart-jdbi</module>
     <module>upstart-web</module>
     <module>upstart-web-javalin</module>
-    <module>upstart-web-pippo</module>
+<!--    <module>upstart-web-pippo</module>-->
     <module>upstart-web-test</module>
     <module>upstart-test</module>
     <module>upstart-cluster</module>

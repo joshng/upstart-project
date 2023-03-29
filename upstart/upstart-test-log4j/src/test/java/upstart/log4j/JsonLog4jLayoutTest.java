@@ -14,6 +14,7 @@ import upstart.log.UpstartLogConfig;
 import upstart.log.UpstartLogProvider;
 import upstart.log4j.test.JsonLogEvent;
 import upstart.test.AfterInjection;
+import upstart.test.UpstartLibraryTest;
 import upstart.test.UpstartTest;
 import upstart.test.UpstartTestBuilder;
 import upstart.test.systemStreams.CaptureSystemOut;
@@ -36,6 +37,7 @@ import static com.google.common.truth.Truth.assertThat;
 import static com.google.common.truth.Truth.assertWithMessage;
 
 @UpstartTest
+@UpstartLibraryTest
 @CaptureSystemOut
 class JsonLog4jLayoutTest extends UpstartModule {
   private static final Logger LOG = LoggerFactory.getLogger(JsonLog4jLayoutTest.class);

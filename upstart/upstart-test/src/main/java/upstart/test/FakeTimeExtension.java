@@ -28,8 +28,11 @@ public class FakeTimeExtension extends SingletonParameterResolver<FakeTime> impl
   @Override
   protected FakeTime createContext(ExtensionContext extensionContext) throws Exception {
 
-    List<FakeTimeTest> annotations = ExtensionContexts.findTestAnnotations(FakeTimeTest.class, Reflect.LineageOrder.SubclassBeforeSuperclass, extensionContext)
-            .collect(Collectors.toList());
+    List<FakeTimeTest> annotations = ExtensionContexts.findTestAnnotations(
+            FakeTimeTest.class,
+            Reflect.LineageOrder.SubclassBeforeSuperclass,
+            extensionContext
+    ).toList();
     Instant initialTime = annotations.stream()
             .filter(FakeTimeExtension::hasInitialTime)
             .map(FakeTimeExtension::computeInitialTime)
