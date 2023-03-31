@@ -77,13 +77,14 @@ public class AsyncContext implements TransientContext {
             ? other
             : other.isEmpty()
                     ? this
-                    : new AsyncContext(
-                            managedContexts.plusMergeAll(other.managedContexts, AsyncContextManager::merge)
-                    );
+                    : new AsyncContext(managedContexts.plusMergeAll(
+                            other.managedContexts,
+                            AsyncContextManager::mergeSnapshots
+                    ));
   }
 
   public void applyToCurrent() {
-    if (!isEmpty()) managedContexts.forEach(AsyncContextManager::mergeFromSnapshot);
+    if (!isEmpty()) managedContexts.forEach(AsyncContextManager::mergeApplyFromSnapshot);
   }
 
   public void replaceCurrent() {

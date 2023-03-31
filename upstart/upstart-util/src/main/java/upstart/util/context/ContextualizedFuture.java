@@ -6,15 +6,14 @@ import upstart.util.exceptions.Try;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 
 public class ContextualizedFuture<T> extends CompletableFuture<Contextualized<T>> {
   public ContextualizedFuture() {
   }
 
-  private ContextualizedFuture(Consumer<BiConsumer<? super T, ? super Throwable>> whenComplete) {
+  private ContextualizedFuture(ObservableCompletion<T> completion) {
     AsyncContext creationContext = AsyncContext.snapshot();
-    whenComplete.accept((v, e) -> complete(new Contextualized<>(
+    completion.whenComplete((v, e) -> complete(new Contextualized<>(
             Try.of(v, e),
             creationContext.mergeFrom(AsyncContext.snapshot())
     )));
@@ -34,7 +33,12 @@ public class ContextualizedFuture<T> extends CompletableFuture<Contextualized<T>
     return CompletableFuture.completedFuture(result);
   }
 
-  public static <T> ContextualizedFuture<T> contextualizeResult(Consumer<BiConsumer<? super T, ? super Throwable>> whenComplete) {
+  public static <T> ContextualizedFuture<T> contextualizeResult(ObservableCompletion<T> whenComplete) {
     return new ContextualizedFuture<>(whenComplete);
+  }
+
+  @FunctionalInterface
+  public interface ObservableCompletion<T> {
+    void whenComplete(BiConsumer<? super T, ? super Throwable> action);
   }
 }

@@ -23,7 +23,9 @@ import static com.google.common.base.Strings.lenientFormat;
 public class OptionalPromise<T> extends ExtendedPromise<Optional<T>, OptionalPromise<T>> {
   static final PromiseFactory OPTIONAL_PROMISE_FACTORY = PromiseFactory.of(
           OptionalPromise.class,
-          Optional.empty(), OptionalPromise::new);
+          Optional.empty(),
+          OptionalPromise::new
+  );
 
   public OptionalPromise() {
   }
@@ -55,14 +57,6 @@ public class OptionalPromise<T> extends ExtendedPromise<Optional<T>, OptionalPro
     return Promise.of(future).thenApplyOptional(Optional::ofNullable);
   }
 
-  public static <I, O> OptionalPromise<O> mapToFuture(Optional<I> input, Function<? super I, ? extends CompletionStage<O>> mapper) {
-    return input.map(mapper).map(OptionalPromise::ofFutureNullable).orElse(empty());
-  }
-
-  public static <I, O> OptionalPromise<O> mapToFutureOptional(Optional<I> input, Function<? super I, ? extends CompletionStage<Optional<O>>> mapper) {
-    return input.map(mapper).map(OptionalPromise::ofFutureOptional).orElse(empty());
-  }
-
   public static <T> OptionalPromise<T> ofFutureOptional(CompletionStage<Optional<T>> stage) {
     CompletableFuture<Optional<T>> future;
     return stage instanceof OptionalPromise<T> already
@@ -70,6 +64,14 @@ public class OptionalPromise<T> extends ExtendedPromise<Optional<T>, OptionalPro
             : CompletableFutures.isCompletedNormally(future = stage.toCompletableFuture())
                     ? completed(future.join())
                     : new OptionalPromise<T>().completeWith(future);
+  }
+
+  public static <I, O> OptionalPromise<O> mapToFuture(Optional<I> input, Function<? super I, ? extends CompletionStage<O>> mapper) {
+    return input.map(mapper).map(OptionalPromise::ofFutureNullable).orElse(empty());
+  }
+
+  public static <I, O> OptionalPromise<O> mapToFutureOptional(Optional<I> input, Function<? super I, ? extends CompletionStage<Optional<O>>> mapper) {
+    return input.map(mapper).map(OptionalPromise::ofFutureOptional).orElse(empty());
   }
 
   public static <T> OptionalPromise<T> toFutureOptional(Optional<? extends CompletionStage<T>> optionalFuture) {

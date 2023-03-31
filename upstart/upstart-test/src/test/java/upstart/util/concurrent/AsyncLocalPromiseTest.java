@@ -16,17 +16,18 @@ import upstart.test.truth.MoreTruth;
 import upstart.util.context.AsyncContext;
 import upstart.util.context.AsyncContextManager;
 import upstart.util.context.AsyncLocal;
+import upstart.util.exceptions.FallibleSupplier;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
-import java.util.stream.Stream;
 
 import static com.google.common.truth.OptionalSubject.optionals;
 import static com.google.common.truth.Truth.assertThat;
@@ -227,6 +228,7 @@ class AsyncLocalPromiseTest {
     assertThat(result).doneWithin(Deadline.withinSeconds(5)).havingResultThat(OptionalSubject.optionals()).hasValue("foofoobar");
   }
 
+  @Test
   void emptyFlatMapComposeWith() throws InterruptedException {
     Promise<String> p1 = new Promise<>();
     OptionalPromise<String> p2 = new OptionalPromise<>();
@@ -234,6 +236,25 @@ class AsyncLocalPromiseTest {
     p1.complete("foo");
     p2.complete(Optional.empty());
     assertThat(result).doneWithin(Deadline.withinSeconds(5)).havingResultThat(OptionalSubject.optionals()).isEmpty();
+  }
+
+  @Test
+  void wrappedPromiseRetainsContext() throws InterruptedException {
+    AsyncLocal<String> state = AsyncLocal.newAsyncLocal("state");
+    state.set("bar");
+    CountDownLatch latch = new CountDownLatch(1);
+    Promise<String> p1 = Promise.of(CompletableFuture.supplyAsync(
+            FallibleSupplier.of(() -> {
+              latch.await();
+              return "foo";
+            }
+    ))).thenApply(foo -> foo + state.get());
+    AsyncContext.clear();
+    latch.countDown();
+    assertThat(p1)
+            .doneWithin(Deadline.withinSeconds(20000))
+            .havingResultThat()
+            .isEqualTo("foobar");
   }
 
   static ThreadLocalReference<Integer> threadValue = new ThreadLocalReference<>();
@@ -340,13 +361,18 @@ class AsyncLocalPromiseTest {
       }
 
       @Override
-      public void mergeFromSnapshot(String value) {
+      public void mergeApplyFromSnapshot(String value) {
         threadLocal.set(value);
       }
 
       @Override
       public void remove() {
         threadLocal.remove();
+      }
+
+      @Override
+      public String mergeSnapshots(String mergeTo, String mergeFrom) {
+        return mergeFrom;
       }
     };
 
