@@ -59,12 +59,17 @@ public class AvroTaxonomy extends NotifyingService {
   }
 
   public Promise<RecordTypeFamily.RegistrationResult> findSchemaDescriptor(SchemaFingerprint fingerprint) {
-    Promise<RecordTypeFamily.RegistrationResult> result = knownFingerprints.getUnchecked(fingerprint);
-    if (!result.isDone()) {
+    Promise<RecordTypeFamily.RegistrationResult> resultPromise = knownFingerprints.getUnchecked(fingerprint);
+    if (!resultPromise.isDone()) {
       LOG.warn("Awaiting arrival of unrecognized schema-fingerprint: {}", fingerprint.hexValue());
       registry.refresh();
+      resultPromise.thenAccept(result -> LOG.warn(
+              "Awaited schema arrived, {}: {}",
+              fingerprint.hexValue(),
+              result.typeFamily().getFullName()
+      ));
     }
-    return result;
+    return resultPromise;
   }
 
   public RecordTypeFamily findTypeFamily(String fullName) {
