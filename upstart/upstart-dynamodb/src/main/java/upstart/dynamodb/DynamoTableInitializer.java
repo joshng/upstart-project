@@ -4,6 +4,7 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.collect.MoreCollectors;
+import com.google.inject.Key;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -19,12 +20,14 @@ import software.amazon.awssdk.enhanced.dynamodb.model.PagePublisher;
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient;
 import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
 import software.amazon.awssdk.services.dynamodb.model.DescribeTableResponse;
-import software.amazon.awssdk.services.dynamodb.model.ResourceNotFoundException;
 import software.amazon.awssdk.services.dynamodb.model.TableStatus;
 import software.amazon.awssdk.services.dynamodb.model.TimeToLiveStatus;
 import upstart.aws.SdkPojoSerializer;
+import upstart.config.UpstartModule;
 import upstart.healthchecks.HealthCheck;
+import upstart.healthchecks.HealthChecker;
 import upstart.provisioning.BaseProvisionedResource;
+import upstart.provisioning.ProvisionedResource;
 import upstart.util.collect.PersistentMap;
 import upstart.util.concurrent.Promise;
 import upstart.util.concurrent.ShutdownException;
@@ -232,5 +235,25 @@ public class DynamoTableInitializer<T> extends BaseProvisionedResource implement
 
   public CompletableFuture<DescribeTableResponse> describeTable(String tableName) {
     return dbService.describeTable(tableName);
+  }
+
+  public static class TableInitializerModule extends UpstartModule {
+    private final Key<? extends DynamoTableInitializer<?>> key;
+
+    public TableInitializerModule(Class<? extends DynamoTableInitializer<?>> key) {
+      this(Key.get(key));
+    }
+
+    public TableInitializerModule(Key<? extends DynamoTableInitializer<?>> key) {
+      super(key);
+      this.key = key;
+    }
+
+    @Override
+    protected void configure() {
+      install(new DynamoDbModule());
+      ProvisionedResource.bindProvisionedResource(binder(), key);
+      HealthChecker.bindHealthChecks(binder(), key);
+    }
   }
 }

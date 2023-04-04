@@ -14,11 +14,12 @@ import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbParti
 import software.amazon.awssdk.services.dynamodb.model.TimeToLiveStatus;
 import upstart.config.UpstartModule;
 import upstart.dynamodb.*;
+import upstart.test.UpstartLibraryServiceTest;
 import upstart.test.UpstartServiceTest;
 import upstart.util.concurrent.Deadline;
 
 @LocalDynamoDbTest
-@UpstartServiceTest
+@UpstartLibraryServiceTest
 public class DynamoTableInitializerTest extends UpstartModule {
 
   @Inject private TestInitializer testInitializer;
