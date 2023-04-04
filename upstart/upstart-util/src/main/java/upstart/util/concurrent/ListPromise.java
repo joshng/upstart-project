@@ -64,8 +64,17 @@ public class ListPromise<T> extends ExtendedPromise<List<T>, ListPromise<T>> {
     return futures.collect(toListPromise());
   }
 
+  @SuppressWarnings("unchecked")
+  public static <T> ListPromise<T> allAsList(Collection<? extends CompletableFuture<? extends T>> futures) {
+    return allAsList(futures.toArray(CompletableFuture[]::new));
+  }
+
   public ListPromise<T> distinct() {
     return thenApplyList(list -> list.stream().distinct().toList());
+  }
+
+  public ListPromise<T> distinctBy(Function<? super T, ?> keyExtractor) {
+    return thenApplyList(list -> list.stream().collect(Collectors.toMap(keyExtractor, Function.identity())).values().stream().toList());
   }
 
   public OptionalPromise<T> toOptionalOnlyElement() {

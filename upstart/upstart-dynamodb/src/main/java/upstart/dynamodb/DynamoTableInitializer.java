@@ -3,6 +3,7 @@ package upstart.dynamodb;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import com.google.common.collect.MoreCollectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -12,22 +13,30 @@ import software.amazon.awssdk.enhanced.dynamodb.OperationContext;
 import software.amazon.awssdk.enhanced.dynamodb.TableMetadata;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
 import software.amazon.awssdk.enhanced.dynamodb.internal.operations.CreateTableOperation;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbAttribute;
 import software.amazon.awssdk.enhanced.dynamodb.model.CreateTableEnhancedRequest;
 import software.amazon.awssdk.enhanced.dynamodb.model.PagePublisher;
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient;
 import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
 import software.amazon.awssdk.services.dynamodb.model.DescribeTableResponse;
 import software.amazon.awssdk.services.dynamodb.model.TableStatus;
+import software.amazon.awssdk.services.dynamodb.model.TimeToLiveStatus;
 import upstart.aws.SdkPojoSerializer;
 import upstart.healthchecks.HealthCheck;
 import upstart.provisioning.BaseProvisionedResource;
+import upstart.util.collect.PersistentMap;
 import upstart.util.concurrent.Promise;
 import upstart.util.concurrent.ShutdownException;
+import upstart.util.reflect.Reflect;
 import upstart.util.strings.NamingStyle;
 
 import javax.inject.Inject;
 import java.time.Duration;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+
+import static com.google.common.base.Preconditions.checkState;
 
 public class DynamoTableInitializer<T> extends BaseProvisionedResource implements HealthCheck {
   private static final Logger LOG = LoggerFactory.getLogger(DynamoTableInitializer.class);
@@ -38,6 +47,7 @@ public class DynamoTableInitializer<T> extends BaseProvisionedResource implement
   private final DynamoDbClientService dbService;
   private final String tableName;
   private final TableSchema<T> tableSchema;
+  private final Class<T> mappedClass;
   protected volatile DynamoDbAsyncTable<T> table;
 
   @Inject
@@ -47,6 +57,7 @@ public class DynamoTableInitializer<T> extends BaseProvisionedResource implement
           DynamoDbClientService dbService,
           DynamoDbNamespace namespace
   ) {
+    this.mappedClass = mappedClass;
     tableName = namespace.tableName(tableNameSuffix);
     tableSchema = getTableSchema(mappedClass);
     this.dbService = dbService;
@@ -113,12 +124,24 @@ public class DynamoTableInitializer<T> extends BaseProvisionedResource implement
             null
     );
 
-    return SdkPojoSerializer.serialize(request, NamingStyle.LowerCamelCaseSplittingAcronyms);
+    PersistentMap<String, Object> tableSpec = SdkPojoSerializer.serialize(
+            request,
+            NamingStyle.LowerCamelCaseSplittingAcronyms
+    );
+
+    // this AWS SDK doesn't support the inline TTL attribute specification (?!), so we have to add it manually
+    return getTtlAttribute()
+            .map(ttlAttr -> tableSpec.plus("timeToLiveSpecification", Map.of(
+                    "attributeName", ttlAttr,
+                    "enabled", true
+                    )
+            )).orElse(tableSpec);
   }
 
   @Override
   public Promise<Void> provisionIfNotExists() {
-    return dbService.ensureTableCreated(tableName, tableSchema, createTableRequest());
+    Promise<Void> created = dbService.ensureTableCreated(tableName, tableSchema, createTableRequest());
+    return getTtlAttribute().map(this::applyTtl).orElse(created);
   }
 
   @Override
@@ -136,6 +159,37 @@ public class DynamoTableInitializer<T> extends BaseProvisionedResource implement
     return prepareCreateTableRequest(
             CreateTableEnhancedRequest.builder()
     ).build();
+  }
+
+  private Optional<String> getTtlAttribute() {
+    return Reflect.allAnnotatedMethods(
+            mappedClass, TimeToLiveAttribute.class, Reflect.LineageOrder.SubclassBeforeSuperclass)
+        .collect(MoreCollectors.toOptional())
+        .map(
+            meth ->
+                Optional.ofNullable(meth.getAnnotation(DynamoDbAttribute.class))
+                    .map(DynamoDbAttribute::value)
+                    .orElseGet(
+                        () -> {
+                          checkState(
+                              meth.getName().startsWith("get"),
+                              "Annotated bean method should start with 'get': %s",
+                              meth.getName());
+                          return NamingStyle.UpperCamelCase.convertTo(
+                              NamingStyle.LowerCamelCase, meth.getName().substring(3));
+                        }));
+  }
+
+  private Promise<Void> applyTtl(String ttlAttr) {
+    return Promise.of(dbService.client().describeTimeToLive(b -> b.tableName(tableName)))
+            .thenFilterOptional(
+                    r -> r.timeToLiveDescription().timeToLiveStatus() != TimeToLiveStatus.ENABLED)
+            .thenMapCompose(
+                    __ ->
+                            Promise.of(dbService.updateTimeToLive(tableName, ttlAttr))
+                                    .thenFilterOptional(r -> r.timeToLiveSpecification().enabled())
+                                    .orElseThrow(() -> new RuntimeException("Failed to enable TTL"))
+            ).toVoid();
   }
 
   /**

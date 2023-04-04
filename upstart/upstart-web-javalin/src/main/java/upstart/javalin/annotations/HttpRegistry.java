@@ -1,5 +1,7 @@
 package upstart.javalin.annotations;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -12,16 +14,6 @@ import com.google.inject.multibindings.Multibinder;
 import io.javalin.Javalin;
 import io.javalin.core.JavalinConfig;
 import io.javalin.core.security.RouteRole;
-import upstart.config.UpstartModule;
-import upstart.guice.PrivateBinding;
-import upstart.guice.TypeLiterals;
-import upstart.javalin.AdminRole;
-import upstart.javalin.JavalinWebInitializer;
-import upstart.javalin.JavalinWebModule;
-import upstart.util.reflect.Reflect;
-import upstart.util.Validation;
-
-import javax.inject.Inject;
 import java.lang.annotation.Annotation;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -32,74 +24,87 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
-import static com.google.common.base.Preconditions.checkNotNull;
+import javax.inject.Inject;
+import upstart.config.UpstartModule;
+import upstart.guice.PrivateBinding;
+import upstart.guice.TypeLiterals;
+import upstart.javalin.AdminRole;
+import upstart.javalin.JavalinWebInitializer;
+import upstart.javalin.JavalinWebModule;
+import upstart.util.Validation;
+import upstart.util.reflect.Reflect;
 
 public class HttpRegistry {
   public static final HttpRegistry INSTANCE = new HttpRegistry();
 
   static {
-    INSTANCE.registerSecurityAnnotation(RequireAdminRole.class, anno -> SecurityConstraints.builder()
-            .addRequiredRoles(AdminRole.Instance)
-            .build());
+    INSTANCE.registerSecurityAnnotation(
+        RequireAdminRole.class,
+        anno -> SecurityConstraints.builder().addRequiredRoles(AdminRole.Instance).build());
   }
 
-  private final LoadingCache<Class<?>, AnnotatedEndpointHandler<?>> handlerCache = CacheBuilder.newBuilder()
-          .build(new CacheLoader<>() {
-            @Override
-            public AnnotatedEndpointHandler<?> load(Class<?> key) throws Exception {
-              return new AnnotatedEndpointHandler<>(Reflect.blindCast(key), HttpRegistry.this);
-            }
-          });
+  private final LoadingCache<Class<?>, AnnotatedEndpointHandler<?>> handlerCache =
+      CacheBuilder.newBuilder()
+          .build(
+              new CacheLoader<>() {
+                @Override
+                public AnnotatedEndpointHandler<?> load(Class<?> key) throws Exception {
+                  return new AnnotatedEndpointHandler<>(Reflect.blindCast(key), HttpRegistry.this);
+                }
+              });
 
-  private final Map<Class<? extends Annotation>, Function<Annotation, SecurityConstraints>> constraintReaders = new HashMap<>();
+  private final Map<Class<? extends Annotation>, Function<Annotation, SecurityConstraints>>
+      constraintReaders = new HashMap<>();
 
-  public <A extends Annotation> void registerRequiredRoleAnnotation(Class<A> roleAnnotationClass, Function<A, RouteRole[]> getRoles) {
+  public <A extends Annotation> void registerRequiredRoleAnnotation(
+      Class<A> roleAnnotationClass, Function<A, RouteRole[]> getRoles) {
     registerSecurityAnnotation(
-            roleAnnotationClass,
-            anno -> SecurityConstraints.builder()
-                    .addRequiredRoles(getRoles.apply(anno))
-                    .build()
-    );
+        roleAnnotationClass,
+        anno -> SecurityConstraints.builder().addRequiredRoles(getRoles.apply(anno)).build());
   }
 
   public <A extends Annotation> void registerSecurityAnnotation(
-          Class<A> annotationClass,
-          Function<A, SecurityConstraints> getConstraints
-  ) {
+      Class<A> annotationClass, Function<A, SecurityConstraints> getConstraints) {
     Retention retention = annotationClass.getAnnotation(Retention.class);
     Validation.success()
-            .confirm(retention != null && retention.value() == RetentionPolicy.RUNTIME,
-                     "@Retention(RUNTIME)"
-            )
-            .confirm(
-                    annotationClass.isAnnotationPresent(Http.AccessControlAnnotation.class),
-                    "@%s.%s",
-                    Http.class.getSimpleName(),
-                    Http.AccessControlAnnotation.class.getSimpleName()
-            ).throwFailures(messages -> new IllegalArgumentException(messages.stream().collect(Collectors.joining(
-                    "\n  ",
-                    "@interface " + annotationClass.getName() + " must be meta-annotated with:\n  ",
-                    ""
-            ))));
+        .confirm(
+            retention != null && retention.value() == RetentionPolicy.RUNTIME,
+            "@Retention(RUNTIME)")
+        .confirm(
+            annotationClass.isAnnotationPresent(Http.AccessControlAnnotation.class),
+            "@%s.%s",
+            Http.class.getSimpleName(),
+            Http.AccessControlAnnotation.class.getSimpleName())
+        .throwFailures(
+            messages ->
+                new IllegalArgumentException(
+                    messages.stream()
+                        .collect(
+                            Collectors.joining(
+                                "\n  ",
+                                "@interface "
+                                    + annotationClass.getName()
+                                    + " must be meta-annotated with:\n  ",
+                                ""))));
 
     constraintReaders.put(annotationClass, Reflect.blindCast(getConstraints));
   }
 
   SecurityConstraints getSecurityConstraints(AnnotatedElement element) {
     return Reflect.allMetaAnnotations(element)
-            .filter(anno -> anno.annotationType().isAnnotationPresent(Http.AccessControlAnnotation.class))
-            .map(anno -> securityReader(element, anno).apply(anno))
-                   .reduce(SecurityConstraints.NONE, SecurityConstraints::merge);
+        .filter(
+            anno -> anno.annotationType().isAnnotationPresent(Http.AccessControlAnnotation.class))
+        .map(anno -> securityReader(element, anno).apply(anno))
+        .reduce(SecurityConstraints.NONE, SecurityConstraints::merge);
   }
 
-  private Function<Annotation, SecurityConstraints> securityReader(AnnotatedElement element, Annotation anno) {
+  private Function<Annotation, SecurityConstraints> securityReader(
+      AnnotatedElement element, Annotation anno) {
     return checkNotNull(
-            constraintReaders.get(anno.annotationType()),
-            "Http.AccessControlAnnotation must be registered with HttpRegistry.registerAccessControlAnnotation: @%s %s",
-            anno,
-            element
-    );
+        constraintReaders.get(anno.annotationType()),
+        "Http.AccessControlAnnotation must be registered with HttpRegistry.registerAccessControlAnnotation: @%s %s",
+        anno,
+        element);
   }
 
   public <T> HttpRoutes<T> getRoutes(HttpUrl rootPath, Class<T> controllerClass) {
@@ -118,36 +123,36 @@ public class HttpRegistry {
   private class AnnotatedEndpointModule<T> extends UpstartModule implements JavalinWebModule {
     private final Key<T> targetKey;
 
-    private AnnotatedEndpointModule(
-            Key<T> targetKey
-    ) {
+    private AnnotatedEndpointModule(Key<T> targetKey) {
       super(targetKey);
       this.targetKey = targetKey;
     }
 
     @Override
     protected void configure() {
-      AnnotatedEndpointHandler<T> handler = handlerFor(TypeLiterals.getRawType(targetKey.getTypeLiteral()));
+      AnnotatedEndpointHandler<T> handler =
+          handlerFor(TypeLiterals.getRawType(targetKey.getTypeLiteral()));
       Type targetType = targetKey.getTypeLiteral().getType();
-      TypeLiteral<AnnotatedEndpointInitializer<T>> initializerType = TypeLiterals.getParameterizedWithOwner(
-              HttpRegistry.class,
-              AnnotatedEndpointInitializer.class,
-              targetType
-      );
-      install(new PrivateModule() {
-        @Override
-        protected void configure() {
-          bind(targetKey.withAnnotation(PrivateBinding.class)).to(targetKey);
-          bind(initializerType);
-          expose(initializerType);
-        }
-      });
-      Key<AnnotatedEndpointHandler<T>> handlerKey = Key.get(
-              TypeLiterals.getParameterized(AnnotatedEndpointHandler.class, targetType)
-      );
-      if (targetKey.getAnnotation() != null) handlerKey = handlerKey.withAnnotation(targetKey.getAnnotation());
+      TypeLiteral<AnnotatedEndpointInitializer<T>> initializerType =
+          TypeLiterals.getParameterizedWithOwner(
+              HttpRegistry.class, AnnotatedEndpointInitializer.class, targetType);
+      install(
+          new PrivateModule() {
+            @Override
+            protected void configure() {
+              bind(targetKey.withAnnotation(PrivateBinding.class)).to(targetKey);
+              bind(initializerType);
+              expose(initializerType);
+            }
+          });
+      Key<AnnotatedEndpointHandler<T>> handlerKey =
+          Key.get(TypeLiterals.getParameterized(AnnotatedEndpointHandler.class, targetType));
+      if (targetKey.getAnnotation() != null)
+        handlerKey = handlerKey.withAnnotation(targetKey.getAnnotation());
       bind(handlerKey).toInstance(handler);
-      Multibinder.<AnnotatedEndpointInitializer<?>>newSetBinder(binder(), new TypeLiteral<>(){}).addBinding().to(initializerType);
+      Multibinder.<AnnotatedEndpointInitializer<?>>newSetBinder(binder(), new TypeLiteral<>() {})
+          .addBinding()
+          .to(initializerType);
       install(new AnnotatedWebInitializer.Module());
     }
   }
@@ -157,7 +162,8 @@ public class HttpRegistry {
     private final Set<AnnotatedEndpointInitializer<?>> endpointInitializers;
 
     @Inject
-    AnnotatedWebInitializer(@Web ObjectMapper objectMapper, Set<AnnotatedEndpointInitializer<?>> endpointInitializers) {
+    AnnotatedWebInitializer(
+        @Web ObjectMapper objectMapper, Set<AnnotatedEndpointInitializer<?>> endpointInitializers) {
       this.objectMapper = objectMapper;
       this.endpointInitializers = endpointInitializers;
     }
@@ -167,12 +173,13 @@ public class HttpRegistry {
       for (AnnotatedEndpointInitializer<?> endpointInitializer : endpointInitializers) {
         endpointInitializer.initializeWeb(config);
       }
-      config.registerPlugin(javalin -> {
-        for (AnnotatedEndpointInitializer<?> endpointInitializer : endpointInitializers) {
-          endpointInitializer.installHandlers(javalin);
-        }
-        javalin.attribute(AnnotatedEndpointHandler.OBJECT_MAPPER_ATTRIBUTE, objectMapper);
-      });
+      config.registerPlugin(
+          javalin -> {
+            for (AnnotatedEndpointInitializer<?> endpointInitializer : endpointInitializers) {
+              endpointInitializer.installHandlers(javalin);
+            }
+            javalin.attribute(AnnotatedEndpointHandler.OBJECT_MAPPER_ATTRIBUTE, objectMapper);
+          });
     }
 
     static class Module extends UpstartModule implements JavalinWebModule {
@@ -188,7 +195,8 @@ public class HttpRegistry {
     private final AnnotatedEndpointHandler<T> handler;
 
     @Inject
-    public AnnotatedEndpointInitializer(@PrivateBinding T target, AnnotatedEndpointHandler<T> handler) {
+    public AnnotatedEndpointInitializer(
+        @PrivateBinding T target, AnnotatedEndpointHandler<T> handler) {
       this.target = target;
       this.handler = handler;
     }

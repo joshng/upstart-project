@@ -8,10 +8,7 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedAsyncClient;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
 import software.amazon.awssdk.enhanced.dynamodb.model.CreateTableEnhancedRequest;
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient;
-import software.amazon.awssdk.services.dynamodb.model.DescribeTableResponse;
-import software.amazon.awssdk.services.dynamodb.model.DynamoDbException;
-import software.amazon.awssdk.services.dynamodb.model.ResourceInUseException;
-import software.amazon.awssdk.services.dynamodb.model.TableAlreadyExistsException;
+import software.amazon.awssdk.services.dynamodb.model.*;
 import upstart.managedservices.ServiceLifecycle;
 import upstart.util.concurrent.BlockingBoundedActor;
 import upstart.util.concurrent.Promise;
@@ -70,6 +67,10 @@ public class DynamoDbClientService {
             .recover(Exception.class, e -> {
               throw new RuntimeException("Error ensuring table readiness: " + tableName, e);
             });
+  }
+
+  public CompletableFuture<UpdateTimeToLiveResponse> updateTimeToLive(String tableName, String attributeName) {
+    return client.updateTimeToLive(b -> b.tableName(tableName).timeToLiveSpecification(s -> s.attributeName(attributeName).enabled(true)));
   }
 
   public <T> Promise<DynamoDbAsyncTable<T>> waitUntilTableExists(
