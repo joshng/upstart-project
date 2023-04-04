@@ -56,10 +56,6 @@ public class ListPromise<T> extends ExtendedPromise<List<T>, ListPromise<T>> {
   }
 
   @SuppressWarnings("unchecked")
-  public static <T> ListPromise<T> allAsList(Collection<? extends CompletableFuture<? extends T>> futures) {
-    return allAsList(futures.toArray(CompletableFuture[]::new));
-  }
-
   public static <T> ListPromise<T> allAsList(Stream<? extends CompletableFuture<? extends T>> futures) {
     return futures.collect(toListPromise());
   }

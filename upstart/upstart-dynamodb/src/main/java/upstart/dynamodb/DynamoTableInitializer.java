@@ -19,6 +19,7 @@ import software.amazon.awssdk.enhanced.dynamodb.model.PagePublisher;
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient;
 import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
 import software.amazon.awssdk.services.dynamodb.model.DescribeTableResponse;
+import software.amazon.awssdk.services.dynamodb.model.ResourceNotFoundException;
 import software.amazon.awssdk.services.dynamodb.model.TableStatus;
 import software.amazon.awssdk.services.dynamodb.model.TimeToLiveStatus;
 import upstart.aws.SdkPojoSerializer;
@@ -141,7 +142,9 @@ public class DynamoTableInitializer<T> extends BaseProvisionedResource implement
   @Override
   public Promise<Void> provisionIfNotExists() {
     Promise<Void> created = dbService.ensureTableCreated(tableName, tableSchema, createTableRequest());
-    return getTtlAttribute().map(this::applyTtl).orElse(created);
+    return getTtlAttribute()
+            .map(ttlAttr -> created.thenReplaceFuture(() -> applyTtl(ttlAttr)))
+            .orElse(created);
   }
 
   @Override
@@ -181,7 +184,8 @@ public class DynamoTableInitializer<T> extends BaseProvisionedResource implement
   }
 
   private Promise<Void> applyTtl(String ttlAttr) {
-    return Promise.of(dbService.client().describeTimeToLive(b -> b.tableName(tableName)))
+    return waitUntilProvisioned()
+            .thenReplaceFuture(() -> dbService.client().describeTimeToLive(b -> b.tableName(tableName)))
             .thenFilterOptional(
                     r -> r.timeToLiveDescription().timeToLiveStatus() != TimeToLiveStatus.ENABLED)
             .thenMapCompose(
