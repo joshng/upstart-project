@@ -13,7 +13,6 @@ import io.javalin.Javalin;
 import io.javalin.http.BadRequestResponse;
 import io.javalin.http.ContentType;
 import io.javalin.http.Context;
-import io.javalin.http.Handler;
 import io.javalin.http.HandlerType;
 import io.javalin.http.HttpCode;
 import io.javalin.plugin.openapi.annotations.AnnotationApiMappingKt;
@@ -24,7 +23,6 @@ import io.javalin.plugin.openapi.dsl.DocumentedHandler;
 import io.javalin.plugin.openapi.dsl.OpenApiDocumentation;
 import io.javalin.plugin.openapi.dsl.OpenApiUpdater;
 import io.javalin.plugin.openapi.dsl.OpenApiUpdaterKt;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import upstart.javalin.AsyncHandler;
@@ -258,7 +256,7 @@ public class AnnotatedEndpointHandler<T> {
               method.getName()
       );
 
-      javalin.addHandler(handlerType, path, new AsyncAnnotatedHandler(target), securityConstraints.roleArray());
+      javalin.addHandler(handlerType, path, new AsyncDocumentedHandler(target), securityConstraints.roleArray());
     }
 
     public Promise<?> invokeEndpoint(Object target, Context ctx) {
@@ -500,10 +498,10 @@ public class AnnotatedEndpointHandler<T> {
      * a handler that subclasses {@link DocumentedHandler} to expose its OpenApi documentation,
      * and implements {@link AsyncHandler} to allow for asynchronous composition
      */
-    public class AsyncAnnotatedHandler extends DocumentedHandler implements AsyncHandler {
+    public class AsyncDocumentedHandler extends DocumentedHandler implements AsyncHandler {
       private final Object target;
 
-      public AsyncAnnotatedHandler(Object target) {
+      public AsyncDocumentedHandler(Object target) {
         super(documentation, ctx -> ctx.future(invokeEndpoint(target, ctx)));
         this.target = target;
       }
