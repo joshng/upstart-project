@@ -2,6 +2,7 @@ package upstart.util.concurrent;
 
 import upstart.util.collect.Optionals;
 import upstart.util.context.Contextualized;
+import upstart.util.exceptions.ThrowingConsumer;
 import upstart.util.functions.QuadFunction;
 import upstart.util.functions.TriFunction;
 
@@ -32,6 +33,10 @@ public class OptionalPromise<T> extends ExtendedPromise<Optional<T>, OptionalPro
 
   public OptionalPromise(CompletableFuture<Contextualized<Optional<T>>> completion) {
     super(completion);
+  }
+
+  public static <T> OptionalPromise<T> thatCompletesOptional(ThrowingConsumer<? super OptionalPromise<T>> completion) {
+    return OPTIONAL_PROMISE_FACTORY.<Optional<T>, OptionalPromise<T>>thatCompletes(completion);
   }
 
   public static <T> OptionalPromise<T> empty() {
@@ -285,6 +290,17 @@ public class OptionalPromise<T> extends ExtendedPromise<Optional<T>, OptionalPro
             .orElse(empty())));
   }
 
+  public boolean completeWithValue(@Nonnull T value) {
+    return complete(Optional.of(value));
+  }
+
+  public boolean completeWithNullable(@Nullable T value) {
+    return complete(Optional.ofNullable(value));
+  }
+
+  public boolean completeEmpty() {
+    return complete(Optional.empty());
+  }
 
   // TODO so many missing permutations of arity, map/flatMap for both optional and future .. need proper monad transformers and tuples :-(
   // https://medium.com/@johnmcclean/simulating-higher-kinded-types-in-java-b52a18b72c74

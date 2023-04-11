@@ -12,8 +12,4 @@ public interface AsyncHandler extends Handler {
   default void handle(@NotNull Context ctx) throws Exception {
     ctx.future(handleAsync(ctx));
   }
-
-  default AsyncHandler andThen(AsyncHandler next) {
-    return ctx -> handleAsync(ctx).thenReplaceFuture(() -> next.handleAsync(ctx));
-  }
 }

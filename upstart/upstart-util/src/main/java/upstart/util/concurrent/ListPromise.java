@@ -3,6 +3,7 @@ package upstart.util.concurrent;
 import com.google.common.collect.Iterables;
 import upstart.util.collect.MoreStreams;
 import upstart.util.context.Contextualized;
+import upstart.util.exceptions.ThrowingConsumer;
 
 import javax.annotation.Nonnull;
 import java.util.Arrays;
@@ -33,6 +34,10 @@ public class ListPromise<T> extends ExtendedPromise<List<T>, ListPromise<T>> {
 
   public static <T> ListPromise<T> canceled() {
     return LIST_PROMISE_FACTORY.canceledInstance();
+  }
+
+  public static <T> ListPromise<T> thatCompletesList(ThrowingConsumer<? super ListPromise<T>> completion) {
+    return LIST_PROMISE_FACTORY.<List<T>, ListPromise<T>>thatCompletes(completion);
   }
 
   @SafeVarargs

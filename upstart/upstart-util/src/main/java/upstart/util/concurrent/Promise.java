@@ -130,6 +130,18 @@ public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Th
     return allOf(CompletableFutures.toArray(futures));
   }
 
+  public static <T> OptionalPromise<T> firstSatisfying(Predicate<? super T> predicate, Stream<? extends CompletableFuture<? extends T>> futures) {
+    return OptionalPromise.thatCompletesOptional(
+            promise -> allOf(
+                    futures.map(option -> Promise.of(option)
+                            .thenFilterOptional(predicate)
+                            .thenIfPresent(promise::completeWithValue)
+                    )
+            ).thenRun(promise::completeEmpty)
+    );
+
+  }
+
   public static <T, U> Collector<CompletableFuture<? extends T>, ?, Promise<U>> collector(Collector<? super T, ?, U> collector) {
     return Collectors.collectingAndThen(ListPromise.toListPromise(), listPromise -> listPromise.thenApply(results -> results.stream().collect(collector)));
   }
@@ -866,6 +878,12 @@ public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Th
     @Override
     public String toString() {
       return "PromiseFactory{" + factoryType.getSimpleName() + '}';
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T, P extends Promise<T>> P thatCompletes(ThrowingConsumer<? super P> completion) {
+      P promise = (P) newPromise(new ContextualizedFuture<>());
+      return (P) promise.consumeFailure(() -> completion.accept(promise));
     }
   }
 }
