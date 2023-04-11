@@ -60,13 +60,7 @@ public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Th
 
   private void arrangeCompletion() {
     // necessary to enact the expected behavior of isDone(), isCompletedExceptionally(), etc
-    completion.thenAccept(contextualized -> contextualized.value().accept((v, e) -> {
-      if (e != null) {
-        super.completeExceptionally(e);
-      } else {
-        super.complete(v);
-      }
-    }));
+    completion.thenAccept(contextualized -> contextualized.value().accept(this));
   }
 
   /**
@@ -78,7 +72,7 @@ public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Th
    *   if (error == null) {
    *     future.complete(result));
    *   } else {
-   *       future.completeExceptionally(error);
+   *     future.completeExceptionally(error);
    *   }
    * });
    * return future;
@@ -463,21 +457,6 @@ public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Th
   }
 
   ///////////////////// CompletableFuture methods /////////////////////
-
-  @Override
-  public boolean complete(T value) {
-    return completion.complete(Contextualized.value(value));
-  }
-
-  @Override
-  public boolean cancel(boolean mayInterruptIfRunning) {
-    return completion.complete(Contextualized.canceled());
-  }
-
-  @Override
-  public boolean completeExceptionally(Throwable ex) {
-    return completion.complete(Contextualized.failure(ex));
-  }
 
   @Override
   public T join() {

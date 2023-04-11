@@ -3,6 +3,7 @@ package upstart.util.collect;
 import com.google.common.collect.ImmutableMap;
 import upstart.util.concurrent.SimpleReference;
 
+import java.util.Optional;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collector;
@@ -19,6 +20,15 @@ public interface MoreCollectors {
             (ref, input) -> ref.mergeAndGet(input, accumulator),
             (left, right) -> { throw new UnsupportedOperationException("foldLeft does not support parallelism/merging, use Stream#reduce instead"); },
             SimpleReference::get
+    );
+  }
+
+  static <T> Collector<T, ?, Optional<T>> findLast() {
+    return Collector.of(
+            () -> new SimpleReference<T>(),
+            SimpleReference::set,
+            (left, right) -> { throw new UnsupportedOperationException("findLast does not support parallelism/merging, use Stream#reduce instead"); },
+            SimpleReference::getOptional
     );
   }
 }
