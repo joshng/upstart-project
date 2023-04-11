@@ -133,7 +133,6 @@ public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Th
                     )
             ).thenRun(promise::completeEmpty)
     );
-
   }
 
   public static <T, U> Collector<CompletableFuture<? extends T>, ?, Promise<U>> collector(Collector<? super T, ?, U> collector) {

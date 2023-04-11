@@ -19,7 +19,9 @@ import org.junit.jupiter.api.extension.BeforeTestExecutionCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.mockito.Mockito;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import static java.util.function.Predicate.*;
 
@@ -49,8 +51,11 @@ public class UpstartExtension extends SingletonParameterResolver<UpstartTestBuil
   public static void installTestModules(ExtensionContext context, UpstartTestBuilder builder) {
     UpstartTestInitializer.installAnnotatedModule(UpstartTest.class, UpstartTest::value, builder, context);
 
-    ExtensionContexts.findTestAnnotations(UpstartTestAnnotation.class, Reflect.LineageOrder.SuperclassBeforeSubclass, context)
-            .map(UpstartTestAnnotation::value)
+    ExtensionContexts.findRepeatableTestAnnotations(
+                    UpstartTestAnnotation.class,
+                    Reflect.LineageOrder.SuperclassBeforeSubclass,
+                    context
+            ).map(UpstartTestAnnotation::value)
             .distinct()
             .map(Reflect::newInstance)
             .forEach(initializer -> initializer.initialize(builder, context));
