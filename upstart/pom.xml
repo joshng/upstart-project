@@ -121,7 +121,7 @@
         <configuration>
           <useNativeGit>true</useNativeGit>
 <!--          <dotGitDirectory>${maven.multiModuleProjectDirectory}/.git</dotGitDirectory>-->
-          <dotGitDirectory>${rootlocation}/.git</dotGitDirectory>
+<!--          <dotGitDirectory>${rootlocation}/.git</dotGitDirectory>-->
           <generateGitPropertiesFile>true</generateGitPropertiesFile>
           <generateGitPropertiesFilename>${project.build.outputDirectory}/git.properties</generateGitPropertiesFilename>
           <failOnNoGitDirectory>true</failOnNoGitDirectory>
