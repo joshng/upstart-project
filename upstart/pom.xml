@@ -93,6 +93,20 @@
 
     <plugins>
       <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
+        <version>3.3.0</version>
+        <executions>
+          <execution>
+            <id>find-root</id>
+            <phase>initialize</phase>
+            <goals>
+              <goal>rootlocation</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
         <groupId>io.github.git-commit-id</groupId>
         <artifactId>git-commit-id-maven-plugin</artifactId>
         <executions>
@@ -106,9 +120,11 @@
         </executions>
         <configuration>
           <useNativeGit>true</useNativeGit>
-          <dotGitDirectory>${mvn.multiModuleProjectDirectory}/../.git</dotGitDirectory>
+<!--          <dotGitDirectory>${maven.multiModuleProjectDirectory}/.git</dotGitDirectory>-->
+          <dotGitDirectory>${rootlocation}/.git</dotGitDirectory>
           <generateGitPropertiesFile>true</generateGitPropertiesFile>
           <generateGitPropertiesFilename>${project.build.outputDirectory}/git.properties</generateGitPropertiesFilename>
+          <failOnNoGitDirectory>true</failOnNoGitDirectory>
           <includeOnlyProperties>
             <includeOnlyProperty>^git.branch$</includeOnlyProperty>
             <includeOnlyProperty>^git.commit.id.full$</includeOnlyProperty>
