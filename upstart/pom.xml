@@ -106,6 +106,7 @@
         </executions>
         <configuration>
           <useNativeGit>true</useNativeGit>
+          <dotGitDirectory>${mvn.multiModuleProjectDirectory}/.git</dotGitDirectory>
           <generateGitPropertiesFile>true</generateGitPropertiesFile>
           <generateGitPropertiesFilename>${project.build.outputDirectory}/git.properties</generateGitPropertiesFilename>
           <includeOnlyProperties>
