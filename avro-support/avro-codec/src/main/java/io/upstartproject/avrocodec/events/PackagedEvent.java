@@ -4,7 +4,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.upstartproject.avro.MessageEnvelope;
-import io.upstartproject.avrocodec.EnvelopeCodec;
+import io.upstartproject.avrocodec.EnvelopeDecoder;
+import io.upstartproject.avrocodec.EnvelopePublisher;
 import io.upstartproject.avrocodec.MessageMetadata;
 import io.upstartproject.avrocodec.PackableRecord;
 import io.upstartproject.avrocodec.RecordTypeFamily;
@@ -23,12 +24,11 @@ import java.util.Set;
 import static com.google.common.base.Preconditions.checkArgument;
 
 /**
- * Encapsulates a fully-specified event-message, ready to be delivered to the specified {@link #topic}
- * via an {@link EventPublisher}
+ * Encapsulates a fully-specified event-message, ready to be delivered via an {@link EventPublisher}
  * @see EventPublisher
  * @see EventLog
  * @see MessageEnvelope
- * @see EnvelopeCodec
+ * @see EnvelopeDecoder
  *
  */
 @Value.Immutable
@@ -75,11 +75,11 @@ public abstract class PackagedEvent {
     return recordTypeFamilies;
   }
 
-  public MessageEnvelope toEnvelope(EnvelopeCodec codec) {
+  public MessageEnvelope toEnvelope(EnvelopePublisher codec) {
     return codec.buildMessageEnvelope(timestamp(), Optional.of(uniqueId()), event(), metadata(), annotations());
   }
 
-  public byte[] serialize(EnvelopeCodec codec) {
+  public byte[] serialize(EnvelopePublisher codec) {
     return codec.getSerializedBytes(toEnvelope(codec));
   }
 

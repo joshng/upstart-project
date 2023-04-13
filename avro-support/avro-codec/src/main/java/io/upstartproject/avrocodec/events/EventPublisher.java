@@ -1,10 +1,11 @@
 package io.upstartproject.avrocodec.events;
 
 import io.upstartproject.avro.MessageEnvelope;
+import io.upstartproject.avrocodec.EnvelopePublisher;
 import io.upstartproject.avrocodec.MessageMetadata;
 import upstart.util.LogLevel;
 import upstart.util.concurrent.CompletableFutures;
-import io.upstartproject.avrocodec.EnvelopeCodec;
+import io.upstartproject.avrocodec.EnvelopeDecoder;
 
 import javax.inject.Inject;
 import java.time.Clock;
@@ -13,7 +14,7 @@ import java.util.concurrent.CompletableFuture;
 
 /**
  * A utility for delivering {@link PackagedEvent events} to a set of {@link PackagedEventSink}s, serialized as {@link MessageEnvelope}.
- * @see EnvelopeCodec
+ * @see EnvelopePublisher
  * @see EventLog
  */
 public class EventPublisher extends EventLog {

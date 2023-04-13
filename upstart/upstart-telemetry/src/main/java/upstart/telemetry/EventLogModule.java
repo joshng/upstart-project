@@ -13,7 +13,10 @@ import io.upstartproject.avrocodec.upstart.AvroPublicationModule;
 import io.upstartproject.avrocodec.upstart.DataStore;
 import upstart.config.UpstartModule;
 
+import java.lang.annotation.Annotation;
+
 public class EventLogModule extends UpstartModule {
+  public static final EventLogModule INSTANCE = new EventLogModule();
 
   public static final String TELEMETRY = "TELEMETRY";
   public static final DataStore TELEMETRY_DATA_STORE = DataStore.Factory.dataStore(TELEMETRY);
@@ -27,6 +30,7 @@ public class EventLogModule extends UpstartModule {
   }
 
   public static Multibinder<PackagedEvent.Decorator> decoratorMultibinder(Binder binder) {
+    binder.install(INSTANCE);
     return Multibinder.newSetBinder(binder, PackagedEvent.Decorator.class);
   }
 
@@ -44,6 +48,10 @@ public class EventLogModule extends UpstartModule {
   }
 
   public static void publishMessageEnvelopeSchema(Binder binder) {
-    AvroPublicationModule.publishAvroClasses(binder, TELEMETRY_DATA_STORE, MessageEnvelope.class);
+    publishMessageEnvelopeSchema(binder, TELEMETRY_DATA_STORE);
+  }
+
+  public static void publishMessageEnvelopeSchema(Binder binder, Annotation taxonomyAnnotation) {
+    AvroPublicationModule.publishAvroClasses(binder, taxonomyAnnotation, MessageEnvelope.class);
   }
 }

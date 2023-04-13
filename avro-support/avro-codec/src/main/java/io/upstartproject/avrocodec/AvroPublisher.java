@@ -25,7 +25,6 @@ import org.apache.avro.io.DatumWriter;
 import org.apache.avro.io.DecoderFactory;
 import org.apache.avro.io.Encoder;
 import org.apache.avro.io.EncoderFactory;
-import org.apache.avro.specific.SpecificData;
 import org.apache.avro.specific.SpecificDatumWriter;
 import org.apache.avro.specific.SpecificRecordBase;
 import org.immutables.value.Value;
@@ -86,7 +85,8 @@ import static com.google.common.base.Preconditions.checkState;
  *
  * See {@link AvroDecoder} for a description of the process for reading records.
  *
- * @see EnvelopeCodec
+ * @see EnvelopeDecoder
+ * @see EnvelopePublisher
  * @see UnpackableRecord
  * @see SchemaNormalization2
  * @see SchemaCompatibility

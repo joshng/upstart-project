@@ -9,7 +9,7 @@ import io.upstartproject.avro.event.ServiceConfigLoadedEvent;
 import io.upstartproject.avrocodec.AvroDecoder;
 import io.upstartproject.avrocodec.AvroPublisher;
 import io.upstartproject.avrocodec.AvroTaxonomy;
-import io.upstartproject.avrocodec.EnvelopeCodec;
+import io.upstartproject.avrocodec.EnvelopeDecoder;
 import io.upstartproject.avrocodec.MemorySchemaRegistry;
 import io.upstartproject.avrocodec.SchemaRegistry;
 import io.upstartproject.avrocodec.upstart.AvroEnvelopeModule;
@@ -27,7 +27,6 @@ import upstart.metrics.TaggedMetricRegistry;
 import upstart.telemetry.test.CapturingEventSink;
 import upstart.test.StacklessTestException;
 import upstart.test.UpstartLibraryTest;
-import upstart.test.UpstartTest;
 import upstart.util.concurrent.Deadline;
 import upstart.util.concurrent.services.NotifyingService;
 import upstart.util.concurrent.services.ServiceDependencyChecker;
@@ -59,12 +58,12 @@ public class ServiceTelemetryTest extends UpstartModule {
   @Inject
   ServiceDependencyChecker dependencyChecker;
   AvroDecoder decoder;
-  EnvelopeCodec envelopeCodec;
+  EnvelopeDecoder envelopeCodec;
   private StacklessTestException failureException = null;
 
   @Override
   protected void configure() {
-    install(new EventLogModule());
+    install(EventLogModule.INSTANCE);
     install(new AvroEnvelopeModule(EventLogModule.TELEMETRY_DATA_STORE));
     bind(SchemaRegistry.class).annotatedWith(EventLogModule.TELEMETRY_DATA_STORE).to(MemorySchemaRegistry.class);
     install(new CapturingEventSink.Module());
@@ -76,7 +75,7 @@ public class ServiceTelemetryTest extends UpstartModule {
     AvroTaxonomy taxonomy = new AvroTaxonomy(new MemorySchemaRegistry());
     decoder = new AvroDecoder(taxonomy);
     AvroPublisher avroPublisher = new AvroPublisher(taxonomy);
-    envelopeCodec = new EnvelopeCodec(avroPublisher, decoder);
+    envelopeCodec = new EnvelopeDecoder(decoder);
     taxonomy.start().join();
 
     avroPublisher.ensureRegistered(MessageEnvelope.class).join();

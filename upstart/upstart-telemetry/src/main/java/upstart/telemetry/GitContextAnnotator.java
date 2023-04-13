@@ -34,7 +34,6 @@ public class GitContextAnnotator implements PackagedEvent.Decorator {
   public static class Module extends UpstartModule {
     @Override
     protected void configure() {
-      install(new EventLogModule());
       install(new GitContext.GitContextModule());
       EventLogModule.bindGlobalDecorator(binder()).to(Key.get(GitContextAnnotator.class, EventLogModule.TELEMETRY_DATA_STORE));
       install(new AnnotationKeyedPrivateModule(EventLogModule.TELEMETRY_DATA_STORE, GitContextAnnotator.class) {

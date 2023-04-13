@@ -4,7 +4,8 @@ import io.upstartproject.avro.MessageEnvelope;
 import io.upstartproject.avrocodec.AvroDecoder;
 import io.upstartproject.avrocodec.AvroPublisher;
 import io.upstartproject.avrocodec.AvroTaxonomy;
-import io.upstartproject.avrocodec.EnvelopeCodec;
+import io.upstartproject.avrocodec.EnvelopeDecoder;
+import io.upstartproject.avrocodec.EnvelopePublisher;
 import io.upstartproject.avrocodec.MemorySchemaRegistry;
 import io.upstartproject.avrocodec.RecordTypeFamily;
 import io.upstartproject.avrocodec.UnpackableMessageEnvelope;
@@ -29,15 +30,15 @@ import java.util.stream.Stream;
 @Singleton
 public class CapturingEventSink implements PackagedEventSink {
   final List<MessageEnvelope> events = new CopyOnWriteArrayList<>();
-  private final EnvelopeCodec onlineCodec;
+  private final EnvelopePublisher onlineCodec;
   private final AvroTaxonomy taxonomy = new AvroTaxonomy(new MemorySchemaRegistry());
   private final AvroDecoder decoder = new AvroDecoder(taxonomy);
   private final AvroPublisher offlinePublisher = new AvroPublisher(taxonomy);
-  private final EnvelopeCodec offlineCodec = new EnvelopeCodec(offlinePublisher, decoder);
+  private final EnvelopeDecoder offlineCodec = new EnvelopeDecoder(decoder);
 
   @Inject
   CapturingEventSink(
-          @DataStore(EventLogModule.TELEMETRY) EnvelopeCodec onlineCodec,
+          @DataStore(EventLogModule.TELEMETRY) EnvelopePublisher onlineCodec,
           @DataStore(EventLogModule.TELEMETRY) AvroPublicationModule.AvroPublicationService publicationService
   ) {
     taxonomy.start().join();

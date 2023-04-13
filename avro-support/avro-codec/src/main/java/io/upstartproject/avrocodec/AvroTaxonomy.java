@@ -1,6 +1,5 @@
 package io.upstartproject.avrocodec;
 
-import com.google.common.base.Supplier;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -15,6 +14,7 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -33,8 +33,8 @@ public class AvroTaxonomy extends NotifyingService {
   private final LoadingCache<String, RecordTypeFamily> typesByFullName = CacheBuilder.newBuilder()
           .build(CacheLoader.from(RecordTypeFamily::new));
 
-  private final LoadingCache<SchemaFingerprint, Promise<RecordTypeFamily.RegistrationResult>> knownFingerprints = CacheBuilder.newBuilder()
-          .build(CacheLoader.from((Supplier<Promise<RecordTypeFamily.RegistrationResult>>) Promise::new));
+  private final LoadingCache<SchemaFingerprint, RegistrationRequest> knownFingerprints = CacheBuilder.newBuilder()
+          .build(CacheLoader.from(RegistrationRequest::new));
 
   private TaxonomyListener listener = NULL_LISTENER;
 
@@ -59,17 +59,7 @@ public class AvroTaxonomy extends NotifyingService {
   }
 
   public Promise<RecordTypeFamily.RegistrationResult> findSchemaDescriptor(SchemaFingerprint fingerprint) {
-    Promise<RecordTypeFamily.RegistrationResult> resultPromise = knownFingerprints.getUnchecked(fingerprint);
-    if (!resultPromise.isDone()) {
-      LOG.warn("Awaiting arrival of unrecognized schema-fingerprint: {}", fingerprint.hexValue());
-      registry.refresh();
-      resultPromise.thenAccept(result -> LOG.warn(
-              "Awaited schema arrived, {}: {}",
-              fingerprint.hexValue(),
-              result.typeFamily().getFullName()
-      ));
-    }
-    return resultPromise;
+    return knownFingerprints.getUnchecked(fingerprint).ensureRequested();
   }
 
   public RecordTypeFamily findTypeFamily(String fullName) {
@@ -157,6 +147,33 @@ public class AvroTaxonomy extends NotifyingService {
 
   public CompletableFuture<Void> refresh() {
     return registry.refresh();
+  }
+
+  private class RegistrationRequest extends Promise<RecordTypeFamily.RegistrationResult> {
+    private final AtomicBoolean issued = new AtomicBoolean(false);
+    private final SchemaFingerprint fingerprint;
+
+    public RegistrationRequest(SchemaFingerprint fingerprint) {
+      this.fingerprint = fingerprint;
+    }
+
+    Promise<RecordTypeFamily.RegistrationResult> ensureRequested() {
+      if (!issued.getAndSet(true) && !isDone()) {
+        Promise<Void> refresh = Promise.of(registry.refresh());
+        if (!isDone()) {
+          LOG.warn(
+                  "Awaiting arrival of unrecognized schema-fingerprint: {} from registry {}",
+                  fingerprint.hexValue(),
+                  registry
+          );
+          thenAccept(result -> LOG.warn("Awaited schema arrived, {}: {}", fingerprint.hexValue(), result.typeFamily()));
+          refresh.uponCompletion(() -> {
+            if (!isCompletedNormally()) LOG.error("Awaited schema failed to arrive: {}", fingerprint.hexValue());
+          });
+        }
+      }
+      return this;
+    }
   }
 
   interface TaxonomyListener {
