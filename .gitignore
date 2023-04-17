@@ -6,7 +6,6 @@ pom.xml.next
 release.properties
 dependency-reduced-pom.xml
 buildNumber.properties
-**/src/main/resources/git.properties
 *.iml
 .idea/compiler.xml
 .idea/uiDesigner.xml
