@@ -50,7 +50,11 @@ public abstract class AsyncLocal<T> implements MutableReference<T> {
   protected abstract T merge(T a, T b);
     @Override
   public void set(T value) {
-    AsyncLocalContextManager.putCurrentValue(this, value);
+    if (value != null) {
+      AsyncLocalContextManager.putCurrentValue(this, value);
+    } else {
+      AsyncLocalContextManager.removeCurrentValue(this);
+    }
   }
 
   @Override
