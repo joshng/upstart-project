@@ -303,10 +303,10 @@ public sealed class Promise<T> extends CompletableFuture<T> implements BiConsume
   }
 
   public Promise<T> uponSuccess(Runnable sideEffect) {
-    return thenApply(t -> {
+    return sameTypeSubsequentFactory().newPromise(completion.thenApply(Contextualized.liftFunction(t -> {
       sideEffect.run();
       return t;
-    });
+    })));
   }
 
   public Promise<Void> toVoid() {
