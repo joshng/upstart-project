@@ -21,7 +21,7 @@ import java.util.stream.Stream;
 
 import static com.google.common.base.Strings.lenientFormat;
 
-public class OptionalPromise<T> extends ExtendedPromise<Optional<T>, OptionalPromise<T>> {
+public final class OptionalPromise<T> extends ExtendedPromise<Optional<T>, OptionalPromise<T>> {
   static final PromiseFactory OPTIONAL_PROMISE_FACTORY = PromiseFactory.of(
           OptionalPromise.class,
           Optional.empty(),
@@ -31,7 +31,7 @@ public class OptionalPromise<T> extends ExtendedPromise<Optional<T>, OptionalPro
   public OptionalPromise() {
   }
 
-  public OptionalPromise(CompletableFuture<Contextualized<Optional<T>>> completion) {
+  private OptionalPromise(CompletableFuture<Contextualized<Optional<T>>> completion) {
     super(completion);
   }
 

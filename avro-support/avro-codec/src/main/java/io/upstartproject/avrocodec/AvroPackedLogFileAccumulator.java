@@ -70,7 +70,7 @@ public abstract class AvroPackedLogFileAccumulator<R, S extends GenericRecord> {
       LogFile openFile = currentFile;
       if (openFile == null || openFile.closeIfExpired()) currentFile = openFile = new LogFile();
       if (openFile.writeAndCloseIfFull(record, packedRecord)) currentFile = null;
-      return openFile;
+      return openFile.pathPromise;
     }));
   }
 
@@ -93,13 +93,14 @@ public abstract class AvroPackedLogFileAccumulator<R, S extends GenericRecord> {
     }
   }
 
-  class LogFile extends Promise<Path> {
+  class LogFile {
     private final Instant fileExpiry;
     private final TempFileFactory.AtomicFileWriter fileWriter;
     private final CountingOutputStream byteCounter;
     private final DataFileWriter<S> output;
     private final ScheduledFuture<?> timeoutFuture;
     private final Path finalFileLocation;
+    private final Promise<Path> pathPromise = new Promise<Path>();
     private boolean closed = false;
     private long bytesWritten = 0;
     private long appendedRecordCount = 0;
@@ -116,7 +117,7 @@ public abstract class AvroPackedLogFileAccumulator<R, S extends GenericRecord> {
               .create(serializedSchema, byteCounter);
       output.setFlushOnEveryBlock(true);
       timeoutFuture = scheduler.schedule(config.maxEmissionDelay(), () -> callSequentially(fallible(this::onExpiry)));
-      whenComplete((path, e) -> {
+      pathPromise.whenComplete((path, e) -> {
         try {
           fileWriter.close();
         } catch (IOException closeException) {
@@ -152,7 +153,7 @@ public abstract class AvroPackedLogFileAccumulator<R, S extends GenericRecord> {
           } catch (IOException closeException) {
             e.addSuppressed(closeException);
           } finally {
-            completeExceptionally(e);
+            pathPromise.completeExceptionally(e);
           }
         } else {
           onRecordFailed(record, finalFileLocation, e);
@@ -171,7 +172,7 @@ public abstract class AvroPackedLogFileAccumulator<R, S extends GenericRecord> {
       checkState(!closed, "TextEntityFile.close called more than once");
       closed = true;
       timeoutFuture.cancel(false);
-      tryComplete(() -> {
+      pathPromise.tryComplete(() -> {
         output.close();
         fileWriter.commit();
         onFileSealed(finalFileLocation, appendedRecordCount);

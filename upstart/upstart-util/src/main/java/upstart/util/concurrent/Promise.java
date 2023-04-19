@@ -40,7 +40,7 @@ import java.util.stream.Stream;
  * An extension of {@link CompletableFuture} with utility methods for completing a "Promise" in various ways, while
  * retaining the values of all {@link AsyncLocal}s across completions.
  */
-public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Throwable> {
+public sealed class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Throwable> permits ExtendedPromise, CompletableFutureTask {
   private static final PromiseFactory PROMISE_FACTORY = PromiseFactory.of(Promise.class, null, Promise::new);
   private final CompletableFuture<Contextualized<T>> completion;
 
@@ -300,6 +300,13 @@ public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Th
    */
   public Promise<T> uponCompletion(Runnable sideEffect) {
     return whenComplete((t, e) -> sideEffect.run());
+  }
+
+  public Promise<T> uponSuccess(Runnable sideEffect) {
+    return thenApply(t -> {
+      sideEffect.run();
+      return t;
+    });
   }
 
   public Promise<Void> toVoid() {

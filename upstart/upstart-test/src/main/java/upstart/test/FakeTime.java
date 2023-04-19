@@ -20,6 +20,7 @@ import java.util.Comparator;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Delayed;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -152,7 +153,7 @@ public class FakeTime {
     }
   }
 
-  private class ScheduledTask<T> extends Promise<T> implements ScheduledFuture<T> {
+  private class ScheduledTask<T> extends CompletableFuture<T> implements ScheduledFuture<T> {
     private final @Nullable Duration interval;
     private final Callable<T> task;
     private Instant nextDeadline;
@@ -165,15 +166,15 @@ public class FakeTime {
     }
 
     public void run() {
-      if (interval != null) {
-        try {
-          task.call();
+      try {
+        T result = task.call();
+        if (interval != null) {
           nextDeadline = clock.instant().plus(interval);
-        } catch (Throwable e) {
-          completeExceptionally(e);
+        } else {
+          complete(result);
         }
-      } else {
-        tryComplete(task);
+      } catch (Throwable e) {
+        completeExceptionally(e);
       }
     }
 

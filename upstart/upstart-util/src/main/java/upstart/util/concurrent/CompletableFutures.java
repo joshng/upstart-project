@@ -31,10 +31,6 @@ import java.util.stream.Stream;
 import static com.google.common.base.Preconditions.checkState;
 
 public class CompletableFutures {
-  private static final Promise CANCELLED_FUTURE = new Promise<Void>() {{
-    cancel(true);
-  }};
-
   public static <T> Promise<T> nullFuture() {
     return Promise.nullPromise();
   }
@@ -49,7 +45,7 @@ public class CompletableFutures {
 
   @SuppressWarnings("unchecked")
   public static <T> Promise<T> cancelledFuture() {
-    return CANCELLED_FUTURE;
+    return Promise.canceledPromise();
   }
 
   public static <T> Promise<T> failedFuture(Throwable t) {

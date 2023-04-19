@@ -18,13 +18,13 @@ import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class ListPromise<T> extends ExtendedPromise<List<T>, ListPromise<T>> {
+public final class ListPromise<T> extends ExtendedPromise<List<T>, ListPromise<T>> {
   static final PromiseFactory LIST_PROMISE_FACTORY = PromiseFactory.of(ListPromise.class, List.of(), ListPromise::new);
 
   public ListPromise() {
   }
 
-  protected ListPromise(CompletableFuture<Contextualized<List<T>>> completion) {
+  private ListPromise(CompletableFuture<Contextualized<List<T>>> completion) {
     super(completion);
   }
 

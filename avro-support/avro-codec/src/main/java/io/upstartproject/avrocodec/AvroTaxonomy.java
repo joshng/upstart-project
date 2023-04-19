@@ -90,7 +90,7 @@ public class AvroTaxonomy extends NotifyingService {
               public void onSchemaAdded(SchemaDescriptor schema) {
                 RecordTypeFamily.RegistrationResult registrationResult = findOrCreateTypeFamily(schema.fullName())
                         .addVersion(schema);
-                knownFingerprints.getUnchecked(schema.fingerprint()).complete(registrationResult);
+                knownFingerprints.getUnchecked(schema.fingerprint()).registrationPromise.complete(registrationResult);
                 listener.onSchemaAdded(schema, registrationResult);
               }
 
@@ -112,9 +112,9 @@ public class AvroTaxonomy extends NotifyingService {
   @Override
   protected void doStop() {
     registry.shutDown().whenComplete((__, e) -> {
-      knownFingerprints.asMap().forEach((fingerprint, promise) -> {
-        if (!promise.isDone()) {
-          promise.completeExceptionally(new ShutdownException("AvroTaxonomy was shut down while awaiting schema: " + fingerprint.hexValue()));
+      knownFingerprints.asMap().forEach((fingerprint, request) -> {
+        if (!request.registrationPromise.isDone()) {
+          request.registrationPromise.completeExceptionally(new ShutdownException("AvroTaxonomy was shut down while awaiting schema: " + fingerprint.hexValue()));
         }
       });
       try {
@@ -149,30 +149,31 @@ public class AvroTaxonomy extends NotifyingService {
     return registry.refresh();
   }
 
-  private class RegistrationRequest extends Promise<RecordTypeFamily.RegistrationResult> {
+  private class RegistrationRequest {
     private final AtomicBoolean issued = new AtomicBoolean(false);
     private final SchemaFingerprint fingerprint;
+    private final Promise<RecordTypeFamily.RegistrationResult> registrationPromise = new Promise<>();
 
     public RegistrationRequest(SchemaFingerprint fingerprint) {
       this.fingerprint = fingerprint;
     }
 
     Promise<RecordTypeFamily.RegistrationResult> ensureRequested() {
-      if (!issued.getAndSet(true) && !isDone()) {
+      if (!issued.getAndSet(true) && !registrationPromise.isDone()) {
         Promise<Void> refresh = Promise.of(registry.refresh());
-        if (!isDone()) {
+        if (!registrationPromise.isDone()) {
           LOG.warn(
                   "Awaiting arrival of unrecognized schema-fingerprint: {} from registry {}",
                   fingerprint.hexValue(),
                   registry
           );
-          thenAccept(result -> LOG.warn("Awaited schema arrived, {}: {}", fingerprint.hexValue(), result.typeFamily()));
+          registrationPromise.thenAccept(result -> LOG.warn("Awaited schema arrived, {}: {}", fingerprint.hexValue(), result.typeFamily()));
           refresh.uponCompletion(() -> {
-            if (!isCompletedNormally()) LOG.error("Awaited schema failed to arrive: {}", fingerprint.hexValue());
+            if (!registrationPromise.isCompletedNormally()) LOG.error("Awaited schema failed to arrive: {}", fingerprint.hexValue());
           });
         }
       }
-      return this;
+      return registrationPromise;
     }
   }
 
