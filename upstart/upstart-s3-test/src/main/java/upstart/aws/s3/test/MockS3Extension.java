@@ -1,6 +1,7 @@
 package upstart.aws.s3.test;
 
 import upstart.aws.s3.S3Key;
+import upstart.test.AvailablePortAllocator;
 import upstart.test.ExtensionContexts;
 import upstart.test.UpstartExtension;
 import upstart.test.SingletonParameterResolver;
@@ -29,7 +30,7 @@ public class MockS3Extension extends SingletonParameterResolver<MockS3> implemen
   protected MockS3 createContext(ExtensionContext extensionContext) throws Exception {
     // TODO: support multiple instances of @MockS3Test annotation for composable fixtures
     Optional<MockS3Test> anno = ExtensionContexts.findNearestAnnotation(MockS3Test.class, extensionContext);
-    int port = anno.map(MockS3Test::port).orElse(MockS3Test.DEFAULT_PORT);
+    int port = anno.map(MockS3Test::port).filter(p -> p > 0).orElseGet(AvailablePortAllocator::allocatePort);
     Optional<Path> fileDirectory = anno.map(MockS3Test::fileDirectory).filter(not(String::isEmpty)).map(Paths::get);
     String[] initialBuckets = anno.map(MockS3Test::initialBuckets).orElse(new String[0]);
     List<S3Fixture> fixtures = anno.map(MockS3Test::value)

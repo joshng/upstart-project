@@ -13,10 +13,9 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @Retention(RetentionPolicy.RUNTIME)
 @ExtendWith(MockS3Extension.class)
 public @interface MockS3Test {
-  int DEFAULT_PORT = 8011;
   String NO_DIRECTORY = "";
 
-  int port() default DEFAULT_PORT;
+  int port() default -1;
 
   /**
    * Optional: specifies a directory to hold the files stored by this S3Mock instance.
