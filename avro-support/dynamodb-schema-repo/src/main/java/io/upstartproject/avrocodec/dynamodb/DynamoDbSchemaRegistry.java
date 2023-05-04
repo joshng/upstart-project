@@ -320,7 +320,7 @@ public class DynamoDbSchemaRegistry implements SchemaRegistry {
         }
       };
       install(privateModule);
-      ProvisionedResource.bindProvisionedResource(binder(), privateModule.annotatedKey(SchemaTable.class));
+      install(new DynamoTableInitializer.TableInitializerModule(privateModule.annotatedKey(SchemaTable.class)));
     }
   }
 

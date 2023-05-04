@@ -1,6 +1,7 @@
 package upstart.util.concurrent;
 
 import upstart.util.MorePaths;
+import upstart.util.exceptions.Fallible;
 import upstart.util.exceptions.FallibleConsumer;
 import upstart.util.exceptions.FallibleFunction;
 import org.immutables.value.Value;
@@ -80,7 +81,7 @@ public interface TempFileFactory {
    * @return the value returned by the <code>writer</code> function
    */
   default <T, E extends Exception> T writeFileAtomically(Path finalFileLocation, FallibleFunction<Path, T, E> writer) throws E, IOException {
-    return atomicWriter(finalFileLocation).write(writer);
+    return atomicWriter(finalFileLocation).commitWith(writer);
   }
 
   default AtomicFileWriter atomicWriter(Path finalFileLocation) throws IOException {
@@ -132,11 +133,35 @@ public interface TempFileFactory {
     public abstract Path tempFile();
     public abstract Path finalFileLocation();
 
-    public <T, E extends Exception> T write(FallibleFunction<Path, T, E> writer) throws E, IOException {
+    public TransactionalFile transactionalFile(Closeable writer) {
+      return new TransactionalFile(writer, this);
+    }
+
+    public <T, E extends Exception> T commitWith(FallibleFunction<Path, T, E> writer) throws E, IOException {
       try (var ignored = this) {
         T result = writer.applyOrThrow(tempFile());
         commit();
         return result;
+      }
+    }
+
+    public <E extends Exception> Path commitWith(FallibleConsumer<Path, E> writer) throws E, IOException {
+      try (var ignored = this) {
+        writer.acceptOrThrow(tempFile());
+        commit();
+        return finalFileLocation();
+      }
+    }
+
+    public Path commitWith(Closeable writer) throws IOException {
+      return commitAfter(writer::close);
+    }
+
+    public <E extends Exception> Path commitAfter(Fallible<E> writer) throws E, IOException {
+      try (var ignored = this) {
+        writer.runOrThrow();
+        commit();
+        return finalFileLocation();
       }
     }
 
@@ -161,6 +186,21 @@ public interface TempFileFactory {
 
     protected void abort() throws IOException {
       Files.deleteIfExists(tempFile());
+    }
+  }
+
+  record TransactionalFile(Closeable input, AtomicFileWriter atomicFileWriter) implements Closeable {
+    public Path commit() throws IOException {
+      return atomicFileWriter.commitWith(input);
+    }
+
+    @Override
+    public void close() throws IOException {
+      atomicFileWriter.close();
+    }
+
+    public void deleteIfExists() throws IOException {
+      Files.deleteIfExists(atomicFileWriter.finalFileLocation());
     }
   }
 }
