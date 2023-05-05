@@ -15,7 +15,7 @@ public class CommandExecutor {
     this.spi = spi;
   }
 
-  public <R extends CommandResult> R run(String executable, Function<CommandSpecBuilder<CommandResult.ZeroExitCode>, CommandSpecBuilder<R>> builder) {
+  public <R extends CommandResult> R run(String executable, Function<CommandSpec.Builder<CommandResult.ZeroExitCode>, CommandSpec.Builder<R>> builder) {
     return run(builder.apply(CommandSpec.builder(executable)).build());
   }
 

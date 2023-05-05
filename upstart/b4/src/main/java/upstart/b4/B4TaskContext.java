@@ -6,7 +6,7 @@ import upstart.commandExecutor.CommandExecutor;
 import upstart.commandExecutor.CommandExecutorSPI;
 import upstart.commandExecutor.CommandResult;
 import upstart.commandExecutor.CommandSpec;
-import upstart.commandExecutor.CommandSpecBuilder;
+import upstart.commandExecutor.CommandSpec.Builder;
 import upstart.commandExecutor.InternalCommandResult;
 import upstart.util.exceptions.Fallible;
 import upstart.util.exceptions.FallibleSupplier;
@@ -103,23 +103,25 @@ public class B4TaskContext {
     return commandExecutor;
   }
 
-  public void effectCommand(String executable, String... args) {
-    effectCommand(executable, builder -> builder.addArgs(args));
+  public Optional<CommandResult.ZeroExitCode> effectCommand(String executable, String... args) {
+    return effectCommand(executable, builder -> builder.addArgs(args));
   }
 
-  public void effectCommand(String executable, Function<CommandSpecBuilder<CommandResult.ZeroExitCode>, CommandSpecBuilder<CommandResult.ZeroExitCode>> builder) {
+  public <R extends CommandResult> Optional<R> effectCommand(String executable, Function<CommandSpec.Builder<CommandResult.ZeroExitCode>, CommandSpec.Builder<R>> builder) {
     if (!isDryRun) {
-      alwaysRunCommand(executable, builder);
+      return Optional.of(alwaysRunCommand(executable, builder));
     } else {
       say(DRYRUN_LOG_MARKER, builder.apply(CommandSpec.builder(executable)).build().commandLine());
+      return Optional.empty();
     }
   }
 
 
-  public <R extends CommandResult> R alwaysRunCommand(String executable, Function<CommandSpecBuilder<CommandResult.ZeroExitCode>, CommandSpecBuilder<R>> builder) {
+  public <R extends CommandResult> R alwaysRunCommand(String executable, Function<CommandSpec.Builder<CommandResult.ZeroExitCode>, CommandSpec.Builder<R>> builder) {
     return commandExecutor.run(executable, b -> {
-      if (verbosity().logOutput) b.stdoutConsumer(new CommandOutputConsumer());
-      return builder.apply(b);
+      var actual = builder.apply(b);
+      if (verbosity().logOutput && !actual.stdoutIsCaptured()) actual.stdoutConsumer(new CommandOutputConsumer());
+      return actual;
     });
   }
 

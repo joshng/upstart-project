@@ -38,7 +38,7 @@ public abstract class CommandSpec<ResultType extends CommandResult> {
    * Prepares a {@link CommandSpecBuilder} for the given executable with no timeout, which will throw an exception unless
    * the process exits normally (see {@link CommandPolicy#RequireZeroStatus})
    */
-  public static CommandSpecBuilder<CommandResult.ZeroExitCode> builder(String executable) {
+  public static Builder<CommandResult.ZeroExitCode> builder(String executable) {
     return builder(NO_TIMEOUT, executable);
   }
 
@@ -46,15 +46,15 @@ public abstract class CommandSpec<ResultType extends CommandResult> {
    * Prepares a {@link CommandSpecBuilder} for the given executable with the given timeout, which will throw an exception unless
    * the process exits normally (see {@link CommandPolicy#RequireZeroStatus})
    */
-  public static CommandSpecBuilder<CommandResult.ZeroExitCode> builder(Duration timeout, String executable) {
+  public static Builder<CommandResult.ZeroExitCode> builder(Duration timeout, String executable) {
     return builder(timeout, CommandPolicy.RequireZeroStatus, executable);
   }
 
-  public static <R extends CommandResult> CommandSpecBuilder<R> builder(Duration timeout, CommandPolicy<R> completionPolicy, String executable) {
-    return new CommandSpecBuilder<R>()
+  public static <R extends CommandResult> Builder<R> builder(Duration timeout, CommandPolicy<R> completionPolicy, String executable) {
+    return new Builder<>()
             .timeout(timeout)
             .executable(executable)
-            .completionPolicy(completionPolicy);
+            .policy(completionPolicy);
   }
 
   public static String commandLine(String executable, List<String> args) {
@@ -186,59 +186,49 @@ public abstract class CommandSpec<ResultType extends CommandResult> {
     }
   }
 
-  public abstract static class Builder<ResultType extends CommandResult> {
+  public static class Builder<ResultType extends CommandResult> extends CommandSpecBuilder<ResultType> {
+    private boolean stdoutIsCaptured = false;
 
-    public abstract CommandSpecBuilder<ResultType> timeout(Duration timeout);
-
-    public abstract CommandSpecBuilder<ResultType> addAllArgs(Iterable<String> args);
-
-    public abstract CommandSpecBuilder<ResultType> addArgs(String arg);
-
-    public abstract CommandSpecBuilder<ResultType> stdoutConsumer(StreamConsumer consumer);
-
-    public abstract CommandSpecBuilder<ResultType> putAllEnvironment(Map<String, ? extends String> env);
-
-    public CommandSpecBuilder<ResultType> inheritParentEnvironment() {
+    public Builder<ResultType> inheritParentEnvironment() {
       return putAllEnvironment(System.getenv());
     }
 
-    public CommandSpecBuilder<ResultType> captureOutputString() {
+    public Builder<ResultType> captureOutputString() {
+      stdoutIsCaptured = true;
       return stdoutConsumer(new CapturingStreamConsumer());
     }
 
-    /**
-     * hide this misleading method, and expose the generic type-shifting {@link #policy} wrapper instead
-     */
-    abstract CommandSpecBuilder<ResultType> completionPolicy(CommandPolicy<ResultType> policy);
+    public boolean stdoutIsCaptured() {
+      return stdoutIsCaptured;
+    }
 
     /**
      * Applies the given {@link CommandPolicy} to the {@link CommandResult} yielded by {@link CommandExecutor#run running} this command.
      * @return This {@link CommandSpecBuilder}, with a modified result-type ({@link R}) to match the new policy's behavior
      */
     @SuppressWarnings("unchecked")
-    public <R extends CommandResult> CommandSpecBuilder<R> policy(CommandPolicy<R> newPolicy) {
+    public <R extends CommandResult> Builder<R> policy(CommandPolicy<R> newPolicy) {
       return ((Builder<R>) this).completionPolicy(newPolicy);
     }
 
     @CanIgnoreReturnValue
-    public CommandSpecBuilder<ResultType> noTimeout() {
+    public Builder<ResultType> noTimeout() {
       return timeout(NO_TIMEOUT);
     };
 
     @CanIgnoreReturnValue
-    public CommandSpecBuilder<ResultType> addSpaceSeparatedArgs(String args) {
+    public Builder<ResultType> addSpaceSeparatedArgs(String args) {
       return addArgs(MoreStrings.splitOnSpaces(args));
     }
 
     @CanIgnoreReturnValue
-    public CommandSpecBuilder<ResultType> addArgs(Stream<String> argStream) {
+    public Builder<ResultType> addArgs(Stream<String> argStream) {
       return addAllArgs(argStream::iterator);
     }
 
     @CanIgnoreReturnValue
-    public CommandSpecBuilder<ResultType> addArg(String element) {
+    public Builder<ResultType> addArg(String element) {
       return addArgs(element);
     }
   }
-
 }
