@@ -10,6 +10,7 @@ import upstart.config.EnvironmentConfigFixture;
 import upstart.config.TestConfigBuilder;
 import upstart.util.collect.MoreStreams;
 import upstart.util.collect.Optionals;
+import upstart.util.concurrent.Deadline;
 import upstart.util.exceptions.UncheckedInterruptedException;
 import io.findify.s3mock.S3Mock;
 import io.findify.s3mock.error.NoSuchKeyException;
@@ -42,6 +43,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
@@ -57,7 +59,7 @@ public class MockS3 implements EnvironmentConfigFixture {
   private final List<S3Operation> operations = new ArrayList<>();
 
 
-  MockS3(int port, String[] initialBuckets, Optional<Path> fileDirectory) {
+  MockS3(int port, Set<String> initialBuckets, Optional<Path> fileDirectory) {
     this.port = port;
     this.fileDirectory = fileDirectory;
     realProvider = fileDirectory.<Provider>map(realDir -> new FileProvider(realDir.toString())).orElseGet(InMemoryProvider::new);
@@ -121,8 +123,16 @@ public class MockS3 implements EnvironmentConfigFixture {
     putObject(key.bucket().value(), key.key(), data, contentType);
   }
 
+  public void putFixture(S3Fixture fixture) {
+    putObject(fixture.key(), fixture.data(), fixture.contentType());
+  }
+
   public GetObjectData getObject(String bucket, String key) {
     return realProvider.getObject(bucket, key);
+  }
+
+  public GetObjectData getObject(S3Key key) {
+    return getObject(key.bucket().value(), key.key());
   }
 
   public InitiateMultipartUploadResult putObjectMultipartStart(String bucket, String key, ObjectMetadata metadata) {
@@ -191,28 +201,27 @@ public class MockS3 implements EnvironmentConfigFixture {
     private int cursor = 0;
 
 
-    public Optional<S3Operation> awaitNextOperation(Instant deadline) {
+    public Optional<S3Operation> awaitNextOperation(Deadline deadline) {
       return awaitNextMatch(deadline, op -> true);
     }
 
-    public ObjectCreation expectObjectCreation(Duration timeout, Predicate<? super ObjectCreation> selector) {
-      return awaitNextMatch(ObjectCreation.class, Instant.now().plus(timeout), selector).orElseThrow(() -> new AssertionError("No match within " + timeout.toMillis() + "ms"));
+    public ObjectCreation expectObjectCreation(Deadline deadline, Predicate<? super ObjectCreation> selector) {
+      return awaitNextMatch(ObjectCreation.class, deadline, selector).orElseThrow(() -> new AssertionError("No match within " + deadline.initialDuration().toMillis() + "ms"));
     }
 
-    public <T extends S3Operation> Optional<T> awaitNextMatch(Class<T> type, Instant deadline, Predicate<? super T> filter) {
+    public <T extends S3Operation> Optional<T> awaitNextMatch(Class<T> type, Deadline deadline, Predicate<? super T> filter) {
       return awaitNextMatch(deadline, op -> Optionals.asInstance(op, type).filter(filter).isPresent()).map(type::cast);
     }
 
-    public Optional<S3Operation> awaitNextMatch(Instant deadline, Predicate<? super S3Operation> filter) {
+    public Optional<S3Operation> awaitNextMatch(Deadline deadline, Predicate<? super S3Operation> filter) {
       synchronized (operations) {
         while (true) {
           int newSize = operations.size();
           while (cursor < newSize) {
-            S3Operation operation = operations.get(cursor);
+            S3Operation operation = operations.get(cursor++);
             if (filter.test(operation)) return Optional.of(operation);
-            cursor++;
           }
-          Duration sleeptime = Duration.between(Instant.now(), deadline);
+          Duration sleeptime = deadline.remaining();
           if (sleeptime.isNegative()) return Optional.empty();
           try {
             operations.wait(sleeptime.toMillis());
@@ -223,7 +232,7 @@ public class MockS3 implements EnvironmentConfigFixture {
       }
     }
 
-    public Stream<S3Operation> streamUntil(Instant deadline) {
+    public Stream<S3Operation> streamUntil(Deadline deadline) {
       return MoreStreams.generate(() -> awaitNextOperation(deadline).orElse(null));
     }
   }

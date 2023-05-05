@@ -23,12 +23,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 @Singleton
-@ServiceLifecycle(ServiceLifecycle.Phase.Infrastructure)
 public class DynamoDbClientService {
   private static final Logger LOG = LoggerFactory.getLogger(DynamoDbClientService.class);
   public static final int MAX_ITEMS_PER_DYNAMODB_BATCH = 25;
   private final BlockingBoundedActor tableCreationActor = new BlockingBoundedActor(10);
-  private DynamoDbEnhancedAsyncClient enhancedClient;
+  private final DynamoDbEnhancedAsyncClient enhancedClient;
   private final DynamoDbAsyncClient client;
 
   @Inject

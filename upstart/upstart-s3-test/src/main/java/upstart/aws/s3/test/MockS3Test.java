@@ -7,14 +7,15 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import static java.lang.annotation.RetentionPolicy.RUNTIME;
+
 @Target({ElementType.METHOD, ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
 @ExtendWith(MockS3Extension.class)
 public @interface MockS3Test {
-  int DEFAULT_PORT = 8011;
   String NO_DIRECTORY = "";
 
-  int port() default DEFAULT_PORT;
+  int port() default -1;
 
   /**
    * Optional: specifies a directory to hold the files stored by this S3Mock instance.
@@ -24,4 +25,13 @@ public @interface MockS3Test {
   String fileDirectory() default NO_DIRECTORY;
 
   String[] initialBuckets() default {};
+
+  Fixture[] value() default {};
+
+  @Retention(RUNTIME)
+  @Target({})
+  @interface Fixture {
+    String uri();
+    String fromResource();
+  }
 }

@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import upstart.util.annotations.Tuple;
 import org.immutables.value.Value;
-import software.amazon.awssdk.regions.Region;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -50,19 +49,13 @@ public abstract class S3Key {
   public abstract S3Key withKey(String key);
 
   public S3Key resolve(String relativePath) {
-    StringBuilder keyBuilder = new StringBuilder(key());
-    if (!key().endsWith("/")) keyBuilder.append('/');
-    keyBuilder.append(relativePath);
-    return withKey(keyBuilder.toString());
+    return withKey(appendWithSlash(new StringBuilder(key()), relativePath).toString());
   }
 
   public S3Key resolve(String... tokens) {
     StringBuilder keyBuilder = new StringBuilder(key());
-    boolean needSlash = !key().endsWith("/");
     for (String token : tokens) {
-      if (needSlash) keyBuilder.append('/');
-      keyBuilder.append(token);
-      needSlash = !token.endsWith("/");
+      appendWithSlash(keyBuilder, token);
     }
     return withKey(keyBuilder.toString());
   }
@@ -75,6 +68,11 @@ public abstract class S3Key {
   @Override
   public String toString() {
     return uri();
+  }
+
+  private static StringBuilder appendWithSlash(StringBuilder sb, String s) {
+    if (!s.isEmpty() && !s.startsWith("/") && !sb.isEmpty() && sb.charAt(sb.length() - 1) != '/') sb.append('/');
+    return sb.append(s);
   }
 
   public enum Scheme {
