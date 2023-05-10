@@ -26,7 +26,7 @@ public interface B4Config {
 
   Map<TargetInstanceId, ConfigValue> tasks();
 
-  @ConfigPath("program-name")
+  @ConfigPath("program-name") //what is this doin here ???
   String programName();
 
   @Value.Immutable
