@@ -2,6 +2,7 @@ package upstart.util.concurrent;
 
 import org.junit.jupiter.api.Test;
 import upstart.util.collect.Optionals;
+import upstart.util.context.AsyncLocal;
 
 import java.util.Collections;
 import java.util.List;

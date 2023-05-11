@@ -55,7 +55,7 @@ public class EventLogger<T extends SpecificRecordBase> implements PackagedEvent.
   }
 
   public EventLogger<T> withKeyStrategy(Function<T, String> keyStrategy) {
-    return decorated((eventRecord, b) -> b.key(keyStrategy.apply(eventRecord)));
+    return decorated((eventRecord, b) -> b.key(Optional.ofNullable(keyStrategy.apply(eventRecord))));
   }
 
 

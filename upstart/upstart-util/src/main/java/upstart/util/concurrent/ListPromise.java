@@ -3,9 +3,11 @@ package upstart.util.concurrent;
 import com.google.common.collect.Iterables;
 import upstart.util.collect.MoreStreams;
 import upstart.util.context.Contextualized;
+import upstart.util.exceptions.ThrowingConsumer;
 
 import javax.annotation.Nonnull;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -13,15 +15,16 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collector;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class ListPromise<T> extends ExtendedPromise<List<T>, ListPromise<T>> {
+public final class ListPromise<T> extends ExtendedPromise<List<T>, ListPromise<T>> {
   static final PromiseFactory LIST_PROMISE_FACTORY = PromiseFactory.of(ListPromise.class, List.of(), ListPromise::new);
 
   public ListPromise() {
   }
 
-  protected ListPromise(CompletableFuture<Contextualized<List<T>>> completion) {
+  private ListPromise(CompletableFuture<Contextualized<List<T>>> completion) {
     super(completion);
   }
 
@@ -33,9 +36,17 @@ public class ListPromise<T> extends ExtendedPromise<List<T>, ListPromise<T>> {
     return LIST_PROMISE_FACTORY.canceledInstance();
   }
 
+  public static <T> ListPromise<T> thatCompletesList(ThrowingConsumer<? super ListPromise<T>> completion) {
+    return LIST_PROMISE_FACTORY.<List<T>, ListPromise<T>>thatCompletes(completion);
+  }
+
   @SafeVarargs
   public static <T> ListPromise<T> asListPromise(T... values) {
     return completed(Arrays.asList(values));
+  }
+
+  public static <T> Collector<CompletableFuture<? extends T>, ?, ListPromise<T>> toListPromise() {
+    return Collectors.collectingAndThen(Collectors.toList(), ListPromise::allAsList);
   }
 
   public static <T> ListPromise<T> completed(@Nonnull List<T> list) {
@@ -49,12 +60,22 @@ public class ListPromise<T> extends ExtendedPromise<List<T>, ListPromise<T>> {
             : allOf(array).thenStreamToList(ignored -> Stream.of(array).map(CompletableFuture::join));
   }
 
+  @SuppressWarnings("unchecked")
   public static <T> ListPromise<T> allAsList(Stream<? extends CompletableFuture<? extends T>> futures) {
-    return allAsList(CompletableFutures.toArray(futures));
+    return futures.collect(toListPromise());
+  }
+
+  @SuppressWarnings("unchecked")
+  public static <T> ListPromise<T> allAsList(Collection<? extends CompletableFuture<? extends T>> futures) {
+    return allAsList(futures.toArray(CompletableFuture[]::new));
   }
 
   public ListPromise<T> distinct() {
     return thenApplyList(list -> list.stream().distinct().toList());
+  }
+
+  public ListPromise<T> distinctBy(Function<? super T, ?> keyExtractor) {
+    return thenApplyList(list -> list.stream().collect(Collectors.toMap(keyExtractor, Function.identity())).values().stream().toList());
   }
 
   public OptionalPromise<T> toOptionalOnlyElement() {
@@ -82,11 +103,16 @@ public class ListPromise<T> extends ExtendedPromise<List<T>, ListPromise<T>> {
   }
 
   public <O> ListPromise<O> thenMapCompose(Function<? super T, ? extends CompletableFuture<O>> mapper) {
-    return thenComposePromise(LIST_PROMISE_FACTORY, Contextualized.liftAsyncFunction(value -> allAsList(value.stream().map(mapper))));
+    return thenComposePromise(
+            LIST_PROMISE_FACTORY,
+            Contextualized.liftAsyncFunction(value -> value.stream().map(mapper).collect(toListPromise()))
+    );
   }
 
   public <O> ListPromise<O> thenFlatMapCompose(Function<? super T, ? extends CompletableFuture<List<O>>> mapper) {
-    return thenComposePromise(LIST_PROMISE_FACTORY, Contextualized.liftAsyncFunction(value -> allAsList(value.stream().map(mapper))
+    return thenComposePromise(LIST_PROMISE_FACTORY, Contextualized.liftAsyncFunction(value -> value.stream()
+            .map(mapper)
+            .collect(toListPromise())
             .thenApply(lists -> lists.stream().flatMap(List::stream).toList())));
   }
 

@@ -9,6 +9,8 @@ import software.amazon.awssdk.services.dynamodb.model.KeyType;
 import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
 import upstart.aws.AwsClientModule;
 import upstart.config.UpstartModule;
+import upstart.test.UpstartLibraryServiceTest;
+import upstart.test.UpstartLibraryTest;
 import upstart.test.UpstartServiceTest;
 
 import javax.inject.Inject;
@@ -17,7 +19,7 @@ import java.util.Map;
 import static com.google.common.truth.Truth.assertThat;
 
 @LocalDynamoDbTest
-@UpstartServiceTest
+@UpstartLibraryServiceTest
 class LocalDynamoDBExtensionTest extends UpstartModule {
   @Inject DynamoDbClient injectedClient;
   @Override

@@ -24,16 +24,13 @@ import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkState;
 
 public class CompletableFutures {
-  private static final Promise CANCELLED_FUTURE = new Promise<Void>() {{
-    cancel(true);
-  }};
-
   public static <T> Promise<T> nullFuture() {
     return Promise.nullPromise();
   }
@@ -48,7 +45,7 @@ public class CompletableFutures {
 
   @SuppressWarnings("unchecked")
   public static <T> Promise<T> cancelledFuture() {
-    return CANCELLED_FUTURE;
+    return Promise.canceledPromise();
   }
 
   public static <T> Promise<T> failedFuture(Throwable t) {
@@ -70,6 +67,10 @@ public class CompletableFutures {
     } catch (Throwable t) {
       return CompletableFutures.failedFuture(t);
     }
+  }
+
+  public static <T> Promise<T> composeAsync(Callable<? extends CompletableFuture<T>> asyncSupplier, Executor executor) {
+    return sequence(CompletableFuture.supplyAsync(() -> callSafely(asyncSupplier), executor));
   }
 
   public static boolean isDoneWithin(Duration timeout, Future<?> future) throws InterruptedException {
@@ -118,18 +119,8 @@ public class CompletableFutures {
     return a.<B, Void>thenCombine(b, (x, y) -> null).toCompletableFuture();
   }
 
-  @SuppressWarnings("unchecked")
-  public static <T> ListPromise<T> allAsList(Collection<? extends CompletableFuture<? extends T>> futures) {
-    return allAsList(futures.toArray(new CompletableFuture[0]));
-  }
-
   public static <T> ListPromise<T> allAsList(Stream<? extends CompletableFuture<? extends T>> futures) {
-    return ListPromise.allAsList(futures);
-  }
-
-  @SafeVarargs
-  public static <T> ListPromise<T> allAsList(CompletableFuture<? extends T>... array) {
-    return ListPromise.allAsList(array);
+    return futures.collect(ListPromise.toListPromise());
   }
 
   public static <T, U> Promise<U> foldLeft(CompletionStage<U> identity, Stream<T> items, BiFunction<? super U, ? super T, ? extends CompletionStage<U>> combiner) {
@@ -309,4 +300,10 @@ public class CompletableFutures {
     checkState(future.isDone(), notDoneMessage);
     return future.join();
   }
+
+  public static <X, T extends CompletableFuture<X>>
+      Collector<T, ?, ListPromise<X>> listCollector() {
+    return Collectors.collectingAndThen(Collectors.toList(), ListPromise::allAsList);
+  }
+
 }

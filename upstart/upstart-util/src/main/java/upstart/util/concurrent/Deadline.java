@@ -30,6 +30,14 @@ public sealed abstract class Deadline {
     return within(Duration.ofSeconds(seconds));
   }
 
+  public static Deadline withinMinutes(int minutes) {
+    return within(Duration.ofMinutes(minutes));
+  }
+
+  public static Deadline withinHours(int hours) {
+    return within(Duration.ofHours(hours));
+  }
+
   public static Deadline within(Duration duration) {
     return within(duration, InstantSource.system());
   }

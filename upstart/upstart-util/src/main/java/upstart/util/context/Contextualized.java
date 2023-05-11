@@ -45,7 +45,7 @@ public class Contextualized<T> implements TransientContext {
   }
 
   public static <T, U> ContextualFunction<T, U> liftFunction(Function<? super T, ? extends U> fn) {
-    return ctx -> ctx.map(fn);
+    return (Contextualized<T> ctx) -> ctx.map(fn);
   }
 
   public static <T> ContextualFunction<T, Void> liftRunnable(Runnable fn) {

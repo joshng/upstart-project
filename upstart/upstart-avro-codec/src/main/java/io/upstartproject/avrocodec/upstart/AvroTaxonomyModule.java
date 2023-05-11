@@ -3,6 +3,7 @@ package io.upstartproject.avrocodec.upstart;
 import com.google.inject.Key;
 import io.upstartproject.avrocodec.AvroDecoder;
 import io.upstartproject.avrocodec.AvroTaxonomy;
+import io.upstartproject.avrocodec.EnvelopeDecoder;
 import io.upstartproject.avrocodec.SchemaRegistry;
 import upstart.config.UpstartModule;
 import upstart.guice.AnnotationKeyedPrivateModule;
@@ -26,7 +27,8 @@ public class AvroTaxonomyModule extends UpstartModule {
     install(new AnnotationKeyedPrivateModule(
                     annotation,
                     AvroTaxonomy.class,
-                    AvroDecoder.class
+                    AvroDecoder.class,
+                    EnvelopeDecoder.class
             ) {
               @Override
               protected void configurePrivateScope() {

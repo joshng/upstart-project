@@ -1,6 +1,9 @@
 package upstart.test;
 
 import com.google.common.base.Preconditions;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.google.inject.Injector;
 import com.google.inject.Module;
 import upstart.InternalTestBuilder;
@@ -16,7 +19,9 @@ import org.junit.jupiter.api.extension.BeforeTestExecutionCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.mockito.Mockito;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import static java.util.function.Predicate.*;
 
@@ -44,10 +49,16 @@ public class UpstartExtension extends SingletonParameterResolver<UpstartTestBuil
   }
 
   public static void installTestModules(ExtensionContext context, UpstartTestBuilder builder) {
-    ExtensionContexts.findTestAnnotations(UpstartTest.class, Reflect.LineageOrder.SuperclassBeforeSubclass, context)
-            .map(UpstartTest::value)
-            .filter(not(isEqual(Module.class)))
-            .forEach(builder::installModule);
+    UpstartTestInitializer.installAnnotatedModule(UpstartTest.class, UpstartTest::value, builder, context);
+
+    ExtensionContexts.findRepeatableTestAnnotations(
+                    UpstartTestAnnotation.class,
+                    Reflect.LineageOrder.SuperclassBeforeSubclass,
+                    context
+            ).map(UpstartTestAnnotation::value)
+            .distinct()
+            .map(Reflect::newInstance)
+            .forEach(initializer -> initializer.initialize(builder, context));
 
     MoreStreams.filter(ExtensionContexts.allNestedTestInstances(context).stream(), Module.class)
             .forEach(builder::installModule);
@@ -58,7 +69,7 @@ public class UpstartExtension extends SingletonParameterResolver<UpstartTestBuil
   }
 
   public static void applyOptionalEnvironmentValues(ExtensionContext extensionContext, EnvironmentConfigFixture fixture) {
-    getOptionalTestBuilder(extensionContext).ifPresent(fixture::applyEnvironmentValues);
+    getOptionalTestBuilder(extensionContext).ifPresent(config -> fixture.applyEnvironmentValues(config, Optional.of(extensionContext)));
   }
 
   public static UpstartTestBuilder getRequiredTestBuilder(ExtensionContext extensionContext) {
@@ -73,7 +84,7 @@ public class UpstartExtension extends SingletonParameterResolver<UpstartTestBuil
   }
 
   public static void configureTestEnvironment() {
-    System.setProperty(UpstartEnvironment.UPSTART_ENVIRONMENT, "TEST");
+    System.setProperty(UpstartEnvironment.UPSTART_ENVIRONMENT, UpstartTest.TEST_ENVIRONMENT_NAME);
   }
 
   @Override

@@ -4,7 +4,7 @@ import com.google.inject.Provides;
 import upstart.config.UpstartModule;
 import upstart.proxy.Lazy;
 import upstart.proxy.LazyProvider;
-import upstart.test.UpstartContextFixture;
+import upstart.test.UpstartLibraryTest;
 import upstart.test.UpstartServiceTest;
 import org.junit.jupiter.api.Test;
 
@@ -14,7 +14,7 @@ import javax.inject.Singleton;
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.truth.Truth.assertThat;
 
-@UpstartContextFixture
+@UpstartLibraryTest
 @UpstartServiceTest
 public class DynamicProxyTest extends UpstartModule {
   @Inject DependentService dependentService;

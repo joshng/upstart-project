@@ -7,7 +7,6 @@ import upstart.UpstartService;
 import upstart.config.UpstartEnvironment;
 import upstart.util.collect.MoreStreams;
 import upstart.util.concurrent.services.ServiceSupervisor;
-import upstart.util.exceptions.ThrowingRunnable;
 
 import java.nio.file.Path;
 import java.time.Duration;
@@ -22,15 +21,15 @@ public abstract class UpstartCommand extends UpstartApplication {
   }
 
   protected UpstartService startService() {
-    CommandLine rootCommand = rootCommand();
-    return startService(rootCommand.getCommandName());
+    return startService(applicationName());
+  }
+
+  public String applicationName() {
+    return rootCommand().getCommandName();
   }
 
   protected UpstartService startService(String appName) {
-    System.setProperty("upstart.context.application", appName);
-    System.setProperty(UpstartEnvironment.UPSTART_ENVIRONMENT, upstartEnvironment());
-    System.setProperty(UpstartEnvironment.UPSTART_DEPLOYMENT_STAGE, upstartDeploymentStage().toString());
-    upstartConfigFile().ifPresent(configFile -> System.setProperty(UpstartEnvironment.UPSTART_DEV_CONFIG, configFile.toString()));
+    prepareEnvironment(appName);
 
     UpstartService.Builder builder = builder();
 
@@ -38,6 +37,17 @@ public abstract class UpstartCommand extends UpstartApplication {
             .forEach(builder::installModule);
 
     return configureSupervisor(builder.buildServiceSupervisor()).start().supervisedService();
+  }
+
+  protected void prepareEnvironment() {
+    prepareEnvironment(applicationName());
+  }
+
+  protected void prepareEnvironment(String appName) {
+    System.setProperty("upstart.context.application", appName);
+    System.setProperty(UpstartEnvironment.UPSTART_ENVIRONMENT, upstartEnvironment());
+    System.setProperty(UpstartEnvironment.UPSTART_DEPLOYMENT_STAGE, upstartDeploymentStage().toString());
+    upstartConfigFile().ifPresent(configFile -> System.setProperty(UpstartEnvironment.UPSTART_DEV_CONFIG, configFile.toString()));
   }
 
   public CommandLine rootCommand() {

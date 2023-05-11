@@ -159,7 +159,7 @@ public class BatchAccumulator<B> {
   }
 
   private static final class AcceptedAndClosedResult<I> implements AccumulationResult<I> {
-    private static final AcceptedResult<Object> INSTANCE = new AcceptedResult<>();
+    private static final AcceptedAndClosedResult<Object> INSTANCE = new AcceptedAndClosedResult<>();
     @Override
     public boolean closeBatch() {
       return true;

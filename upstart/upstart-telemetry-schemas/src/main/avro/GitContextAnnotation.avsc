@@ -1,0 +1,12 @@
+{
+  "namespace": "io.upstartproject.avro.event",
+  "name": "GitContextAnnotation",
+  "published": true,
+  "type": "record",
+  "fields": [
+    {"name": "branch", "type": "string"},
+    {"name": "commit", "type": "string"},
+    {"name": "timestamp", "type": {"type": "long", "logicalType": "timestamp-millis"}},
+    {"name": "dirty", "type": "boolean"}
+  ]
+}

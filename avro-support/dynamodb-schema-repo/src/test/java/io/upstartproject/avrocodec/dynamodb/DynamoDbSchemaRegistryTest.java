@@ -19,6 +19,8 @@ import upstart.guice.BindingResolver;
 import upstart.log.UpstartLogConfig;
 import upstart.log4j.test.SuppressLogs;
 import upstart.test.ThreadPauseHelper;
+import upstart.test.UpstartLibraryServiceTest;
+import upstart.test.UpstartLibraryTest;
 import upstart.test.UpstartServiceTest;
 import upstart.test.UpstartTestBuilder;
 import upstart.util.concurrent.CompletableFutures;
@@ -38,7 +40,7 @@ import static org.awaitility.Awaitility.await;
 import static upstart.test.truth.CompletableFutureSubject.assertThat;
 
 @LocalDynamoDbTest
-@UpstartServiceTest
+@UpstartLibraryServiceTest
 class DynamoDbSchemaRegistryTest extends UpstartModule {
   public static final String TEST_DATASTORE = "test";
   private static final DataStore DATA_STORE = DataStore.Factory.dataStore(TEST_DATASTORE);
@@ -64,7 +66,7 @@ class DynamoDbSchemaRegistryTest extends UpstartModule {
     @Inject DynamoRegistrySpy dynamoRepoSpy;
 
     @BeforeEach
-    void injectRepoSpy(UpstartTestBuilder testBuilder, @Named("TEST.schemarepo") DynamoDbTable<DynamoDbSchemaRegistry.SchemaTable.SchemaDocument> schemaTable) {
+    void injectRepoSpy(UpstartTestBuilder testBuilder, @Named("test.schemarepo") DynamoDbTable<DynamoDbSchemaRegistry.SchemaTable.SchemaDocument> schemaTable) {
       this.schemaTable = schemaTable;
       testBuilder.overrideBindings(binder -> {
         binder.bind(SchemaRegistry.class).annotatedWith(DataStore.Factory.dataStore(TEST_DATASTORE)).to(DynamoRegistrySpy.class);

@@ -5,14 +5,18 @@ import com.google.common.util.concurrent.ServiceManager;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Provides;
+import com.typesafe.config.ConfigFactory;
 import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
 import org.junit.jupiter.api.Test;
 import upstart.UpstartService;
+import upstart.config.HojackConfigProvider;
+import upstart.config.UpstartEnvironment;
 import upstart.config.UpstartModule;
 import upstart.managedservices.LifecycleCoordinator;
 import upstart.managedservices.ManagedServiceGraph;
 import upstart.test.StacklessTestException;
+import upstart.test.UpstartLibraryTest;
 import upstart.test.UpstartExtension;
 import upstart.test.systemStreams.CaptureSystemOut;
 import upstart.util.concurrent.Deadline;
@@ -109,7 +113,7 @@ class ManagedServiceGraphTest {
   @Test
   void emptyServiceGraphIsSupported() {
     UpstartExtension.ensureInitialized();
-    UpstartService app = UpstartService.builder().build();
+    UpstartService app = serviceBuilder().build();
     app.startAsync().stopAsync().awaitTerminated();
   }
 
@@ -117,7 +121,7 @@ class ManagedServiceGraphTest {
   @Test
   void idleServiceFailureCallsShutdown() throws ExecutionException, InterruptedException, TimeoutException {
     UpstartExtension.ensureInitialized();
-    UpstartService app = UpstartService.builder().installModule(new UpstartModule() {
+    UpstartService app = serviceBuilder().installModule(new UpstartModule() {
       @Override
       protected void configure() {
         serviceManager().manage(FailingIdleService.class)
@@ -139,6 +143,14 @@ class ManagedServiceGraphTest {
             .havingResultThat().isEqualTo(Service.State.FAILED);
     assertThat(app.state()).isEqualTo(Service.State.FAILED);
     assertThat(app.getInstance(ProviderService.class).state()).isEqualTo(Service.State.TERMINATED);
+  }
+
+  private static UpstartService.Builder serviceBuilder() {
+    HojackConfigProvider configProvider = UpstartEnvironment.ambientEnvironment()
+            .configProvider()
+            .withOverrideConfig(ConfigFactory.parseString(UpstartLibraryTest.PLACEHOLDER_CONTEXT_CONFIG));
+
+    return UpstartService.builder(configProvider);
   }
 
   static class DelayedStartupService extends NotifyingService {

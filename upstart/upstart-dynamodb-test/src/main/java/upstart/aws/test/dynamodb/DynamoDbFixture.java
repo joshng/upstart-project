@@ -2,12 +2,16 @@ package upstart.aws.test.dynamodb;
 
 import com.amazonaws.services.dynamodbv2.local.main.ServerRunner;
 import com.amazonaws.services.dynamodbv2.local.server.DynamoDBProxyServer;
+import org.junit.jupiter.api.extension.ExtensionContext;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import upstart.UpstartService;
 import upstart.config.EnvironmentConfigFixture;
 import upstart.config.TestConfigBuilder;
+import upstart.dynamodb.DynamoTableInitializer;
 import upstart.test.AvailablePortAllocator;
+import upstart.test.UpstartApplicationSandbox;
 import upstart.test.systemStreams.SystemOutCaptor;
 import upstart.util.concurrent.LazyReference;
 import upstart.util.concurrent.services.IdleService;
@@ -16,11 +20,13 @@ import upstart.util.exceptions.MultiException;
 import javax.annotation.Nonnull;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Optional;
 import java.util.stream.Stream;
 
-public class DynamoDbFixture extends IdleService implements EnvironmentConfigFixture {
+public class DynamoDbFixture extends IdleService implements EnvironmentConfigFixture, UpstartApplicationSandbox.Initializer {
 
   public static final String SQLITE_4_JAVA_LIBRARY_PATH = "sqlite4java.library.path";
+  public static final Region REGION = Region.US_WEST_2;
   private int port;
   private DynamoDBProxyServer server;
   private String endpoint;
@@ -28,7 +34,7 @@ public class DynamoDbFixture extends IdleService implements EnvironmentConfigFix
     try {
       return DynamoDbClient.builder()
               .endpointOverride(new URI(endpoint))
-              .region(Region.US_EAST_1)
+              .region(REGION)
               .credentialsProvider(new FakeCredentialsProvider())
               .build();
     } catch (URISyntaxException e) {
@@ -67,8 +73,13 @@ public class DynamoDbFixture extends IdleService implements EnvironmentConfigFix
   }
 
   @Override
-  public void applyEnvironmentValues(TestConfigBuilder<?> config) {
-    config.overrideConfig("upstart.aws.dynamodb.endpoint", endpoint);
+  public void applyEnvironmentValues(TestConfigBuilder<?> config, Optional<ExtensionContext> testExtensionContext) {
+    config.overrideConfig("""
+                          upstart.aws.dynamodb {
+                            endpoint: "%s"
+                            region: %s
+                          }
+                          """.formatted(endpoint, REGION));
   }
 
   public DynamoDbClient client() {
@@ -92,5 +103,10 @@ public class DynamoDbFixture extends IdleService implements EnvironmentConfigFix
               server.join();
             })
     )).throwRuntimeIfAny();
+  }
+
+  @Override
+  public void initializeSandbox(UpstartService.Builder builder) {
+    builder.installModule(DynamoTableInitializer.PROVISIONED_RESOURCE_TYPE.startupProvisioningModule());
   }
 }

@@ -11,7 +11,6 @@ import io.upstartproject.avrocodec.upstart.DataStore;
 import org.immutables.value.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.enhanced.dynamodb.DynamoDbAsyncIndex;
 import software.amazon.awssdk.enhanced.dynamodb.Expression;
 import software.amazon.awssdk.enhanced.dynamodb.Key;
 import software.amazon.awssdk.enhanced.dynamodb.internal.AttributeValues;
@@ -34,6 +33,7 @@ import upstart.dynamodb.DynamoDbNamespace;
 import upstart.dynamodb.DynamoTableInitializer;
 import upstart.guice.AnnotationKeyedPrivateModule;
 import upstart.guice.PrivateBinding;
+import upstart.provisioning.ProvisionedResource;
 import upstart.util.collect.PairStream;
 import upstart.util.concurrent.BlockingBoundedActor;
 import upstart.util.concurrent.CompletableFutures;
@@ -68,7 +68,7 @@ public class DynamoDbSchemaRegistry implements SchemaRegistry {
   @Override
   public CompletableFuture<?> startUp(SchemaListener schemaListener) {
     table.setListener(schemaListener);
-    return table.start();
+    return CompletableFutures.nullFuture();
   }
 
   @Override
@@ -88,7 +88,7 @@ public class DynamoDbSchemaRegistry implements SchemaRegistry {
 
   @Override
   public CompletableFuture<?> shutDown() {
-    return table.stop();
+    return CompletableFutures.nullFuture();
   }
 
   @Singleton
@@ -98,7 +98,7 @@ public class DynamoDbSchemaRegistry implements SchemaRegistry {
     public static final Expression WHERE_NOT_EXISTS = Expression.builder().expression("attribute_not_exists(seqNo)").build();
     public static final Predicate<CancellationReason> CONDITIONAL_CHECK_FAILED = reason -> reason.code().equals("ConditionalCheckFailed");
     private final Map<SchemaDescriptor, Integer> knownSchemas = new ConcurrentHashMap<>();
-    private DynamoDbAsyncIndex<SchemaDocument> byFingerprint;
+    private final String namespace;
     private volatile int latestObservedSeqNo = -1;
     private SchemaListener listener;
 
@@ -109,11 +109,7 @@ public class DynamoDbSchemaRegistry implements SchemaRegistry {
             @PrivateBinding DynamoDbNamespace namespace
     ) {
       super(config.repoTableNameSuffix(), SchemaDocument.class, db, namespace);
-    }
-
-    @Override
-    protected CompletableFuture<?> startUp() throws Exception {
-      return super.startUp().thenRun(() -> byFingerprint = table.index(FINGERPRINT_IDX));
+      this.namespace = namespace.namespace();
     }
 
     public void setListener(SchemaListener listener) {
@@ -208,6 +204,11 @@ public class DynamoDbSchemaRegistry implements SchemaRegistry {
         return CompletableFutures.nullFuture();
       }
       return Promise.of(table().deleteItem(SchemaDocument.sortKey(seqNo))).toVoid();
+    }
+
+    @Override
+    public String serviceName() {
+      return "SchemaTable{" + namespace + "}";
     }
 
     @DynamoDbBean
@@ -305,7 +306,7 @@ public class DynamoDbSchemaRegistry implements SchemaRegistry {
       install(new AvroTaxonomyModule(annotation));
       install(new DynamoDbModule());
 
-      install(new AnnotationKeyedPrivateModule(
+      AnnotationKeyedPrivateModule privateModule = new AnnotationKeyedPrivateModule(
               annotation,
               SchemaRegistry.class,
               DynamoDbSchemaRegistry.class,
@@ -317,7 +318,9 @@ public class DynamoDbSchemaRegistry implements SchemaRegistry {
           bind(SchemaRegistry.class).to(DynamoDbSchemaRegistry.class);
           bindPrivateBinding(DynamoDbNamespace.class).toInstance(namespace);
         }
-      });
+      };
+      install(privateModule);
+      install(new DynamoTableInitializer.TableInitializerModule(privateModule.annotatedKey(SchemaTable.class)));
     }
   }
 

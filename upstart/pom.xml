@@ -29,7 +29,6 @@
     <module>upstart-jdbi</module>
     <module>upstart-web</module>
     <module>upstart-web-javalin</module>
-    <module>upstart-web-pippo</module>
     <module>upstart-web-test</module>
     <module>upstart-test</module>
     <module>upstart-cluster</module>
@@ -45,7 +44,7 @@
     <module>upstart-dynamodb</module>
     <module>upstart-dynamodb-test</module>
     <module>upstart-cli</module>
-    <module>upstart-coverage</module>
+<!--    <module>upstart-coverage</module>-->
   </modules>
 
   <profiles>
@@ -84,8 +83,35 @@
           <artifactId>jacoco-maven-plugin</artifactId>
           <version>0.8.7</version>
         </plugin>
+        <plugin>
+          <groupId>io.github.git-commit-id</groupId>
+          <artifactId>git-commit-id-maven-plugin</artifactId>
+          <version>5.0.0</version>
+        </plugin>
       </plugins>
     </pluginManagement>
 
+    <plugins>
+      <plugin>
+        <groupId>io.github.git-commit-id</groupId>
+        <artifactId>git-commit-id-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>get-git-info</id>
+            <goals>
+              <goal>revision</goal>
+            </goals>
+            <phase>initialize</phase>
+          </execution>
+        </executions>
+        <configuration>
+          <useNativeGit>true</useNativeGit>
+          <generateGitPropertiesFile>true</generateGitPropertiesFile>
+          <generateGitPropertiesFilename>${project.build.outputDirectory}/git.properties</generateGitPropertiesFilename>
+          <failOnNoGitDirectory>false</failOnNoGitDirectory>
+          <commitIdGenerationMode>full</commitIdGenerationMode>
+        </configuration>
+      </plugin>
+    </plugins>
   </build>
 </project>

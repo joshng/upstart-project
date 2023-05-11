@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 
+import static com.google.common.truth.Truth.assertThat;
 import static com.google.common.truth.Truth8.assertThat;
 
 class MoreStreamsTest {
@@ -42,10 +43,18 @@ class MoreStreamsTest {
             .map(Stream::toList)
             .toList();
 
-    Truth.assertThat(lists).hasSize(10);
-    Truth.assertThat(lists.get(0)).hasSize(10);
+    assertThat(lists).hasSize(10);
+    assertThat(lists.get(0)).hasSize(10);
     List<Integer> lastPartition = lists.get(9);
-    Truth.assertThat(lastPartition).isEqualTo(List.of(91, 92));
+    assertThat(lastPartition).isEqualTo(List.of(91, 92));
 
+  }
+
+  @Test
+  void foldLeftCollector() {
+    assertThat(
+            naturalNumbers().limit(4)
+                    .collect(MoreCollectors.foldLeft(0, Integer::sum))
+    ).isEqualTo(10);
   }
 }

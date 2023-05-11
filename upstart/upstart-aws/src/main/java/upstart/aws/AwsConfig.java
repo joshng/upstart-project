@@ -6,13 +6,18 @@ import org.immutables.value.Value;
 import software.amazon.awssdk.auth.credentials.AnonymousCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.WebIdentityTokenFileCredentialsProvider;
 import software.amazon.awssdk.awscore.client.builder.AwsClientBuilder;
 import software.amazon.awssdk.core.retry.RetryPolicy;
 import software.amazon.awssdk.regions.Region;
 import upstart.config.annotations.DeserializedImmutable;
 
 import java.net.URI;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
@@ -21,7 +26,7 @@ public interface AwsConfig {
 
   Optional<String> region();
 
-  CredentialsProviderType credentialsProviderType();
+  Optional<CredentialsProviderType> credentialsProviderType();
 
   Optional<Class<? extends Supplier<AwsCredentialsProvider>>> credentialsProviderSupplierClass();
 
@@ -29,7 +34,7 @@ public interface AwsConfig {
 
   AwsConfig withRegion(String region);
 
-  int maxRetries();
+  OptionalInt maxRetries();
 
   default AwsConfig withRegion(Region region) {
     return withRegion(region.id());
@@ -48,7 +53,7 @@ public interface AwsConfig {
     return builder
             .credentialsProvider(credentialsProvider())
             .overrideConfiguration(b -> b.retryPolicy(
-                    RetryPolicy.defaultRetryPolicy().copy(rp -> rp.numRetries(maxRetries())))
+                    RetryPolicy.defaultRetryPolicy().copy(rp -> rp.numRetries(maxRetries().orElseThrow())))
             );
   }
 
@@ -57,7 +62,7 @@ public interface AwsConfig {
             "https://s3.%s.amazonaws.com",
             region
     ))).ifPresent(endpoint -> configuration.accept("fs.s3a.endpoint", endpoint));
-    if (credentialsProviderType() == CredentialsProviderType.Anonymous) {
+    if (credentialsProviderType().orElseThrow() == CredentialsProviderType.Anonymous) {
       configuration.accept(
               "fs.s3a.aws.credentials.provider",
               "org.apache.hadoop.fs.s3a.AnonymousAWSCredentialsProvider"
@@ -68,7 +73,7 @@ public interface AwsConfig {
   @JsonIgnore
   @Value.Lazy
   default AwsCredentialsProvider credentialsProvider() {
-    return credentialsProviderType().getProvider(this);
+    return credentialsProviderType().orElseThrow().getProvider(this);
   }
 
   enum CredentialsProviderType {
@@ -77,12 +82,23 @@ public interface AwsConfig {
       AwsCredentialsProvider getProvider(AwsConfig config) {
         return DefaultCredentialsProvider.create();
       }
-    }, Anonymous {
+    },
+    Anonymous {
       @Override
       AwsCredentialsProvider getProvider(AwsConfig config) {
         return AnonymousCredentialsProvider.create();
       }
-    }, Supplied {
+    },
+    WebIdentityTokenFile {
+      @Override
+      AwsCredentialsProvider getProvider(AwsConfig config) {
+        return WebIdentityTokenFileCredentialsProvider.builder()
+                .roleArn(System.getenv("AWS_ROLE_ARN"))
+                .webIdentityTokenFile(Paths.get(System.getenv("AWS_WEB_IDENTITY_TOKEN_FILE")))
+                .build();
+      }
+    },
+    Supplied {
       @Override
       AwsCredentialsProvider getProvider(AwsConfig config) {
         try {
@@ -99,5 +115,24 @@ public interface AwsConfig {
 
   @DeserializedImmutable
   interface DefaultAwsConfig extends AwsConfig {
+    static ImmutableDefaultAwsConfig.Builder builder() {
+      return ImmutableDefaultAwsConfig.builder();
+    }
+    default AwsConfig withDefaults(AwsConfig defaults) {
+      return builder()
+              .from(defaults)
+              .from(this)
+              .build();
+    }
+
+    default DefaultAwsConfig validateDefaults() {
+      List<String> missingFields = new ArrayList<>();
+      if (credentialsProviderType().isEmpty()) missingFields.add("credentialsProviderType");
+      if (maxRetries().isEmpty()) missingFields.add("maxRetries");
+      if (!missingFields.isEmpty()) {
+        throw new IllegalStateException("Missing required fields: " + missingFields);
+      }
+      return this;
+    }
   }
 }

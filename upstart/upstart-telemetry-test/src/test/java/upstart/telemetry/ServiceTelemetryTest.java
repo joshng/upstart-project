@@ -9,7 +9,7 @@ import io.upstartproject.avro.event.ServiceConfigLoadedEvent;
 import io.upstartproject.avrocodec.AvroDecoder;
 import io.upstartproject.avrocodec.AvroPublisher;
 import io.upstartproject.avrocodec.AvroTaxonomy;
-import io.upstartproject.avrocodec.EnvelopeCodec;
+import io.upstartproject.avrocodec.EnvelopeDecoder;
 import io.upstartproject.avrocodec.MemorySchemaRegistry;
 import io.upstartproject.avrocodec.SchemaRegistry;
 import io.upstartproject.avrocodec.upstart.AvroEnvelopeModule;
@@ -26,7 +26,7 @@ import upstart.managedservices.ServiceLifecycle;
 import upstart.metrics.TaggedMetricRegistry;
 import upstart.telemetry.test.CapturingEventSink;
 import upstart.test.StacklessTestException;
-import upstart.test.UpstartTest;
+import upstart.test.UpstartLibraryTest;
 import upstart.util.concurrent.Deadline;
 import upstart.util.concurrent.services.NotifyingService;
 import upstart.util.concurrent.services.ServiceDependencyChecker;
@@ -45,7 +45,7 @@ import static upstart.test.truth.CompletableFutureSubject.assertThat;
 
 //@ShowServiceGraph
 @SuppressLogs({LifecycleCoordinator.class, TaggedMetricRegistry.class})
-@UpstartTest
+@UpstartLibraryTest(ServiceTelemetry.Module.class)
 public class ServiceTelemetryTest extends UpstartModule {
   private static final String ERROR_MESSAGE = "Testing service-failure";
   @Inject CapturingEventSink capturingEventSink;
@@ -58,17 +58,15 @@ public class ServiceTelemetryTest extends UpstartModule {
   @Inject
   ServiceDependencyChecker dependencyChecker;
   AvroDecoder decoder;
-  EnvelopeCodec envelopeCodec;
+  EnvelopeDecoder envelopeCodec;
   private StacklessTestException failureException = null;
 
   @Override
   protected void configure() {
-    install(new EventLogModule());
+    install(EventLogModule.INSTANCE);
     install(new AvroEnvelopeModule(EventLogModule.TELEMETRY_DATA_STORE));
     bind(SchemaRegistry.class).annotatedWith(EventLogModule.TELEMETRY_DATA_STORE).to(MemorySchemaRegistry.class);
     install(new CapturingEventSink.Module());
-
-    install(new ServiceTelemetry.Module());
     serviceManager().manage(FailingService.class);
   }
 
@@ -77,7 +75,7 @@ public class ServiceTelemetryTest extends UpstartModule {
     AvroTaxonomy taxonomy = new AvroTaxonomy(new MemorySchemaRegistry());
     decoder = new AvroDecoder(taxonomy);
     AvroPublisher avroPublisher = new AvroPublisher(taxonomy);
-    envelopeCodec = new EnvelopeCodec(avroPublisher, decoder);
+    envelopeCodec = new EnvelopeDecoder(decoder);
     taxonomy.start().join();
 
     avroPublisher.ensureRegistered(MessageEnvelope.class).join();
@@ -102,7 +100,7 @@ public class ServiceTelemetryTest extends UpstartModule {
     List<MessageEnvelope> envelopes = capturePublishedEvents(2);
 
     assertThat(unpack(envelopes.get(0), ServiceConfigLoadedEvent.class)
-            .getConfigEntries()).containsEntry("upstart.context.environment", new ConfigValueRecord("TEST", "UPSTART_ENVIRONMENT"));
+            .getConfigEntries()).containsEntry("upstart.context.environment", new ConfigValueRecord("test", "UPSTART_ENVIRONMENT"));
 
     assertThat(unpack(envelopes.get(1), ExceptionEvent.class).getException().getMessage())
             .isEqualTo(ERROR_MESSAGE);

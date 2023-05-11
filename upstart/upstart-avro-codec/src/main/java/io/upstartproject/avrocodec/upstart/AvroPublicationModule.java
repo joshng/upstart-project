@@ -8,7 +8,8 @@ import com.google.inject.multibindings.Multibinder;
 import com.google.inject.util.Types;
 import io.upstartproject.avrocodec.AvroPublisher;
 import io.upstartproject.avrocodec.AvroTaxonomy;
-import io.upstartproject.avrocodec.EnvelopeCodec;
+import io.upstartproject.avrocodec.EnvelopeDecoder;
+import io.upstartproject.avrocodec.EnvelopePublisher;
 import io.upstartproject.avrocodec.MemorySchemaRegistry;
 import io.upstartproject.avrocodec.SchemaRegistry;
 import io.upstartproject.avrocodec.SpecificRecordType;
@@ -29,7 +30,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Arranges for {@link AvroPublisher} and {@link EnvelopeCodec} instances to be available for {@link Inject injection}.
+ * Arranges for {@link AvroPublisher} and {@link EnvelopeDecoder} instances to be available for {@link Inject injection}.
  * <p/>
  * Requires a binding for a {@link SchemaRegistry} annotated with the given {@link Annotation} to also be configured
  * elsewhere.
@@ -101,7 +102,7 @@ public class AvroPublicationModule extends UpstartModule {
             annotation,
             AvroPublicationService.class,
             AvroPublisher.class,
-            EnvelopeCodec.class  // TODO: separate EnvelopeCodec to EnvelopePublisher/EnvelopeDecoder
+            EnvelopePublisher.class
     ) {
       @Override
       protected void configurePrivateScope() {

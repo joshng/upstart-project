@@ -12,16 +12,14 @@ import java.util.function.UnaryOperator;
 
 @MetaInfServices(AsyncContextManager.class)
 public class AsyncLocalContextManager implements AsyncContextManager<PersistentMap<AsyncLocal<?>, Object>> {
-  private static final ThreadLocalReference<PersistentMap<AsyncLocal<?>, Object>> THREAD_CONTEXT = new ThreadLocalReference<>() {
-    @Override
-    protected PersistentMap<AsyncLocal<?>, Object> initialValue() {
-      return PersistentMap.empty(Equivalence.identity());
-    }
-  };
+  private static final PersistentMap<AsyncLocal<?>, Object> EMPTY_MAP = PersistentMap.empty(Equivalence.identity());
+
+  private static final ThreadLocalReference<PersistentMap<AsyncLocal<?>, Object>> THREAD_CONTEXT = ThreadLocalReference
+          .withInitial(() -> EMPTY_MAP);
 
   @Override
   public Optional<PersistentMap<AsyncLocal<?>, Object>> captureSnapshot() {
-    return THREAD_CONTEXT.getOptional();
+    return THREAD_CONTEXT.getOptional().filter(state -> !state.isEmpty());
   }
 
   @Override
@@ -35,8 +33,19 @@ public class AsyncLocalContextManager implements AsyncContextManager<PersistentM
   }
 
   @Override
-  public void mergeFromSnapshot(PersistentMap<AsyncLocal<?>, Object> value) {
-    updateCurrent(state -> state.plusAll(value));
+  public void mergeApplyFromSnapshot(PersistentMap<AsyncLocal<?>, Object> value) {
+    updateCurrent(state -> mergeSnapshots(state, value));
+  }
+
+  @SuppressWarnings("unchecked")
+  @Override
+  public PersistentMap<AsyncLocal<?>, Object> mergeSnapshots(
+          PersistentMap<AsyncLocal<?>, Object> mergeTo, PersistentMap<AsyncLocal<?>, Object> mergeFrom
+  ) {
+    return mergeTo.plusMergeAll(
+            mergeFrom,
+            ((asyncLocal, a, b) -> ((AsyncLocal<Object>) asyncLocal).merge(a, b))
+    );
   }
 
   public static <T> T getCurrentValue(AsyncLocal<T> handle) {

@@ -13,23 +13,24 @@ import io.javalin.Javalin;
 import io.javalin.http.BadRequestResponse;
 import io.javalin.http.ContentType;
 import io.javalin.http.Context;
-import io.javalin.http.Handler;
 import io.javalin.http.HandlerType;
 import io.javalin.http.HttpCode;
 import io.javalin.plugin.openapi.annotations.AnnotationApiMappingKt;
 import io.javalin.plugin.openapi.annotations.OpenApi;
 import io.javalin.plugin.openapi.annotations.OpenApiContent;
 import io.javalin.plugin.openapi.annotations.OpenApiResponse;
-import io.javalin.plugin.openapi.dsl.OpenApiBuilder;
+import io.javalin.plugin.openapi.dsl.DocumentedHandler;
 import io.javalin.plugin.openapi.dsl.OpenApiDocumentation;
 import io.javalin.plugin.openapi.dsl.OpenApiUpdater;
 import io.javalin.plugin.openapi.dsl.OpenApiUpdaterKt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import upstart.javalin.AsyncHandler;
 import upstart.javalin.UnprocessableEntityResponse;
 import upstart.proxy.Proxies;
 import upstart.util.collect.PairStream;
 import upstart.util.concurrent.LazyReference;
+import upstart.util.concurrent.Promise;
 import upstart.util.concurrent.ThreadLocalReference;
 import upstart.util.exceptions.Exceptions;
 import upstart.util.reflect.Modifiers;
@@ -49,6 +50,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -98,13 +100,13 @@ public class AnnotatedEndpointHandler<T> {
     return routeProxy.get().capture(methodInvoker);
   }
 
-  private static class Endpoint {
+  public static class Endpoint {
     private final Method method;
     private final HandlerType handlerType;
     private final String path;
     private final SecurityConstraints securityConstraints;
     private final List<ParamResolver> paramResolvers;
-    private final BiConsumer<Context, Object> resultDispatcher;
+    private final BiFunction<Context, Object, Promise<?>> resultDispatcher;
     private final OpenApiDocumentation documentation;
     private boolean mappedBody = false;
 
@@ -142,43 +144,52 @@ public class AnnotatedEndpointHandler<T> {
               : (ctx, o) -> {
                 if (ctx.status() == 200) ctx.status(successStatus);
               };
-      BiConsumer<Context, ?> responder;
+      BiFunction<Context, Object, Promise<?>> responder;
       Class<?> returnType = method.getReturnType();
       OpenApiContent[] openApiContent;
       if (returnType == void.class) {
         openApiContent = openApiResponse.content();
-        responder = assignStatus;
+        responder = (t, u) -> {
+          assignStatus.accept(t, u);
+          return Promise.nullPromise();
+        };
       } else if (InputStream.class.isAssignableFrom(returnType)) {
         // TODO: is this correct?
         openApiContent = openApiContent(byte[].class, ContentType.OCTET_STREAM, openApiResponse);
-        responder = ((BiConsumer<Context, InputStream>) Context::result).andThen(assignStatus);
+        responder = (context, o) -> {
+          assignStatus.accept(context, o);
+          return Promise.completed(o);
+        };
       } else if (CompletionStage.class.isAssignableFrom(returnType)) {
         // TODO: deal with further generics, arrays, etc
+        // TODO: use TypeToken to reliably get the correct CompletionStage type
         Class<?> futureType = Reflect.getFirstGenericType(method.getGenericReturnType());
         openApiContent = openApiContent(futureType, ContentType.JSON, openApiResponse);
-        responder = (Context context, CompletionStage<?> o) -> context.future(
-                o.toCompletableFuture()
+        responder = (Context context, Object o) ->
+                Promise.of((CompletionStage<?>) o)
                         .whenComplete((ignored, e) -> {
                           if (context.status() == 200) {
                             if (e == null) {
                               assignStatus.accept(context, ignored);
-                            } else if (!(e instanceof Exception)){
+                            } else if (!(e instanceof Exception)) {
                               // javalin responds with 200 if the future is completed with an Error!?
                               LOG.error("Unexpected error", e);
                               context.status(500);
                             }
                           }
-                        }));
+                        });
       } else {
         openApiContent = openApiContent(returnType, ContentType.JSON, openApiResponse);
-        responder = ((BiConsumer<Context, Object>) Context::json).andThen(assignStatus);
+        responder = (context, o) -> {
+          assignStatus.accept(context, o);
+          return Promise.completed(o);
+        };
       }
 
       documentation = hideApiDoc
               ? OpenApiAnnotations.DOCUMENTATION_IGNORE
               : buildDocumentation(apiResponse.content(openApiContent).build());
-      //noinspection unchecked
-      resultDispatcher = (BiConsumer<Context, Object>) responder;
+      resultDispatcher = responder;
     }
 
     private static int reconcileSuccessStatus(
@@ -244,11 +255,11 @@ public class AnnotatedEndpointHandler<T> {
               method.getDeclaringClass().getSimpleName(),
               method.getName()
       );
-      Handler handler = OpenApiBuilder.documented(documentation, (Handler) ctx -> invoke(target, ctx));
-      javalin.addHandler(handlerType, path, handler, securityConstraints.roleArray());
+
+      javalin.addHandler(handlerType, path, new AsyncDocumentedHandler(target), securityConstraints.roleArray());
     }
 
-    void invoke(Object target, Context ctx) throws Exception {
+    public Promise<?> invokeEndpoint(Object target, Context ctx) {
       var args = new Object[paramResolvers.size()];
       for (int i = 0; i < paramResolvers.size(); i++) {
         args[i] = paramResolvers.get(i).resolve(ctx);
@@ -256,14 +267,16 @@ public class AnnotatedEndpointHandler<T> {
 
       try {
         Object result = method.invoke(target, args);
-        resultDispatcher.accept(ctx, result);
+        return resultDispatcher.apply(ctx, result);
       } catch (InvocationTargetException e) {
         Throwable cause = e.getCause();
-        Throwables.throwIfInstanceOf(cause, Exception.class);
-        throw e;
+        Throwables.throwIfUnchecked(cause);
+        throw new RuntimeException(e);
+      } catch (IllegalAccessException e) {
+        throw new RuntimeException(e);
       }
-    }
 
+    }
     public HttpUrl buildUrl(Object... args) {
       assert args.length == paramResolvers.size();
       var builder = new UrlBuilder(path);
@@ -283,10 +296,20 @@ public class AnnotatedEndpointHandler<T> {
         return UrlParamStrategy.Query.resolver(parameter);
       } else if (parameter.isAnnotationPresent(Session.class)) {
         String name = paramName(parameter.getAnnotation(Session.class).value(), parameter);
-        return ParamResolver.nonUrlParam(parameter, Optional.empty(), ctx -> checkNotNull(ctx.sessionAttribute(name), "missing session attribute '%s' for %s", name, this));
+        return ParamResolver.nonUrlParam(
+                parameter,
+                Optional.empty(),
+                ctx -> checkNotNull(ctx.sessionAttribute(name),
+                                    "missing session attribute '%s' for %s", name, this)
+        );
       } else if (parameter.isAnnotationPresent(Request.class)) {
         String name = paramName(parameter.getAnnotation(Request.class).value(), parameter);
-        return ParamResolver.nonUrlParam(parameter, Optional.empty(), ctx -> checkNotNull(ctx.attribute(name), "missing request attribute '%s' for %s", name, this));
+        return ParamResolver.nonUrlParam(
+                parameter,
+                Optional.empty(),
+                ctx -> checkNotNull(ctx.attribute(name),
+                                    "missing request attribute '%s' for %s", name, this)
+        );
       } else {
         checkArgument(!mappedBody, "Method has multiple unannotated parameters", method);
         mappedBody = true;
@@ -468,6 +491,24 @@ public class AnnotatedEndpointHandler<T> {
           case Path -> doc -> doc.pathParam(name, paramType);
           case Query -> doc -> doc.queryParam(name, paramType);
         };
+      }
+    }
+
+    /**
+     * a handler that subclasses {@link DocumentedHandler} to expose its OpenApi documentation,
+     * and implements {@link AsyncHandler} to allow for asynchronous composition
+     */
+    public class AsyncDocumentedHandler extends DocumentedHandler implements AsyncHandler {
+      private final Object target;
+
+      public AsyncDocumentedHandler(Object target) {
+        super(documentation, ctx -> ctx.future(invokeEndpoint(target, ctx)));
+        this.target = target;
+      }
+
+      @Override
+      public Promise<?> handleAsync(Context ctx) {
+        return invokeEndpoint(target, ctx);
       }
     }
   }

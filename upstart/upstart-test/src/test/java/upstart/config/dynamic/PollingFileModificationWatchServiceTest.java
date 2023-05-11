@@ -8,6 +8,7 @@ import upstart.config.annotations.ConfigPath;
 import upstart.test.FakeFileSystemTest;
 import upstart.test.FakeTime;
 import upstart.test.FakeTimeTest;
+import upstart.test.UpstartLibraryTest;
 import upstart.test.UpstartServiceTest;
 import upstart.util.concurrent.Promise;
 
@@ -24,6 +25,7 @@ import java.util.List;
 import static com.google.common.truth.Truth.assertThat;
 
 @UpstartServiceTest
+@UpstartLibraryTest
 @EnvironmentConfig.Fixture("""
         upstart.file-modification-service {
           usePolling: true

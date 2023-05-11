@@ -2,8 +2,16 @@ package upstart;
 
 import com.google.common.util.concurrent.Service;
 import com.google.inject.AbstractModule;
+import upstart.config.ObjectMapperFactory;
+import upstart.config.UpstartApplicationConfig;
 import upstart.config.UpstartModule;
+import upstart.provisioning.ProvisionedResource;
+import upstart.provisioning.ResourceProvisioningCoordinator;
 import upstart.util.concurrent.services.ServiceSupervisor;
+import upstart.util.exceptions.UncheckedIO;
+
+import java.util.Comparator;
+import java.util.List;
 
 /**
  * A managed upstart Application!
@@ -35,8 +43,59 @@ public abstract class UpstartApplication extends UpstartModule {
    *
    * @see ServiceSupervisor
    */
-  public void runSupervised() {
-    buildServiceSupervisor().startAndAwaitTermination();
+  public void runSupervised(String[] args) {
+    switch (args.length) {
+      case 0 -> {
+        buildServiceSupervisor().startAndAwaitTermination();
+      }
+      case 1 -> {
+        switch (args[0]) {
+          // todo: make this extensible by registering a set of services that can be run from the command line
+          // upstart-cli might even use this facility, instead of the clumsy parent/sub-command approach
+          case "help" -> {
+            System.out.println("Usage: java -jar <jarfile> [help|provisioned-resources|dump-config]");
+            System.exit(0);
+          }
+          case "provisioned-resources" -> {
+            enableToolMode();
+            ResourceProvisioningCoordinator provisioningCoordinator = builder().buildInjector()
+                    .getInstance(ResourceProvisioningCoordinator.class);
+
+            var comparator = Comparator.comparing((ProvisionedResource.ResourceRequirement res) -> res.resourceType().resourceType())
+                    .thenComparing(ProvisionedResource.ResourceRequirement::resourceId);
+            List<ProvisionedResource.ResourceRequirement> requirements = provisioningCoordinator.getResources().stream()
+                    .map(ProvisionedResource::resourceRequirement)
+                    .sorted(comparator)
+                    .toList();
+
+            UncheckedIO.runUnchecked(() -> {
+              ObjectMapperFactory.buildAmbientObjectMapper()
+                      .writerWithDefaultPrettyPrinter()
+                      .writeValuesAsArray(System.out)
+                      .writeAll(requirements)
+                      .close();
+            });
+            System.exit(0);
+          }
+          case "dump-config" -> {
+            enableToolMode();
+            System.out.println(builder().buildInjector().getInstance(UpstartApplicationConfig.class).describeConfig());
+            System.exit(0);
+          }
+          default -> throw new IllegalArgumentException("Unknown argument: " + args[0]);
+        }
+
+      }
+      default -> throw new IllegalArgumentException("Too many arguments: " + args.length);
+    }
+  }
+
+  private static void enableToolMode() {
+    System.setProperty("UPSTART_OVERRIDES", """
+    upstart {
+      log { rootLogger: WARN, levels.upstart: WARN }
+    }
+    """);
   }
 
   @Override

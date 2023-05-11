@@ -7,6 +7,7 @@ import org.jdbi.v3.core.extension.ExtensionCallback;
 import org.jdbi.v3.core.extension.ExtensionConsumer;
 import org.jdbi.v3.core.spi.JdbiPlugin;
 import org.jdbi.v3.core.transaction.TransactionIsolationLevel;
+import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import upstart.guice.PrivateBinding;
 import upstart.util.concurrent.services.InitializingService;
 
@@ -36,7 +37,9 @@ public class JdbiService extends InitializingService {
   @Override
   protected void startUp() throws Exception {
     jdbi = initializer.buildJdbi();
+    jdbi.installPlugin(new SqlObjectPlugin());
     plugins.forEach(jdbi::installPlugin);
+    jdbi.useHandle(h -> h.createQuery("SELECT 1").mapTo(Integer.class).one()); // test connectivity
   }
 
   public Jdbi getJdbi() {

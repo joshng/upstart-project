@@ -10,6 +10,7 @@ import upstart.guice.PrivateBinding;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.lang.annotation.Annotation;
+import java.util.Properties;
 
 public class HikariJdbiModule extends JdbiModule {
   private final Annotation bindingAnnotation;
@@ -21,11 +22,19 @@ public class HikariJdbiModule extends JdbiModule {
   }
 
   public static HikariJdbiModule fromUpstartHikariConfig(String configPath, Annotation bindingAnnotation) {
-    Key<HikariConfig> hikariConfigKey = Key.get(HikariConfig.class, bindingAnnotation);
-    return new HikariJdbiModule(hikariConfigKey, bindingAnnotation) {
+    Key<Properties> propertiesKey = Key.get(Properties.class, bindingAnnotation);
+    Key<HikariConfig> configKey = Key.get(HikariConfig.class, bindingAnnotation);
+    return new HikariJdbiModule(configKey, bindingAnnotation) {
       @Override
       protected void configure() {
-        bindConfig(configPath, hikariConfigKey);
+        Properties properties = bindConfig(configPath, propertiesKey);
+        HikariConfig config = new HikariConfig(properties);
+        try {
+          config.validate();
+        } catch (Exception e) {
+          throw new RuntimeException("Invalid Hikari database config at '" + configPath + "': " + e.getMessage(), e);
+        }
+        bind(configKey).toInstance(config);
 
         super.configure();
       }
@@ -42,7 +51,7 @@ public class HikariJdbiModule extends JdbiModule {
 
   @Override
   protected void configure() {
-    install(new AnnotationKeyedPrivateModule(bindingAnnotation, HikariJdbiModule.class) {
+    install(new AnnotationKeyedPrivateModule(bindingAnnotation, HikariJdbiInitializer.class) {
       @Override
       protected void configurePrivateScope() {
         bindPrivateBinding(HikariConfig.class).to(configKey);
@@ -57,8 +66,8 @@ public class HikariJdbiModule extends JdbiModule {
 
     @Inject
     public HikariJdbiInitializer(@PrivateBinding HikariConfig config) {
-      config.validate();
       this.config = config;
+      this.config.validate();
     }
 
     @Override

@@ -2,9 +2,10 @@ package upstart.web.test;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.collect.ImmutableMap;
-import io.restassured.response.Response;
 import upstart.config.annotations.ConfigPath;
 import upstart.config.UpstartModule;
+import upstart.test.UpstartLibraryServiceTest;
+import upstart.test.UpstartLibraryTest;
 import upstart.test.UpstartServiceTest;
 import upstart.test.UpstartTestBuilder;
 import com.typesafe.config.Config;
@@ -17,7 +18,7 @@ import javax.inject.Inject;
 
 import static com.google.common.truth.Truth.assertThat;
 
-@UpstartServiceTest
+@UpstartLibraryServiceTest
 public abstract class BaseRenderedConfigEndpointTest extends UpstartModule {
   public static final String VALUE_CONFIG_PATH = MyConfig.CONFIG_PATH + ".value";
   private static final String URI = "/my-config";

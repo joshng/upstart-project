@@ -3,7 +3,6 @@ package upstart.test;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import upstart.config.UpstartModule;
-import upstart.test.systemStreams.CaptureSystemOut;
 import upstart.util.concurrent.services.NotifyingService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -13,6 +12,7 @@ import javax.inject.Singleton;
 
 import static com.google.common.truth.Truth.assertThat;
 
+@UpstartLibraryTest
 @UpstartServiceTest
 class UpstartServiceExtensionTest extends UpstartModule {
 

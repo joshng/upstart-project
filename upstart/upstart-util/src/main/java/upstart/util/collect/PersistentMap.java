@@ -60,6 +60,22 @@ public final class PersistentMap<K, V> extends AbstractMap<K, V> implements PMap
     return (PersistentMap<K, V>) EMPTY;
   }
 
+  public static <K, V> PersistentMap<K, V> of(K key, V value) {
+    return PersistentMap.<K, V>empty().plus(key, value);
+  }
+
+  public static <K, V> PersistentMap<K, V> of(K key1, V value1, K key2, V value2) {
+    return of(key1, value1).plus(key2, value2);
+  }
+
+  public static <K, V> PersistentMap<K, V> of(K key1, V value1, K key2, V value2, K key3, V value3) {
+    return of(key1, value1, key2, value2).plus(key3, value3);
+  }
+
+  public static <K, V> PersistentMap<K, V> of(K key1, V value1, K key2, V value2, K key3, V value3, K key4, V value4) {
+    return of(key1, value1, key2, value2, key3, value3).plus(key4, value4);
+  }
+
   public static <K, V> PersistentMap<K, V> empty(Equivalence<? super V> valueEquivalence) {
     return valueEquivalence == DEFAULT_VALUE_EQUIVALENCE
             ? empty()

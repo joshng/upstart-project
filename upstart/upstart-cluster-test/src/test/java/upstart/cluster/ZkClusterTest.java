@@ -12,6 +12,7 @@ import upstart.cluster.zk.ClusterId;
 import upstart.cluster.zk.ZkClusterModule;
 import upstart.cluster.zk.ZkResourceLocker;
 import upstart.config.UpstartModule;
+import upstart.test.UpstartLibraryTest;
 import upstart.util.concurrent.services.IdleService;
 import upstart.util.exceptions.MultiException;
 import org.apache.curator.framework.CuratorFramework;
@@ -32,16 +33,9 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.awaitility.Awaitility.await;
 
 @UpstartClusterTest(nodeCount = 1)
+@UpstartLibraryTest(ZkClusterTest.ClusterModule.class)
 class ZkClusterTest extends UpstartModule {
   private static final Duration CONVERGENCE_TIMEOUT = Duration.ofSeconds(5);
-
-  @Override
-  protected void configure() {
-    install(new ClusterModule());
-    install(new ZkClusterModule());
-    install(new ExecutorServiceScheduler.Module());
-    install(new UpstartClusterNodeModule());
-  }
 
   @Test
   void cycle(UpstartTestClusterBuilder clusterBuilder, ZookeeperFixture zk) throws Exception {
@@ -128,6 +122,9 @@ class ZkClusterTest extends UpstartModule {
     @Override
     protected void configure() {
       super.configure();
+      install(new ZkClusterModule());
+      install(new ExecutorServiceScheduler.Module());
+      install(new UpstartClusterNodeModule());
       bind(ClusterId.class).toInstance(ClusterId.of("test-cluster"));
     }
   }

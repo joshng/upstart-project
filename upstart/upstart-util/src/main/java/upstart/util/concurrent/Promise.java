@@ -32,13 +32,15 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
  * An extension of {@link CompletableFuture} with utility methods for completing a "Promise" in various ways, while
  * retaining the values of all {@link AsyncLocal}s across completions.
  */
-public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Throwable> {
+public sealed class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Throwable> permits ExtendedPromise, CompletableFutureTask {
   private static final PromiseFactory PROMISE_FACTORY = PromiseFactory.of(Promise.class, null, Promise::new);
   private final CompletableFuture<Contextualized<T>> completion;
 
@@ -58,13 +60,7 @@ public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Th
 
   private void arrangeCompletion() {
     // necessary to enact the expected behavior of isDone(), isCompletedExceptionally(), etc
-    completion.thenAccept(contextualized -> contextualized.value().accept((v, e) -> {
-      if (e != null) {
-        super.completeExceptionally(e);
-      } else {
-        super.complete(v);
-      }
-    }));
+    completion.thenAccept(contextualized -> contextualized.value().accept(this));
   }
 
   /**
@@ -76,7 +72,7 @@ public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Th
    *   if (error == null) {
    *     future.complete(result));
    *   } else {
-   *       future.completeExceptionally(error);
+   *     future.completeExceptionally(error);
    *   }
    * });
    * return future;
@@ -93,9 +89,8 @@ public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Th
     return promise.consumeFailure(() -> initializer.accept(promise));
   }
 
-  @SuppressWarnings("unchecked")
   public static <T> Promise<T> of(CompletionStage<T> stage) {
-    return (stage instanceof Promise promise) ? promise : new Promise<>(ContextualizedFuture.captureContext(stage));
+    return (stage instanceof Promise<T> promise) ? promise : new Promise<>(ContextualizedFuture.captureContext(stage));
   }
 
   public static <T> Promise<T> completed(T result) {
@@ -127,6 +122,21 @@ public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Th
 
   public static Promise<Void> allOf(Stream<? extends CompletableFuture<?>> futures) {
     return allOf(CompletableFutures.toArray(futures));
+  }
+
+  public static <T> OptionalPromise<T> firstSatisfying(Predicate<? super T> predicate, Stream<? extends CompletableFuture<? extends T>> futures) {
+    return OptionalPromise.thatCompletesOptional(
+            promise -> allOf(
+                    futures.map(option -> Promise.of(option)
+                            .thenFilterOptional(predicate)
+                            .thenIfPresent(promise::completeWithValue)
+                    )
+            ).thenRun(promise::completeEmpty)
+    );
+  }
+
+  public static <T, U> Collector<CompletableFuture<? extends T>, ?, Promise<U>> collector(Collector<? super T, ?, U> collector) {
+    return Collectors.collectingAndThen(ListPromise.toListPromise(), listPromise -> listPromise.thenApply(results -> results.stream().collect(collector)));
   }
 
   public static <A, B, O> Promise<O> combine(
@@ -292,6 +302,13 @@ public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Th
     return whenComplete((t, e) -> sideEffect.run());
   }
 
+  public Promise<T> uponSuccess(Runnable sideEffect) {
+    return sameTypeSubsequentFactory().newPromise(completion.thenApply(Contextualized.liftFunction(t -> {
+      sideEffect.run();
+      return t;
+    })));
+  }
+
   public Promise<Void> toVoid() {
     return thenReplace(null);
   }
@@ -446,21 +463,6 @@ public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Th
   }
 
   ///////////////////// CompletableFuture methods /////////////////////
-
-  @Override
-  public boolean complete(T value) {
-    return completion.complete(Contextualized.value(value));
-  }
-
-  @Override
-  public boolean cancel(boolean mayInterruptIfRunning) {
-    return completion.complete(Contextualized.canceled());
-  }
-
-  @Override
-  public boolean completeExceptionally(Throwable ex) {
-    return completion.complete(Contextualized.failure(ex));
-  }
 
   @Override
   public T join() {
@@ -750,7 +752,9 @@ public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Th
 
   @Override
   public Promise<T> orTimeout(long timeout, TimeUnit unit) {
-    completion.orTimeout(timeout, unit);
+    CompletableFuture.delayedExecutor(timeout, unit).execute(() -> {
+      if (!isDone()) completeExceptionally(new TimeoutException());
+    });
     return this;
   }
 
@@ -859,6 +863,12 @@ public class Promise<T> extends CompletableFuture<T> implements BiConsumer<T, Th
     @Override
     public String toString() {
       return "PromiseFactory{" + factoryType.getSimpleName() + '}';
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T, P extends Promise<T>> P thatCompletes(ThrowingConsumer<? super P> completion) {
+      P promise = (P) newPromise(new ContextualizedFuture<>());
+      return (P) promise.consumeFailure(() -> completion.accept(promise));
     }
   }
 }

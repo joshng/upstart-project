@@ -2,6 +2,7 @@ package upstart.util.concurrent;
 
 import upstart.util.collect.Optionals;
 import upstart.util.context.Contextualized;
+import upstart.util.exceptions.ThrowingConsumer;
 import upstart.util.functions.QuadFunction;
 import upstart.util.functions.TriFunction;
 
@@ -20,16 +21,22 @@ import java.util.stream.Stream;
 
 import static com.google.common.base.Strings.lenientFormat;
 
-public class OptionalPromise<T> extends ExtendedPromise<Optional<T>, OptionalPromise<T>> {
+public final class OptionalPromise<T> extends ExtendedPromise<Optional<T>, OptionalPromise<T>> {
   static final PromiseFactory OPTIONAL_PROMISE_FACTORY = PromiseFactory.of(
           OptionalPromise.class,
-          Optional.empty(), OptionalPromise::new);
+          Optional.empty(),
+          OptionalPromise::new
+  );
 
   public OptionalPromise() {
   }
 
-  public OptionalPromise(CompletableFuture<Contextualized<Optional<T>>> completion) {
+  private OptionalPromise(CompletableFuture<Contextualized<Optional<T>>> completion) {
     super(completion);
+  }
+
+  public static <T> OptionalPromise<T> thatCompletesOptional(ThrowingConsumer<? super OptionalPromise<T>> completion) {
+    return OPTIONAL_PROMISE_FACTORY.<Optional<T>, OptionalPromise<T>>thatCompletes(completion);
   }
 
   public static <T> OptionalPromise<T> empty() {
@@ -55,14 +62,6 @@ public class OptionalPromise<T> extends ExtendedPromise<Optional<T>, OptionalPro
     return Promise.of(future).thenApplyOptional(Optional::ofNullable);
   }
 
-  public static <I, O> OptionalPromise<O> mapToFuture(Optional<I> input, Function<? super I, ? extends CompletionStage<O>> mapper) {
-    return input.map(mapper).map(OptionalPromise::ofFutureNullable).orElse(empty());
-  }
-
-  public static <I, O> OptionalPromise<O> mapToFutureOptional(Optional<I> input, Function<? super I, ? extends CompletionStage<Optional<O>>> mapper) {
-    return input.map(mapper).map(OptionalPromise::ofFutureOptional).orElse(empty());
-  }
-
   public static <T> OptionalPromise<T> ofFutureOptional(CompletionStage<Optional<T>> stage) {
     CompletableFuture<Optional<T>> future;
     return stage instanceof OptionalPromise<T> already
@@ -70,6 +69,14 @@ public class OptionalPromise<T> extends ExtendedPromise<Optional<T>, OptionalPro
             : CompletableFutures.isCompletedNormally(future = stage.toCompletableFuture())
                     ? completed(future.join())
                     : new OptionalPromise<T>().completeWith(future);
+  }
+
+  public static <I, O> OptionalPromise<O> mapToFuture(Optional<I> input, Function<? super I, ? extends CompletionStage<O>> mapper) {
+    return input.map(mapper).map(OptionalPromise::ofFutureNullable).orElse(empty());
+  }
+
+  public static <I, O> OptionalPromise<O> mapToFutureOptional(Optional<I> input, Function<? super I, ? extends CompletionStage<Optional<O>>> mapper) {
+    return input.map(mapper).map(OptionalPromise::ofFutureOptional).orElse(empty());
   }
 
   public static <T> OptionalPromise<T> toFutureOptional(Optional<? extends CompletionStage<T>> optionalFuture) {
@@ -161,12 +168,41 @@ public class OptionalPromise<T> extends ExtendedPromise<Optional<T>, OptionalPro
     return ofFutureOptional(combined);
   }
 
+  public <A, B, C, O> OptionalPromise<O> thenMapWith(
+          CompletionStage<A> a,
+          CompletionStage<B> b,
+          CompletionStage<C> c,
+          QuadFunction<? super T, ? super A, ? super B, ? super C, O> mapper
+  ) {
+    Promise<Optional<O>> combined = combine(
+            this,
+            a.toCompletableFuture(),
+            b.toCompletableFuture(),
+            c.toCompletableFuture(),
+            (v1, v2, v3, v4) -> v1.map(v -> mapper.apply(v, v2, v3, v4))
+    );
+    return ofFutureOptional(combined);
+  }
+
   public <I, O> OptionalPromise<O> thenZipWith(CompletionStage<? extends Optional<? extends I>> other, BiFunction<? super T, ? super I, O> mapper) {
     return thenCombinePromise(OPTIONAL_PROMISE_FACTORY, other, Contextualized.liftBiFunction((v1, v2) -> Optionals.zip(v1, v2, mapper)));
   }
 
   public <I, O> OptionalPromise<O> thenFlatZipWith(CompletionStage<? extends Optional<? extends I>> other, BiFunction<? super T, ? super I, Optional<O>> mapper) {
     return thenCombinePromise(OPTIONAL_PROMISE_FACTORY, other, Contextualized.liftBiFunction((v1, v2) -> Optionals.flatZip(v1, v2, mapper)));
+  }
+
+  public <A, B, O> OptionalPromise<O> thenFlatZipWith(
+          CompletionStage<? extends Optional<? extends A>> a,
+          CompletionStage<? extends Optional<? extends B>> b,
+          TriFunction<? super T, ? super A, ? super B, Optional<O>> mapper
+  ) {
+    return ofFutureOptional(combine(
+            this,
+            a.toCompletableFuture(),
+            b.toCompletableFuture(),
+            (v1, v2, v3) -> Optionals.flatZip(v1, v2, v3, mapper)
+    ));
   }
 
   public <I, O> OptionalPromise<O> thenMapComposeWith(
@@ -254,6 +290,17 @@ public class OptionalPromise<T> extends ExtendedPromise<Optional<T>, OptionalPro
             .orElse(empty())));
   }
 
+  public boolean completeWithValue(@Nonnull T value) {
+    return complete(Optional.of(value));
+  }
+
+  public boolean completeWithNullable(@Nullable T value) {
+    return complete(Optional.ofNullable(value));
+  }
+
+  public boolean completeEmpty() {
+    return complete(Optional.empty());
+  }
 
   // TODO so many missing permutations of arity, map/flatMap for both optional and future .. need proper monad transformers and tuples :-(
   // https://medium.com/@johnmcclean/simulating-higher-kinded-types-in-java-b52a18b72c74

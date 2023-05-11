@@ -6,11 +6,18 @@ import upstart.util.functions.TriFunction;
 import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Optional;
+import java.util.OptionalDouble;
+import java.util.OptionalInt;
+import java.util.OptionalLong;
 import java.util.concurrent.Callable;
 import java.util.function.BiFunction;
 import java.util.function.BinaryOperator;
 import java.util.function.Consumer;
+import java.util.function.DoubleFunction;
 import java.util.function.Function;
+import java.util.function.IntConsumer;
+import java.util.function.IntFunction;
+import java.util.function.LongFunction;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
@@ -46,6 +53,18 @@ public class Optionals {
   @SuppressWarnings("unchecked")
   public static <T> Optional<T> merge(Optional<? extends T> first, Optional<? extends T> second, BinaryOperator<T> merge) {
     return first.map(aa -> second.map(bb -> merge.apply(aa, bb)).or(() -> first)).orElse((Optional<T>) second);
+  }
+  
+  public static <T> Optional<T> mapToObj(OptionalInt optionalInt, IntFunction<? extends T> mapper) {
+    return optionalInt.isPresent() ? Optional.of(mapper.apply(optionalInt.getAsInt())) : Optional.empty();
+  }
+  
+  public static <T> Optional<T> mapToObj(OptionalLong optionalLong, LongFunction<? extends T> mapper) {
+    return optionalLong.isPresent() ? Optional.of(mapper.apply(optionalLong.getAsLong())) : Optional.empty();
+  }
+
+  public static <T> Optional<T> mapToObj(OptionalDouble optionalDouble, DoubleFunction<? extends T> mapper) {
+    return optionalDouble.isPresent() ? Optional.of(mapper.apply(optionalDouble.getAsDouble())) : Optional.empty();
   }
 
   /**

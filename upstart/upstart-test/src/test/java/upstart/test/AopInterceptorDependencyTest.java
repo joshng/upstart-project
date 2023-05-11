@@ -23,6 +23,7 @@ import java.lang.reflect.Method;
 import static com.google.common.truth.Truth.assertThat;
 import static com.google.common.truth.Truth.assertWithMessage;
 
+@UpstartLibraryTest
 @UpstartServiceTest
 public class AopInterceptorDependencyTest extends UpstartModule {
   @Override

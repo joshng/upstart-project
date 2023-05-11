@@ -5,7 +5,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.RunnableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class CompletableFutureTask<T> extends Promise<T> implements RunnableFuture<T> {
+public final class CompletableFutureTask<T> extends Promise<T> implements RunnableFuture<T> {
   private final AtomicBoolean called = new AtomicBoolean();
   private final Callable<T> callable;
   private Thread completingThread = null;

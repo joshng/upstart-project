@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
-public abstract class ExtendedPromise<T, P extends ExtendedPromise<T, P>> extends Promise<T> implements SelfType<P> {
+public sealed abstract class ExtendedPromise<T, P extends ExtendedPromise<T, P>> extends Promise<T> implements SelfType<P> permits OptionalPromise, ListPromise {
   public ExtendedPromise() {
   }
 
@@ -20,14 +20,17 @@ public abstract class ExtendedPromise<T, P extends ExtendedPromise<T, P>> extend
     super(completion);
   }
 
+  @Override
   public P tryComplete(Callable<? extends T> completion) {
     return selfType(super.tryComplete(completion));
   }
 
+  @Override
   public P tryComplete(T value, ThrowingRunnable completion) {
     return selfType(super.tryComplete(value, completion));
   }
 
+  @Override
   public P consumeFailure(ThrowingRunnable runnable) {
     return selfType(super.consumeFailure(runnable));
   }
@@ -35,10 +38,12 @@ public abstract class ExtendedPromise<T, P extends ExtendedPromise<T, P>> extend
   /**
    * Complete this Future with the result of the Future returned by the given {@link Callable} (or any exception that it throws).
    */
+  @Override
   public P tryCompleteWith(Callable<? extends CompletionStage<? extends T>> completion) {
     return selfType(super.tryCompleteWith(completion));
   }
 
+  @Override
   public P fulfill(T result) {
     return selfType(super.fulfill(result));
   }
@@ -60,6 +65,16 @@ public abstract class ExtendedPromise<T, P extends ExtendedPromise<T, P>> extend
    */
   public P failWith(CompletionStage<? extends T> completion) {
     return selfType(super.failWith(completion));
+  }
+
+  @Override
+  public P uponCompletion(Runnable sideEffect) {
+    return selfType(super.uponCompletion(sideEffect));
+  }
+
+  @Override
+  public P uponSuccess(Runnable sideEffect) {
+    return selfType(super.uponSuccess(sideEffect));
   }
 
   public <E extends Throwable> P recover(Class<E> exceptionType, Function<? super E, ? extends T> recovery) {

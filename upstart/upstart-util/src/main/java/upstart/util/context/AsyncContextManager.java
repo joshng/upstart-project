@@ -7,11 +7,9 @@ public interface AsyncContextManager<T> {
 
   void restoreSnapshot(T value);
 
-  void mergeFromSnapshot(T value);
+  void mergeApplyFromSnapshot(T value);
 
   void remove();
 
-  default T merge(T a, T b) {
-    return b;
-  }
+  T mergeSnapshots(T mergeTo, T mergeFrom);
 }

@@ -68,13 +68,12 @@
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>upstart-test</artifactId>
-      <version>${project.version}</version>
     </dependency>
 
     <dependency>
       <groupId>com.amazonaws</groupId>
       <artifactId>DynamoDBLocal</artifactId>
-      <version>1.15.0</version>
+      <version>1.21.1</version>
     </dependency>
     <dependency>
       <groupId>io.github.ganadist.sqlite4java</groupId>

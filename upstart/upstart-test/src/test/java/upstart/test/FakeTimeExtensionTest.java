@@ -16,6 +16,7 @@ import static com.google.common.truth.Truth.assertThat;
 import static upstart.test.truth.CompletableFutureSubject.assertThat;
 
 @UpstartServiceTest
+@UpstartLibraryTest
 @FakeTimeTest(interceptSchedules = FakeTimeExtensionTest.FakeScheduledService.class)
 class FakeTimeExtensionTest extends UpstartModule {
   @Inject FakeScheduledService service;

@@ -59,7 +59,7 @@ after the `@Test`-method completes. Any service-failures that occur during start
 
 #### ... and more lifecycle callbacks: `@AfterServiceStarted`/`@BeforeServiceStopped`
 
-## The TEST Environment
+## The 'test' Environment
 
 ## Overriding HOCON Configs
 

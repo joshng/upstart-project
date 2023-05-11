@@ -32,6 +32,7 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.function.ToDoubleFunction;
 import java.util.function.ToIntFunction;
+import java.util.function.ToLongBiFunction;
 import java.util.function.ToLongFunction;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
@@ -154,6 +155,10 @@ public class PairStream<K, V> implements Stream<Map.Entry<K, V>> {
 
   public <O> Stream<O> map(BiFunction<? super K, ? super V, O> f) {
     return map(Entries.tupled(f));
+  }
+
+  public LongStream mapToLong(ToLongBiFunction<? super K, ? super V> f) {
+    return mapToLong(Entries.tupled(f));
   }
 
   public PairStream<K, V> filterKeys(Predicate<? super K> p) {

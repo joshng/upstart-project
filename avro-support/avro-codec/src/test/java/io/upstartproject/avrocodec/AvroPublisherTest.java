@@ -27,7 +27,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Stream;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -48,13 +47,14 @@ class AvroPublisherTest {
     AvroPublisher avroPublisher = new AvroPublisher(taxonomy);
     taxonomy.startAsync().awaitRunning();
     avroPublisher.registerSpecificPackers(AvroPublisher.PackageKey.fromRecordPackage(TestExceptionRecord.class)).join();
-    EnvelopeCodec codec = new EnvelopeCodec(avroPublisher, new AvroDecoder(taxonomy)).registerEnvelopeSchema().join();
+    EnvelopePublisher envPublisher = new EnvelopePublisher(avroPublisher).registerEnvelopeSchema().join();
+    EnvelopeDecoder envDecoder = new EnvelopeDecoder(new AvroDecoder(taxonomy));
 
     String exceptionMessage = "numbers";
     MessageMetadata metadata = MessageMetadata.builder()
             .application("test-app")
             .owner("test-owner")
-            .environment("TEST")
+            .environment("test")
             .deploymentStage(DeploymentStage.stage)
             .putTag("tag1", "value1").build();
     TestExceptionEvent event = new TestExceptionEvent(Instant.EPOCH, new TestExceptionRecord(exceptionMessage));
@@ -62,9 +62,9 @@ class AvroPublisherTest {
 
     PackableRecord<?> exceptionRecord = avroPublisher.getPreRegisteredPacker(TestExceptionEvent.getClassSchema()).makePackable(event);
     PackableRecord<?> annotationRecord = avroPublisher.getPreRegisteredPacker(anno.getSchema()).makePackable(anno);
-    byte[] bytes = codec.packableMessageEnvelope(Instant.ofEpochMilli(99), Optional.empty(), exceptionRecord, metadata, annotationRecord).serialize();
+    byte[] bytes = envPublisher.packableMessageEnvelope(Instant.ofEpochMilli(99), Optional.empty(), exceptionRecord, metadata, annotationRecord).serialize();
 
-    UnpackableMessageEnvelope env = codec.loadEnvelope(new ByteArrayInputStream(bytes)).join();
+    UnpackableMessageEnvelope env = envDecoder.loadEnvelope(new ByteArrayInputStream(bytes)).join();
     assertThat(env.metadata()).isEqualTo(metadata);
     GenericRecord genericEvent = env.messageRecord().unpackGeneric();
     GenericRecord genericException = (GenericRecord) genericEvent.get("exception");
@@ -77,7 +77,7 @@ class AvroPublisherTest {
 
     SpecificRecordUnpacker<TestExceptionEvent> recordUnpacker = decoder.recordUnpacker(TestExceptionEvent.class);
     assertThat(recordUnpacker.unpack(
-            codec.extractEnvelopeMessage(new ByteArrayInputStream(bytes)).join())
+            envDecoder.extractEnvelopeMessage(new ByteArrayInputStream(bytes)).join())
     ).isEqualTo(event);
 
     Schema alternateSchema = loadSchema("TestIssueView.avsc");

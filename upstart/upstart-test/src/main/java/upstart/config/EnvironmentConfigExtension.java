@@ -14,6 +14,7 @@ import com.typesafe.config.ConfigFactory;
 import org.immutables.value.Value;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
+import java.util.Optional;
 import java.util.stream.Stream;
 
 public class EnvironmentConfigExtension extends SingletonParameterResolver<EnvironmentConfigBuilder> {
@@ -24,9 +25,9 @@ public class EnvironmentConfigExtension extends SingletonParameterResolver<Envir
   @Override
   protected EnvironmentConfigBuilder createContext(ExtensionContext extensionContext) {
     // TODO: allow configMapper to be customized
-//    EnvironmentConfigBuilder configBuilder = new EnvironmentConfigBuilder("TEST", new HojackConfigMapper());
-    EnvironmentConfigBuilder configBuilder = new EnvironmentConfigBuilder("TEST", new HojackConfigMapper(ObjectMapperFactory.buildAmbientObjectMapper()));
+    EnvironmentConfigBuilder configBuilder = new EnvironmentConfigBuilder("test", new HojackConfigMapper(ObjectMapperFactory.buildAmbientObjectMapper()));
 
+    Optional<ExtensionContext> testExtensionContext = Optional.of(extensionContext);
     ExtensionContexts.findRepeatableTestAnnotations(
             EnvironmentConfig.Fixture.class,
             Reflect.LineageOrder.SuperclassBeforeSubclass,
@@ -37,7 +38,7 @@ public class EnvironmentConfigExtension extends SingletonParameterResolver<Envir
             .stream().distinct()
             .collect(ImmutableList.toImmutableList())
             .reverse() // reverse again to process in correct top-down/left-to-right order
-            .forEach(fixture -> fixture.applyEnvironmentValues(configBuilder));
+            .forEach(fixture -> fixture.applyEnvironmentValues(configBuilder, testExtensionContext));
 
     return configBuilder;
   }
@@ -66,9 +67,9 @@ public class EnvironmentConfigExtension extends SingletonParameterResolver<Envir
     abstract Class<? extends EnvironmentConfigFixture> fixtureClass();
 
     @Override
-    public void applyEnvironmentValues(TestConfigBuilder<?> config) {
+    public void applyEnvironmentValues(TestConfigBuilder<?> config, Optional<ExtensionContext> testExtensionContext) {
       // create a new instance each time, to ensure state isn't accidentally retained across runs
-      Reflect.newInstance(fixtureClass()).applyEnvironmentValues(config);
+      Reflect.newInstance(fixtureClass()).applyEnvironmentValues(config, testExtensionContext);
     }
   }
 
@@ -87,7 +88,7 @@ public class EnvironmentConfigExtension extends SingletonParameterResolver<Envir
     }
 
     @Override
-    public void applyEnvironmentValues(TestConfigBuilder<?> config) {
+    public void applyEnvironmentValues(TestConfigBuilder<?> config, Optional<ExtensionContext> testExtensionContext) {
       config.overrideConfig(parsedConfig());
     }
   }
@@ -110,7 +111,7 @@ public class EnvironmentConfigExtension extends SingletonParameterResolver<Envir
     }
 
     @Override
-    public void applyEnvironmentValues(TestConfigBuilder<?> config) {
+    public void applyEnvironmentValues(TestConfigBuilder<?> config, Optional<ExtensionContext> testExtensionContext) {
       config.overrideConfig(parsedConfig());
     }
   }

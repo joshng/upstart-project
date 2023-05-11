@@ -151,6 +151,7 @@ public class RecordTypeFamily {
     SchemaCompatibility.SchemaCompatibilityResult compatibilityResult();
   }
 
+
   public class RegistrationResult {
     private final SchemaDescriptor registeredSchema;
     private final AvroSchemaConflictException conflictException;
