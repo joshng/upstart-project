@@ -26,7 +26,7 @@ public interface B4Config {
 
   Map<TargetInstanceId, ConfigValue> tasks();
 
-  @ConfigPath("program-name") //what is this doin here ???
+  @ConfigPath("program-name")
   String programName();
 
   @Value.Immutable
@@ -37,9 +37,5 @@ public interface B4Config {
 
     Class<? extends B4TargetGenerator<?>> impl();
     Config config();
-  }
-
-  interface Templates {
-    Map<TemplateId, TemplateConfig> targetTemplates();
   }
 }

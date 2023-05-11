@@ -8,32 +8,33 @@ if [ $# -lt 2 ]; then
   exit 1
 fi
 
-if ! type -p xmllint > /dev/null; then
-  echo "ERROR: xmllint not found in PATH" >&2
+
+PROJECT_DIR="$1"
+shift
+PROJECT_ARTIFACT_COORDS="$1"
+shift
+
+UPSTART_PROGRAM_NAME=${UPSTART_PROGRAM_NAME:-"$(basename "$PROJECT_DIR")"}
+export UPSTART_PROGRAM_NAME
+
+if ! type -p jq > /dev/null; then
+  echo "ERROR: jq is required to run $UPSTART_PROGRAM_NAME (run 'brew install jq' or similar)" >&2
   exit 1
 fi
 
-
-PROGRAM_DIR="$1"
-shift
-PROGRAM_ARTIFACT="$1"
-shift
-
-UPSTART_PROGRAM=${UPSTART_PROGRAM:-"$(basename "$PROGRAM_DIR")"}
-
-if ! type -p jq > /dev/null; then
-  echo "ERROR: jq is required to run $UPSTART_PROGRAM (run 'brew install jq' or similar)" >&2
+if ! type -p xmllint > /dev/null; then
+  echo "ERROR: xmllint is required to run $UPSTART_PROGRAM_NAME, not found in PATH" >&2
   exit 1
 fi
 
 if [[ $BASH_VERSION =~ ^[0-3]\. ]]; then
-  echo "ERROR: $UPSTART_PROGRAM requires bash 4 or newer (run 'brew install bash' or similar)" >&2
+  echo "ERROR: $UPSTART_PROGRAM_NAME requires bash 4 or newer; running v$BASH_VERSION (run 'brew install bash' or similar)" >&2
   exit 1
 fi
 
 MVN_PROFILES="${UPSTART_MVN_PROFILES:+-P$UPSTART_MVN_PROFILES}"
 
-ARTIFACT_ID="$(echo "$PROGRAM_ARTIFACT" | cut -d: -f2)"
+ARTIFACT_ID="$(echo "$PROJECT_ARTIFACT_COORDS" | cut -d: -f2)"
 depgraph_basename=$ARTIFACT_ID-depgraph.json
 depgraph=tmp/dependency-graphs/$depgraph_basename
 
@@ -54,7 +55,7 @@ debug () {
   fi
 }
 
-debug "PROGRAM_ARTIFACT=$PROGRAM_ARTIFACT"
+debug "PROJECT_ARTIFACT_COORDS=$PROJECT_ARTIFACT_COORDS"
 
 in_list() {
   local i match="$1"
@@ -63,9 +64,9 @@ in_list() {
   return 1
 }
 
+declare -a poms
 check_clean_depgraph() {
   if [[ ! -f $depgraph ]]; then return 1; fi
-  local poms
   readarray -d '' poms < <(find . -name pom.xml -print0 -o -name build -prune -o -name target -prune -o -name .git -prune -o -name src -prune)
   if [[ ! -z "$(find "${poms[@]}" -newer $depgraph)" ]]; then
     return 1
@@ -74,9 +75,9 @@ check_clean_depgraph() {
 
 refresh_depgraph() {
   if ! check_clean_depgraph; then
-    report "Computing dependency graph for $PROGRAM_ARTIFACT"
+    report "Computing dependency graph for $PROJECT_ARTIFACT_COORDS"
     mkdir -p "$(dirname "$depgraph")"
-    mvn -q ${MVN_PROFILES} com.github.ferstl:depgraph-maven-plugin:for-artifact -DgraphFormat=json -DoutputFileName=$depgraph_basename -Dartifact=$PROGRAM_ARTIFACT || exit 1
+    mvn -q ${MVN_PROFILES} com.github.ferstl:depgraph-maven-plugin:for-artifact -DgraphFormat=json -DoutputFileName=$depgraph_basename -Dartifact=$PROJECT_ARTIFACT_COORDS || exit 1
     mv target/$depgraph_basename $depgraph
   fi
 }
@@ -90,6 +91,7 @@ check_clean() {
 
   for pom in "${poms[@]}"; do
     artifact="$(xmllint --xpath "//*[local-name()='project']/*[local-name()='artifactId']/text()" "$pom")"
+    debug "Checking $artifact ($pom)"
     if in_list "$artifact" "${artifacts[@]}"; then
       local proj_dir modified
       proj_dir="$(dirname "$pom")"
@@ -128,7 +130,7 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-PROGRAM_JAR="${PROGRAM_JAR:-"$PROGRAM_DIR/target/package/$(basename $PROGRAM_DIR).jar"}"
+PROGRAM_JAR="${PROGRAM_JAR:-"$PROJECT_DIR/target/package/$(basename $PROJECT_DIR).jar"}"
 
 if [[ $REBUILD = true ]]; then rm -f $depgraph; fi
 
@@ -137,18 +139,23 @@ refresh_depgraph
 if [[ $REBUILD = true || ! -f "$PROGRAM_JAR" ]] || ! check_clean; then
   report "Rebuilding..."
   set +e
-  out=$(mvn clean package ${MVN_PROFILES} -DskipTests -Dmaven.javadoc.skip=true -pl $PROGRAM_DIR -am -T1.5C)
+  out=$(mvn clean package ${MVN_PROFILES} -DskipTests -Dmaven.javadoc.skip=true -pl $PROJECT_DIR -am -T1.5C)
   status=$?
   set -e
   if [ $status != 0 ]; then
-    report -e "\n$out\n\n$PROGRAM_DIR - Rebuild failed!"
+    report -e "\n$out\n\n$PROJECT_DIR - Rebuild failed!"
     exit $status
   fi
   report "Rebuilt"
 fi
 
-#if [ -z "$NOLOG" ] && type rotatelogs > /dev/null 2>&1; then
-#  exec java -Db4.program-name="$UPTART_PROGRAM" "${PROPS[@]@Q}" -jar "$PROGRAM_JAR" "$@" | tee >(rotatelogs -Dln7 tmp/$UPSTART_PROGRAM-logs/$UPSTART_PROGRAM.log 86400)
+# TODO: support spooling verbose logs to a file as a b4/java feature, rather than hacking it through tee
+#if [[ -z "$NOLOG" ]] && type rotatelogs > /dev/null 2>&1; then
+#  timestamp() {
+#    date '+%F_%H:%M:%S'
+#  }
+#  PREFIX=$(echo $RANDOM | md5 | head -c 8; echo)
+#  exec java -Dpicocli.ansi=true -Db4.program-name="$UPTART_PROGRAM" "${PROPS[@]}" -jar "$PROGRAM_JAR" "$@" > >(tee >( ( echo -e "\n$PREFIX --->>> $UPSTART_PROGRAM_NAME started $(timestamp) <<<---" && sed "s/^/$PREFIX /" && echo "$PREFIX <<<=== $UPSTART_PROGRAM_NAME ended $(timestamp) ===>>>") | rotatelogs -Dln7 tmp/$UPSTART_PROGRAM_NAME-logs/$UPSTART_PROGRAM_NAME.log 86400)) 2>&1
 #else
-  exec java -Db4.program-name="$UPSTART_PROGRAM" "${PROPS[@]}" -jar "$PROGRAM_JAR" "$@"
+  exec java "${PROPS[@]}" -jar "$PROGRAM_JAR" "$@"
 #fi

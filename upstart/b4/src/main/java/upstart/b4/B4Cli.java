@@ -45,7 +45,7 @@ public class B4Cli {
   public B4Cli(String... args) {
     rawArgs = args;
 
-    String programName = Ambiance.ambientValue("b4.program-name").orElse("b4");
+    String programName = Ambiance.ambientValue("UPSTART_PROGRAM_NAME").orElse("b4");
     LOG = LoggerFactory.getLogger(programName);
 
     options = new InvocationOptions();
