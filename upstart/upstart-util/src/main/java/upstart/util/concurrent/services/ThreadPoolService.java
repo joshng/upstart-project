@@ -1,10 +1,12 @@
 package upstart.util.concurrent.services;
 
 import upstart.util.concurrent.CompletableFutures;
+import upstart.util.concurrent.ExecutionContext;
 import upstart.util.concurrent.Promise;
 import upstart.util.exceptions.Exceptions;
 import upstart.util.exceptions.Fallible;
 import org.slf4j.LoggerFactory;
+import upstart.util.functions.AsyncFunction;
 
 import java.time.Duration;
 import java.util.concurrent.Callable;
@@ -12,9 +14,10 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
-public abstract class ThreadPoolService extends IdleService implements Executor {
+public abstract class ThreadPoolService extends IdleService implements ExecutionContext {
   private final Duration shutdownGracePeriod;
   private ExecutorService executorService;
 
@@ -33,30 +36,9 @@ public abstract class ThreadPoolService extends IdleService implements Executor 
 
   protected abstract ExecutorService buildExecutorService();
 
+  @Override
   public void execute(Runnable command) {
     executorService.execute(command);
-  }
-
-  protected  <T> CompletableFuture<T> supplyAsync(Supplier<T> supplier) {
-    return CompletableFuture.supplyAsync(supplier, executorService);
-  }
-
-  protected  <T> CompletableFuture<T> callAsync(Callable<T> supplier) {
-    return CompletableFuture.supplyAsync(() -> {
-      try {
-        return supplier.call();
-      } catch (Exception e) {
-        throw Exceptions.throwUnchecked(e);
-      }
-    }, executorService);
-  }
-
-  protected CompletableFuture<Void> runAsync(Fallible<?> runnable) {
-    return CompletableFuture.runAsync(runnable, executorService);
-  }
-
-  protected <T> Promise<T> composeAsync(Callable<? extends CompletableFuture<T>> asyncSupplier) {
-    return CompletableFutures.sequence(callAsync(asyncSupplier));
   }
 
   @Override
