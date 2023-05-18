@@ -38,8 +38,4 @@ public interface B4Config {
     Class<? extends B4TargetGenerator<?>> impl();
     Config config();
   }
-
-  interface Templates {
-    Map<TemplateId, TemplateConfig> targetTemplates();
-  }
 }

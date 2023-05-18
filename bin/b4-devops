@@ -1,6 +1,17 @@
 #!/usr/bin/env bash
+set -e -o pipefail
 
-B4_ROOT="$(dirname "$(dirname "$0")")"
+delink() {
+  local path="$1"
+  while [[ -L "$path" ]]; do
+    path="$(readlink "$path")"
+  done
+  echo "$path"
+}
+
+cd "$(dirname "$(delink "$0")")"/..
+
+B4_ROOT=.
 export B4_ROOT
-exec $B4_ROOT/upstart/b4/wrapper/b4.sh upstart/b4-devops "$@"
+exec upstart/b4/wrapper/b4.sh upstart/b4-devops io.upstartproject:b4-devops:0-SNAPSHOT "$@"
 

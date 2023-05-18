@@ -4,6 +4,7 @@ import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.MoreExecutors;
 import upstart.util.collect.PairStream;
 import upstart.util.collect.PersistentMap;
+import upstart.util.concurrent.ExecutionContext;
 import upstart.util.reflect.Reflect;
 
 import java.util.List;
@@ -105,7 +106,7 @@ public class AsyncContext implements TransientContext {
     return snapshot::replaceCurrent;
   }
 
-  public static class ContextedExecutor implements Executor {
+  public static class ContextedExecutor implements ExecutionContext {
     private final Executor underlying;
 
     ContextedExecutor(Executor underlying) {

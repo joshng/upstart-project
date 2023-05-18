@@ -44,6 +44,11 @@ public abstract class S3Key {
     return String.format("%s://%s/%s", scheme(), bucket(), key());
   }
 
+  @Value.Lazy
+  public String filename() {
+    return key().substring(key().lastIndexOf('/') + 1);
+  }
+
   public abstract S3Key withScheme(Scheme scheme);
 
   public abstract S3Key withKey(String key);
@@ -58,6 +63,10 @@ public abstract class S3Key {
       appendWithSlash(keyBuilder, token);
     }
     return withKey(keyBuilder.toString());
+  }
+
+  public boolean contains(S3Key childKey) {
+    return key().endsWith("/") && childKey.key().startsWith(key()) || childKey.key().startsWith(key() + "/");
   }
 
   @Value.Check
