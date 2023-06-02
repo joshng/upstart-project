@@ -30,14 +30,16 @@ public abstract class LazyReference<T> implements Supplier<T>, Callable<T>, com.
 
   @Override
   public T get() {
-    if (value == null) {
+    T snapshot = value;
+    if (snapshot == null) {
       synchronized (this) {
-        if (value == null) {
-          value = checkNotNull(supplyValue(), "supplyValue must not return null");
+        snapshot = value;
+        if (snapshot == null) {
+          value = snapshot = checkNotNull(supplyValue(), "supplyValue must not return null");
         }
       }
     }
-    return value;
+    return snapshot;
   }
 
   public synchronized Optional<T> remove() {

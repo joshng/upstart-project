@@ -1,16 +1,34 @@
-package upstart.test.truth;import com.google.common.truth.FailureMetadata;import com.google.common.truth.Subject;import java.util.Optional;import static com.google.common.truth.Fact.fact;import static com.google.common.truth.Fact.simpleFact;public class ExtendedOptionalSubject<T> extends Subject {
+package upstart.test.truth;
+
+import com.google.common.truth.FailureMetadata;
+import com.google.common.truth.Subject;
+
+import java.util.Optional;
+
+import static com.google.common.truth.Fact.fact;
+import static com.google.common.truth.Fact.simpleFact;
+import static com.google.common.truth.Truth.assertAbout;
+
+public class ExtendedOptionalSubject<T> extends Subject {
   private final Optional<T> actual;
 
   ExtendedOptionalSubject(
           FailureMetadata failureMetadata,
-          Optional<T> subject) {
+          Optional<T> subject
+  ) {
     super(failureMetadata, subject);
     this.actual = subject;
   }
 
   // TODO(cpovirk): Consider making OptionalIntSubject and OptionalLongSubject delegate to this.
 
-  /** Fails if the {@link Optional}{@code <T>} is empty or the subject is null. */
+  public static <T> ExtendedOptionalSubject<T> assertThat(Optional<T> optional) {
+    return assertAbout(ExtendedOptionalSubject.<T>optionals()).that(optional);
+  }
+
+  /**
+   * Fails if the {@link Optional}{@code <T>} is empty or the subject is null.
+   */
   public void isPresent() {
     if (actual == null) {
       failWithActual(simpleFact("expected present optional"));
@@ -19,13 +37,20 @@ package upstart.test.truth;import com.google.common.truth.FailureMetadata;import
     }
   }
 
-  /** Fails if the {@link Optional}{@code <T>} is present or the subject is null. */
+  public T get() {
+    isPresent();
+    return actual.orElseThrow();
+  }
+
+  /**
+   * Fails if the {@link Optional}{@code <T>} is present or the subject is null.
+   */
   public void isEmpty() {
     if (actual == null) {
       failWithActual(simpleFact("expected empty optional"));
     } else if (actual.isPresent()) {
       failWithoutActual(
-          simpleFact("expected to be empty"), fact("but was present with value", actual.get()));
+              simpleFact("expected to be empty"), fact("but was present with value", actual.get()));
     }
   }
 
