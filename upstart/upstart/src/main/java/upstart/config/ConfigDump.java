@@ -8,6 +8,7 @@ import com.typesafe.config.ConfigValue;
 import com.typesafe.config.ConfigValueType;
 
 import java.util.List;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -46,6 +47,7 @@ public class ConfigDump {
   }
 
   public static class ValueDump implements Comparable<ValueDump> {
+    private static final Pattern SENSITIVE_KEY_PATTERN = Pattern.compile("password|secret|apikey", Pattern.CASE_INSENSITIVE);
     private final String key;
     private final String value;
     private final String origin;
@@ -66,8 +68,7 @@ public class ConfigDump {
     }
 
     private static boolean looksSensitive(String value) {
-      String lowercase = value.toLowerCase();
-      return lowercase.contains("password") || lowercase.contains("secret");
+      return SENSITIVE_KEY_PATTERN.matcher(value).find();
     }
 
     @Override

@@ -9,6 +9,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -63,7 +64,7 @@ public interface ExecutionContext extends Executor {
     return input -> supplyAsync(() -> function.apply(input));
   }
 
-  default <T> AsyncFunction<T, Void> wrapConsumer(java.util.function.Consumer<T> consumer) {
+  default <T> AsyncFunction<T, Void> wrapConsumer(Consumer<T> consumer) {
     return input -> runAsync(() -> consumer.accept(input));
   }
 
