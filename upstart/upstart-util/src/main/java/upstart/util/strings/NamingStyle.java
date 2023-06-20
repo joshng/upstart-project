@@ -117,6 +117,28 @@ public enum NamingStyle {
     public StringBuilder combineWordsTo(StringBuilder sb, Stream<String> words) {
       return join(sb, words, CharacterCase.UPPER, '-');
     }
+  },
+  UpperSpaceSeparated {
+    @Override
+    public Stream<String> extractWords(String str) {
+      return Stream.of(str.split("\\s+"));
+    }
+
+    @Override
+    public StringBuilder combineWordsTo(StringBuilder sb, Stream<String> words) {
+      return join(sb, words, CharacterCase.UPPER, ' ');
+    }
+  },
+  LowerSpaceSeparated {
+    @Override
+    public Stream<String> extractWords(String str) {
+      return Stream.of(str.split("\\s+"));
+    }
+
+    @Override
+    public StringBuilder combineWordsTo(StringBuilder sb, Stream<String> words) {
+      return join(sb, words, CharacterCase.LOWER, ' ');
+    }
   }
   ;
 
