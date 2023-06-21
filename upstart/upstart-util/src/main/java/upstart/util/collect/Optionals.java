@@ -74,6 +74,20 @@ public class Optionals {
     return optional.isEmpty() || optional.filter(predicate).isPresent();
   }
 
+  /**
+   * @see Stream#anyMatch
+   */
+  public static <T> boolean anyMatch(Optional<T> optional, Predicate<? super T> predicate) {
+    return optional.isPresent() && predicate.test(optional.orElseThrow());
+  }
+
+  /**
+   * @see Stream#noneMatch
+   */
+  public static <T> boolean noneMatch(Optional<T> optional, Predicate<? super T> predicate) {
+    return optional.isEmpty() || !predicate.test(optional.orElseThrow());
+  }
+
   public static <T> Optional<T> getWithinBounds(List<T> list, int index) {
     return onlyIfFrom(index >= 0 && index < list.size(), () -> list.get(index));
   }
