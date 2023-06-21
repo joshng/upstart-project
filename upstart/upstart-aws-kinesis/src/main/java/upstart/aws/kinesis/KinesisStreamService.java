@@ -118,7 +118,7 @@ public class KinesisStreamService extends BaseProvisionedResource {
   @DeserializedImmutable
   @Tuple
   public interface StreamConfig {
-    Pattern VALID_NAME_PATTERN = Pattern.compile("[a-zA-Z0-9_.-]{1,128}");
+    Pattern VALID_NAME_PATTERN = Pattern.compile("(\\{APP_ENV})?[a-zA-Z0-9_.-]{1,128}");
     static StreamConfig named(String streamName) {
       return ImmutableStreamConfig.of(streamName, OptionalInt.empty());
     }

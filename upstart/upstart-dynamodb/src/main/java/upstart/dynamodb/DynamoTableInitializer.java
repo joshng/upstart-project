@@ -135,7 +135,7 @@ public class DynamoTableInitializer<T> extends BaseProvisionedResource implement
 
     // this AWS SDK doesn't support the inline TTL attribute specification (?!), so we have to add it manually
     return getTtlAttribute()
-            .map(ttlAttr -> tableSpec.plus("timeToLiveSpecification", Map.of(
+            .map(ttlAttr -> tableSpec.plus("timeToLiveSpecification", PersistentMap.of(
                     "attributeName", ttlAttr,
                     "enabled", true
                     )
