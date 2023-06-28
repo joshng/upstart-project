@@ -114,6 +114,20 @@ public final class OptionalPromise<T> extends ExtendedPromise<Optional<T>, Optio
     });
   }
 
+  public OptionalPromise<T> thenIfPresentOrElse(Consumer<? super T> consumer, Runnable sideEffect) {
+    return thenApplyOptional(value -> {
+      value.ifPresentOrElse(consumer, sideEffect);
+      return value;
+    });
+  }
+
+  public OptionalPromise<T> thenIfAbsent(Runnable sideEffect) {
+    return thenApplyOptional(value -> {
+      if (value.isEmpty()) sideEffect.run();
+      return value;
+    });
+  }
+
   public Promise<T> orElse(T value) {
     return thenApply(optional -> optional.orElse(value));
   }
