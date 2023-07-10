@@ -294,12 +294,33 @@ public final class OptionalPromise<T> extends ExtendedPromise<Optional<T>, Optio
     )));
   }
 
+  public <A, B, O> OptionalPromise<O> thenZipComposeWith(
+          CompletionStage<? extends Optional<? extends A>> a,
+          CompletionStage<? extends Optional<? extends B>> b,
+          TriFunction<? super T, ? super A, ? super B, ? extends CompletionStage<O>> mapper
+  ) {
+    return ofFutureOptional(combineCompose(this, a.toCompletableFuture(), b.toCompletableFuture(), (v1, v2, v3) -> toFutureOptional(
+            Optionals.zip(v1, v2, v3, mapper)
+    )));
+  }
+
   public <I, O> OptionalPromise<O> thenFlatZipComposeWith(
           CompletionStage<? extends Optional<? extends I>> other,
           BiFunction<? super T, ? super I, ? extends CompletionStage<Optional<O>>> mapper
   ) {
     return ofFutureOptional(combineCompose(this, other.toCompletableFuture(), (v1, v2) -> Optionals
             .zip(v1, v2, mapper)
+            .map(OptionalPromise::ofFutureOptional)
+            .orElse(empty())));
+  }
+
+  public <A, B, O> OptionalPromise<O> thenFlatZipComposeWith(
+          CompletionStage<? extends Optional<? extends A>> a,
+          CompletionStage<? extends Optional<? extends B>> b,
+          TriFunction<? super T, ? super A, ? super B, ? extends CompletionStage<Optional<O>>> mapper
+  ) {
+    return ofFutureOptional(combineCompose(this, a.toCompletableFuture(), b.toCompletableFuture(), (v1, v2, v3) -> Optionals
+            .zip(v1, v2, v3, mapper)
             .map(OptionalPromise::ofFutureOptional)
             .orElse(empty())));
   }
