@@ -63,6 +63,7 @@ public class SdkAsyncHttpClientService extends IdleService implements SdkAsyncHt
     throw new UnsupportedOperationException("Don't close the SdkAsyncHttpClient directly");
   }
 
+  // TODO: make this configurable on a per-service/per-client basis, like the AwsConfig
   @ConfigPath("upstart.aws.asyncDefaults")
   public interface AsyncClientConfig {
     Duration connectionAcquisitionTimeout();

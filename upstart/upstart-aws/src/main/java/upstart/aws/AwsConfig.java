@@ -8,6 +8,7 @@ import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.WebIdentityTokenFileCredentialsProvider;
 import software.amazon.awssdk.awscore.client.builder.AwsClientBuilder;
+import software.amazon.awssdk.core.retry.RetryMode;
 import software.amazon.awssdk.core.retry.RetryPolicy;
 import software.amazon.awssdk.regions.Region;
 import upstart.config.annotations.DeserializedImmutable;
@@ -30,11 +31,13 @@ public interface AwsConfig {
 
   Optional<Class<? extends Supplier<AwsCredentialsProvider>>> credentialsProviderSupplierClass();
 
+  Optional<RetryMode> retryMode();
+
+  OptionalInt maxRetries();
+
   AwsConfig withEndpoint(URI endpoint);
 
   AwsConfig withRegion(String region);
-
-  OptionalInt maxRetries();
 
   default AwsConfig withRegion(Region region) {
     return withRegion(region.id());
@@ -53,7 +56,10 @@ public interface AwsConfig {
     return builder
             .credentialsProvider(credentialsProvider())
             .overrideConfiguration(b -> b.retryPolicy(
-                    RetryPolicy.defaultRetryPolicy().copy(rp -> rp.numRetries(maxRetries().orElseThrow())))
+                                           RetryPolicy.builder(retryMode().orElseThrow())
+                                                   .applyMutation(rb -> maxRetries().ifPresent(rb::numRetries))
+                                                   .build()
+                                   )
             );
   }
 
@@ -128,7 +134,7 @@ public interface AwsConfig {
     default DefaultAwsConfig validateDefaults() {
       List<String> missingFields = new ArrayList<>();
       if (credentialsProviderType().isEmpty()) missingFields.add("credentialsProviderType");
-      if (maxRetries().isEmpty()) missingFields.add("maxRetries");
+      if (retryMode().isEmpty()) missingFields.add("retryMode");
       if (!missingFields.isEmpty()) {
         throw new IllegalStateException("Missing required fields: " + missingFields);
       }
