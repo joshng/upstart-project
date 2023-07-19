@@ -4,8 +4,10 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Streams;
 import com.typesafe.config.ConfigParseOptions;
 import io.upstartproject.hojack.HojackConfigMapper;
+import upstart.test.BaseSingletonParameterResolver;
 import upstart.test.ExtensionContexts;
-import upstart.test.SingletonParameterResolver;
+import upstart.test.SingletonExtension;
+import upstart.test.UpstartExtension;
 import upstart.util.annotations.Identifier;
 import upstart.util.collect.Optionals;
 import upstart.util.reflect.Reflect;
@@ -17,13 +19,13 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 import java.util.Optional;
 import java.util.stream.Stream;
 
-public class EnvironmentConfigExtension extends SingletonParameterResolver<EnvironmentConfigBuilder> {
+public class EnvironmentConfigExtension extends BaseSingletonParameterResolver<EnvironmentConfigBuilder> {
   public EnvironmentConfigExtension() {
     super(EnvironmentConfigBuilder.class);
   }
 
   @Override
-  protected EnvironmentConfigBuilder createContext(ExtensionContext extensionContext) {
+  public EnvironmentConfigBuilder createContext(ExtensionContext extensionContext) {
     // TODO: allow configMapper to be customized
     EnvironmentConfigBuilder configBuilder = new EnvironmentConfigBuilder("test", new HojackConfigMapper(ObjectMapperFactory.buildAmbientObjectMapper()));
 

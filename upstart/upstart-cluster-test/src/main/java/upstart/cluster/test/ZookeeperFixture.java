@@ -1,22 +1,31 @@
 package upstart.cluster.test;
 
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.test.TestingServer;
+import org.junit.jupiter.api.extension.ExtensionContext;
 import upstart.cluster.zk.CuratorService;
 import upstart.cluster.zk.ZkConfig;
 import upstart.config.EnvironmentConfigFixture;
 import upstart.config.TestConfigBuilder;
 import upstart.test.SingletonExtension;
-import org.apache.curator.framework.CuratorFramework;
-import org.apache.curator.test.TestingServer;
-import org.junit.jupiter.api.extension.ExtensionContext;
+import upstart.util.concurrent.services.IdleService;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.Optional;
 
-public class ZookeeperFixture implements EnvironmentConfigFixture {
-  private final TestingServer server = new TestingServer(true);
+public class ZookeeperFixture extends IdleService implements EnvironmentConfigFixture {
+  private final TestingServer server = new TestingServer(false);
 
   ZookeeperFixture() throws Exception {
+  }
+
+  @Override
+  protected void startUp() throws Exception {
+    server.start();
+  }
+
+  @Override
+  protected void shutDown() throws Exception {
+    server.stop();
   }
 
   public String connectString() {
@@ -38,17 +47,6 @@ public class ZookeeperFixture implements EnvironmentConfigFixture {
     CuratorFramework framework = CuratorService.newCuratorFramework(zkConfig());
     framework.start();
     return framework;
-  }
-
-  void start() throws Exception {
-  }
-
-  void stop() {
-    try {
-      server.stop();
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
-    }
   }
 
   public static ZookeeperFixture getInstance(ExtensionContext context) {

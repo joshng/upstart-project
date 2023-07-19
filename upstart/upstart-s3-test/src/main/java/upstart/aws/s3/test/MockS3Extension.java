@@ -1,13 +1,11 @@
 package upstart.aws.s3.test;
 
+import org.junit.jupiter.api.extension.ExtensionContext;
 import upstart.aws.s3.S3Key;
 import upstart.test.AvailablePortAllocator;
+import upstart.test.BaseSingletonParameterResolver;
 import upstart.test.ExtensionContexts;
-import upstart.test.UpstartExtension;
-import upstart.test.SingletonParameterResolver;
-import org.junit.jupiter.api.extension.AfterEachCallback;
-import org.junit.jupiter.api.extension.BeforeEachCallback;
-import org.junit.jupiter.api.extension.ExtensionContext;
+import upstart.test.SingletonServiceExtension;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -20,14 +18,14 @@ import java.util.stream.Stream;
 
 import static com.google.common.base.Predicates.not;
 
-public class MockS3Extension extends SingletonParameterResolver<MockS3> implements BeforeEachCallback, AfterEachCallback {
+public class MockS3Extension extends BaseSingletonParameterResolver<MockS3> implements SingletonServiceExtension<MockS3> {
 
   protected MockS3Extension() {
     super(MockS3.class);
   }
 
   @Override
-  protected MockS3 createContext(ExtensionContext extensionContext) throws Exception {
+  public MockS3 createService(ExtensionContext extensionContext) throws Exception {
     // TODO: support multiple instances of @MockS3Test annotation for composable fixtures
     Optional<MockS3Test> anno = ExtensionContexts.findNearestAnnotation(MockS3Test.class, extensionContext);
     int port = anno.map(MockS3Test::port).filter(p -> p > 0).orElseGet(AvailablePortAllocator::allocatePort);
@@ -50,19 +48,7 @@ public class MockS3Extension extends SingletonParameterResolver<MockS3> implemen
     System.setProperty("fs.s3a.endpoint", mockS3.getEndpointUri().toString());
     System.setProperty("fs.s3a.aws.credentials.provider", "org.apache.hadoop.fs.s3a.AnonymousAWSCredentialsProvider");
 
-    UpstartExtension.applyOptionalEnvironmentValues(extensionContext, mockS3);
-
     return mockS3;
-  }
-
-  @Override
-  public void beforeEach(ExtensionContext extensionContext) {
-    getOrCreateContext(extensionContext);
-  }
-
-  @Override
-  public void afterEach(ExtensionContext extensionContext) {
-    getExistingContext(extensionContext).ifPresent(MockS3::shutdown);
   }
 
   public static S3Fixture toResourceFixture(MockS3Test.Fixture anno) {

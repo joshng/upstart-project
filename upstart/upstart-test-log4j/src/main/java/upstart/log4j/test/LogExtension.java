@@ -1,7 +1,7 @@
 package upstart.log4j.test;
 
+import upstart.test.BaseSingletonParameterResolver;
 import upstart.test.ExtensionContexts;
-import upstart.test.SingletonParameterResolver;
 import upstart.util.reflect.Reflect;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
@@ -41,7 +41,7 @@ import org.junit.jupiter.api.extension.ExtensionContext;
  *
  * }</pre>
  */
-public class LogExtension extends SingletonParameterResolver<LogFixture> implements BeforeEachCallback, AfterEachCallback {
+public class LogExtension extends BaseSingletonParameterResolver<LogFixture> implements BeforeEachCallback, AfterEachCallback {
   protected LogExtension() {
     super(LogFixture.class);
   }
@@ -59,7 +59,7 @@ public class LogExtension extends SingletonParameterResolver<LogFixture> impleme
   }
 
   @Override
-  protected LogFixture createContext(ExtensionContext extensionContext) throws Exception {
+  public LogFixture createContext(ExtensionContext extensionContext) throws Exception {
     return new LogFixture();
   }
 }

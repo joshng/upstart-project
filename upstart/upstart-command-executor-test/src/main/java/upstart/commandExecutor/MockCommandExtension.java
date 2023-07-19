@@ -1,9 +1,9 @@
 package upstart.commandExecutor;
 
+import upstart.test.BaseSingletonParameterResolver;
 import upstart.test.UpstartExtension;
 import upstart.test.UpstartTest;
 import upstart.test.UpstartTestBuilder;
-import upstart.test.SingletonParameterResolver;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
@@ -47,7 +47,7 @@ import org.junit.jupiter.api.extension.ExtensionContext;
  *
  * @see CommandFixture
  */
-public class MockCommandExtension extends SingletonParameterResolver<CommandFixture> implements BeforeEachCallback {
+public class MockCommandExtension extends BaseSingletonParameterResolver<CommandFixture> implements BeforeEachCallback {
 
   public MockCommandExtension() {
     super(CommandFixture.class);
@@ -78,7 +78,7 @@ public class MockCommandExtension extends SingletonParameterResolver<CommandFixt
   }
 
   @Override
-  protected CommandFixture createContext(ExtensionContext extensionContext) {
+  public CommandFixture createContext(ExtensionContext extensionContext) {
     return new CommandFixture();
   }
 }

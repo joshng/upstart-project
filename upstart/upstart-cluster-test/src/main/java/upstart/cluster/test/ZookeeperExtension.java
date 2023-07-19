@@ -1,30 +1,19 @@
 package upstart.cluster.test;
 
+import upstart.test.BaseSingletonParameterResolver;
+import upstart.test.SingletonServiceExtension;
 import upstart.test.UpstartExtension;
-import upstart.test.SingletonParameterResolver;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
-public class ZookeeperExtension extends SingletonParameterResolver<ZookeeperFixture> implements BeforeEachCallback, AfterEachCallback {
-    public ZookeeperExtension() {
-        super(ZookeeperFixture.class);
-    }
+public class ZookeeperExtension extends BaseSingletonParameterResolver<ZookeeperFixture> implements SingletonServiceExtension<ZookeeperFixture> {
+  public ZookeeperExtension() {
+    super(ZookeeperFixture.class);
+  }
 
-    @Override
-    protected ZookeeperFixture createContext(ExtensionContext extensionContext) throws Exception {
-        return new ZookeeperFixture();
-    }
-
-    @Override
-    public void beforeEach(ExtensionContext context) throws Exception {
-        ZookeeperFixture fixture = getOrCreateContext(context);
-        fixture.start();
-        UpstartExtension.applyOptionalEnvironmentValues(context, fixture);
-    }
-
-    @Override
-    public void afterEach(ExtensionContext context) throws Exception {
-        getExistingContext(context).ifPresent(ZookeeperFixture::stop);
-    }
+  @Override
+  public ZookeeperFixture createService(ExtensionContext extensionContext) throws Exception {
+    return new ZookeeperFixture();
+  }
 }

@@ -2,9 +2,9 @@ package upstart.cluster.test;
 
 import upstart.UpstartService;
 import upstart.config.EnvironmentConfigExtension;
+import upstart.test.BaseSingletonParameterResolver;
 import upstart.test.ExtensionContexts;
 import upstart.test.UpstartExtension;
-import upstart.test.SingletonParameterResolver;
 import upstart.util.concurrent.CompletableFutures;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.AfterTestExecutionCallback;
@@ -20,7 +20,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
-public class UpstartClusterExtension extends SingletonParameterResolver<UpstartTestClusterBuilder>
+public class UpstartClusterExtension extends BaseSingletonParameterResolver<UpstartTestClusterBuilder>
         implements BeforeEachCallback, BeforeTestExecutionCallback, AfterTestExecutionCallback, AfterEachCallback {
   private static final Logger LOG = LoggerFactory.getLogger(UpstartClusterExtension.class);
 
@@ -61,7 +61,7 @@ public class UpstartClusterExtension extends SingletonParameterResolver<UpstartT
   }
 
   @Override
-  protected UpstartTestClusterBuilder createContext(ExtensionContext extensionContext) throws Exception {
+  public UpstartTestClusterBuilder createContext(ExtensionContext extensionContext) throws Exception {
     UpstartExtension.configureTestEnvironment();
     int nodeCount = ExtensionContexts.findNearestAnnotation(UpstartClusterTest.class, extensionContext)
             .map(UpstartClusterTest::nodeCount)

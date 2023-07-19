@@ -1,14 +1,14 @@
 package upstart.test.systemStreams;
 
 import org.junit.jupiter.api.extension.BeforeEachCallback;
+import upstart.test.BaseSingletonParameterResolver;
 import upstart.test.ExtensionContexts;
 import upstart.test.SetupPhase;
-import upstart.test.SingletonParameterResolver;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeTestExecutionCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
-public class SystemOutCaptureExtension extends SingletonParameterResolver<SystemOutCaptor>
+public class SystemOutCaptureExtension extends BaseSingletonParameterResolver<SystemOutCaptor>
         implements BeforeEachCallback, BeforeTestExecutionCallback, AfterEachCallback {
   public SystemOutCaptureExtension() {
     super(SystemOutCaptor.class);
@@ -39,7 +39,7 @@ public class SystemOutCaptureExtension extends SingletonParameterResolver<System
   }
 
   @Override
-  protected SystemOutCaptor createContext(ExtensionContext extensionContext) throws Exception {
+  public SystemOutCaptor createContext(ExtensionContext extensionContext) throws Exception {
     return new SystemOutCaptor();
   }
 }

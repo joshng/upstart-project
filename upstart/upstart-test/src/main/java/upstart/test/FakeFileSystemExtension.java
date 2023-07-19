@@ -28,7 +28,7 @@ import java.util.concurrent.TimeUnit;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class FakeFileSystemExtension extends SingletonParameterResolver<FileSystem> implements BeforeEachCallback {
+public class FakeFileSystemExtension extends BaseSingletonParameterResolver<FileSystem> implements BeforeEachCallback {
   protected FakeFileSystemExtension() {
     super(FileSystem.class);
   }
@@ -61,7 +61,7 @@ public class FakeFileSystemExtension extends SingletonParameterResolver<FileSyst
     }
   }
 
-  protected FileSystem createContext(ExtensionContext extensionContext) {
+  public FileSystem createContext(ExtensionContext extensionContext) {
 
     List<FakeFileSystemTest> annotations = ExtensionContexts.findTestAnnotations(
             FakeFileSystemTest.class,

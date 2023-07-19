@@ -11,6 +11,7 @@ import upstart.config.TestConfigBuilder;
 import upstart.util.collect.MoreStreams;
 import upstart.util.collect.Optionals;
 import upstart.util.concurrent.Deadline;
+import upstart.util.concurrent.services.IdleService;
 import upstart.util.exceptions.UncheckedInterruptedException;
 import io.findify.s3mock.S3Mock;
 import io.findify.s3mock.error.NoSuchKeyException;
@@ -49,7 +50,7 @@ import java.util.stream.Stream;
 
 import static org.awaitility.Awaitility.await;
 
-public class MockS3 implements EnvironmentConfigFixture {
+public class MockS3 extends IdleService implements EnvironmentConfigFixture {
   public static final String REGION = "us-west-2";
   private final Provider realProvider;
   private final S3Mock s3Mock;
@@ -70,6 +71,15 @@ public class MockS3 implements EnvironmentConfigFixture {
       createBucket(bucket);
     }
     endpointUri = URI.create("http://localhost:" + port);
+  }
+
+  @Override
+  protected void startUp() throws Exception {
+  }
+
+  @Override
+  protected void shutDown() throws Exception {
+    s3Mock.stop();
   }
 
   private void onObjectCreated(String bucket, String key, byte[] data, ObjectMetadata metadata) {
@@ -191,10 +201,6 @@ public class MockS3 implements EnvironmentConfigFixture {
                                   "credentialsProviderType", "Anonymous"
                           )
     );
-  }
-
-  void shutdown() {
-    s3Mock.shutdown();
   }
 
   public class OperationLog {

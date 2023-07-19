@@ -1,9 +1,6 @@
 package upstart.test;
 
 import com.google.common.base.Preconditions;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
 import com.google.inject.Injector;
 import com.google.inject.Module;
 import upstart.InternalTestBuilder;
@@ -19,16 +16,12 @@ import org.junit.jupiter.api.extension.BeforeTestExecutionCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.mockito.Mockito;
 
-import java.util.List;
 import java.util.Optional;
-import java.util.stream.Stream;
-
-import static java.util.function.Predicate.*;
 
 /**
  * @see UpstartTest
  */
-public class UpstartExtension extends SingletonParameterResolver<UpstartTestBuilder>
+public class UpstartExtension extends BaseSingletonParameterResolver<UpstartTestBuilder>
         implements BeforeTestExecutionCallback, AfterEachCallback {
 
   static {
@@ -65,7 +58,7 @@ public class UpstartExtension extends SingletonParameterResolver<UpstartTestBuil
   }
 
   public static Optional<? extends UpstartTestBuilder> getOptionalTestBuilder(ExtensionContext extensionContext) {
-    return getOrCreateOptionalContext(UpstartTestBuilder.class, extensionContext);
+    return SingletonExtension.getOrCreateOptionalContext(UpstartTestBuilder.class, extensionContext);
   }
 
   public static void applyOptionalEnvironmentValues(ExtensionContext extensionContext, EnvironmentConfigFixture fixture) {
@@ -77,7 +70,7 @@ public class UpstartExtension extends SingletonParameterResolver<UpstartTestBuil
   }
 
   @Override
-  protected InternalTestBuilder createContext(ExtensionContext extensionContext) throws Exception {
+  public InternalTestBuilder createContext(ExtensionContext extensionContext) throws Exception {
     Preconditions.checkState(extensionContext.getTestInstance().isPresent(),
             "UpstartTestBuilder is not supported in static scope (@BeforeAll), use @BeforeEach instead");
     return new InternalTestBuilder(EnvironmentConfigExtension.getConfigBuilder(extensionContext));

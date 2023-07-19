@@ -10,37 +10,26 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import upstart.dynamodb.DynamoTableInitializer;
 import upstart.provisioning.ProvisionedResource;
-import upstart.test.SingletonExtension;
+import upstart.test.BaseSingletonExtension;
+import upstart.test.SingletonServiceExtension;
 import upstart.test.UpstartExtension;
 import upstart.util.reflect.Reflect;
 
 import javax.inject.Named;
 import java.util.Optional;
 
-public class LocalDynamoDbExtension extends SingletonExtension<DynamoDbFixture> implements BeforeEachCallback, AfterEachCallback, ParameterResolver {
+public class LocalDynamoDbExtension extends BaseSingletonExtension<DynamoDbFixture> implements SingletonServiceExtension<DynamoDbFixture>, ParameterResolver {
   public LocalDynamoDbExtension() {
     super(DynamoDbFixture.class);
   }
 
   @Override
-  public void afterEach(ExtensionContext extensionContext) throws Exception {
-    getExistingContext(extensionContext).ifPresent(dynamoDbFixture -> dynamoDbFixture.stop().join());
-  }
-
-  @Override
-  public void beforeEach(ExtensionContext extensionContext) throws Exception {
-    DynamoDbFixture fixture = getOrCreateContext(extensionContext);
-    UpstartExtension.applyOptionalEnvironmentValues(extensionContext, fixture);
+  public DynamoDbFixture createService(ExtensionContext extensionContext) throws Exception {
     UpstartExtension.getOptionalTestBuilder(extensionContext)
             .ifPresent(testBuilder -> testBuilder.installModule(binder -> ProvisionedResource
                     .provisionAtStartup(binder, DynamoTableInitializer.PROVISIONED_RESOURCE_TYPE)));
-  }
 
-  @Override
-  protected DynamoDbFixture createContext(ExtensionContext extensionContext) throws Exception {
-    DynamoDbFixture fixture = new DynamoDbFixture();
-    fixture.start().join();
-    return fixture;
+    return new DynamoDbFixture();
   }
 
   @Override

@@ -2,8 +2,8 @@ package upstart.test.kafka;
 
 
 import upstart.cluster.test.ZookeeperFixture;
+import upstart.test.BaseSingletonParameterResolver;
 import upstart.test.ExtensionContexts;
-import upstart.test.SingletonParameterResolver;
 import upstart.util.reflect.Reflect;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.junit.jupiter.api.extension.AfterEachCallback;
@@ -12,13 +12,13 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 
 import java.util.stream.Stream;
 
-public class KafkaExtension extends SingletonParameterResolver<EphemeralKafkaBroker> implements BeforeEachCallback, AfterEachCallback {
+public class KafkaExtension extends BaseSingletonParameterResolver<EphemeralKafkaBroker> implements BeforeEachCallback, AfterEachCallback {
     public KafkaExtension() {
         super(EphemeralKafkaBroker.class);
     }
 
     @Override
-    protected EphemeralKafkaBroker createContext(ExtensionContext extensionContext) throws Exception {
+    public EphemeralKafkaBroker createContext(ExtensionContext extensionContext) throws Exception {
         return EphemeralKafkaBroker.create(ZookeeperFixture.getInstance(extensionContext).connectString());
     }
 
