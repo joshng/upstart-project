@@ -66,18 +66,6 @@ public class FakeTime {
     advance(Duration.ZERO);
   }
 
-  public FakeTimeClock clock() {
-    return clock;
-  }
-
-  public Instant instant() {
-    return clock.instant();
-  }
-
-  public long millis() {
-    return clock.millis();
-  }
-
   public Instant advance(Duration duration) {
     checkArgument(!duration.isNegative(), "Negative duration: %s", duration);
 
@@ -103,9 +91,24 @@ public class FakeTime {
     }
   }
 
+  public Clock clock() {
+    return clock;
+  }
+
+  public Instant instant() {
+    return now;
+  }
 
   public ScheduledExecutorService scheduledExecutor(ExecutorService immediateExecutor) {
     return new FakeScheduledExecutorService(immediateExecutor);
+  }
+
+  public long millis() {
+    return clock.millis();
+  }
+
+  public ZoneId getZone() {
+    return clock.getZone();
   }
 
   private static Duration toDuration(long delay, TimeUnit unit) {

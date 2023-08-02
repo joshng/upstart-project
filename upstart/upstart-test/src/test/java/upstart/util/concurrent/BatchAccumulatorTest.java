@@ -19,8 +19,8 @@ import static com.google.common.truth.Truth.assertThat;
 public class BatchAccumulatorTest {
   private static final Duration IDLE_TIMEOUT = Duration.ofMillis(100);
   private static final Duration MAX_BUFFER_LATENCY = Duration.ofMillis(500);
-  private List<List<String>> batches = new ArrayList<>(10);
-  private FakeTime time = new FakeTime(Instant.EPOCH, ZoneOffset.UTC);
+  private final List<List<String>> batches = new ArrayList<>(10);
+  private final FakeTime time = new FakeTime(Instant.EPOCH, ZoneOffset.UTC);
 
   @Test
   void testABatch() {
