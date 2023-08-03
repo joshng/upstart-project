@@ -139,60 +139,6 @@ public sealed class Promise<T> extends CompletableFuture<T> implements BiConsume
     return Collectors.collectingAndThen(ListPromise.toListPromise(), listPromise -> listPromise.thenApply(results -> results.stream().collect(collector)));
   }
 
-  public static <A, B, O> Promise<O> combine(
-          CompletableFuture<A> a,
-          CompletableFuture<B> b,
-          BiFunction<? super A, ? super B, O> combiner
-  ) {
-    return Promise.of(a).thenCombine(b, combiner);
-  }
-
-  public static <A, B, C, O> Promise<O> combine(
-          CompletableFuture<A> a,
-          CompletableFuture<B> b,
-          CompletableFuture<C> c,
-          TriFunction<? super A, ? super B, ? super C, O> combiner
-  ) {
-    return allOf(a, b, c).thenApply(results -> combiner.apply(a.join(), b.join(), c.join()));
-  }
-
-  public static <A, B, C, D, O> Promise<O> combine(
-          CompletableFuture<A> a,
-          CompletableFuture<B> b,
-          CompletableFuture<C> c,
-          CompletableFuture<D> d,
-          QuadFunction<? super A, ? super B, ? super C, ? super D, O> combiner
-  ) {
-    return allOf(a, b, c).thenApply(results -> combiner.apply(a.join(), b.join(), c.join(), d.join()));
-  }
-
-  public static <A, B, O> Promise<O> combineCompose(
-          CompletableFuture<A> a,
-          CompletableFuture<B> b,
-          BiFunction<? super A, ? super B, ? extends CompletionStage<O>> combiner
-  ) {
-    return allOf(a, b).thenCompose(results -> combiner.apply(a.join(), b.join()));
-  }
-
-  public static <A, B, C, O> Promise<O> combineCompose(
-          CompletableFuture<A> a,
-          CompletableFuture<B> b,
-          CompletableFuture<C> c,
-          TriFunction<? super A, ? super B, ? super C, ? extends CompletionStage<O>> combiner
-  ) {
-    return allOf(a, b, c).thenCompose(results -> combiner.apply(a.join(), b.join(), c.join()));
-  }
-
-  public static <A, B, C, D, O> Promise<O> combineCompose(
-          CompletableFuture<A> a,
-          CompletableFuture<B> b,
-          CompletableFuture<C> c,
-          CompletableFuture<D> d,
-          QuadFunction<? super A, ? super B, ? super C, ? super D, ? extends CompletionStage<O>> combiner
-  ) {
-    return allOf(a, b, c, d).thenCompose(results -> combiner.apply(a.join(), b.join(), c.join(), d.join()));
-  }
-
   public static Promise<Void> allOf(CompletableFuture<?>... futures) {
     if (futures.length == 0) return nullPromise();
     if (futures.length == 1) return of(futures[0]).toVoid();
@@ -409,7 +355,7 @@ public sealed class Promise<T> extends CompletableFuture<T> implements BiConsume
           CompletionStage<? extends B> b,
           TriFunction<? super T, ? super A, ? super B, O> fn
   ) {
-    return combine(this, a.toCompletableFuture(), b.toCompletableFuture(), fn);
+    return combine(this, a.toCompletableFuture(), b.toCompletableFuture(), Promise::thenApply, fn);
   }
 
   public <A, B, C, O> Promise<O> thenCombine(
@@ -418,7 +364,7 @@ public sealed class Promise<T> extends CompletableFuture<T> implements BiConsume
           CompletionStage<? extends C> c,
           QuadFunction<? super T, ? super A, ? super B, ? super C, O> fn
   ) {
-    return combine(this, a.toCompletableFuture(), b.toCompletableFuture(), c.toCompletableFuture(), fn);
+    return combine(this, a.toCompletableFuture(), b.toCompletableFuture(), c.toCompletableFuture(), Promise::thenApply, fn);
   }
 
   // could be named thenComposeWith?
@@ -426,7 +372,7 @@ public sealed class Promise<T> extends CompletableFuture<T> implements BiConsume
           CompletionStage<? extends A> a,
           BiFunction<? super T, ? super A, ? extends CompletionStage<O>> fn
   ) {
-    return combineCompose(this, a.toCompletableFuture(), fn);
+    return combine(this, a.toCompletableFuture(), Promise::thenCompose, fn );
   }
 
   public <A, B, O> Promise<O> thenCombineCompose(
@@ -434,7 +380,40 @@ public sealed class Promise<T> extends CompletableFuture<T> implements BiConsume
           CompletionStage<? extends B> b,
           TriFunction<? super T, ? super A, ? super B, ? extends CompletionStage<O>> fn
   ) {
-    return combineCompose(this, a.toCompletableFuture(), b.toCompletableFuture(), fn);
+    return combine(this, a.toCompletableFuture(), b.toCompletableFuture(), Promise::thenCompose, fn);
+  }
+
+  public <A, B, C, O> Promise<O> thenCombineCompose(
+          CompletionStage<? extends A> a,
+          CompletionStage<? extends B> b,
+          CompletionStage<? extends C> c,
+          QuadFunction<? super T, ? super A, ? super B, ? super C, ? extends CompletionStage<O>> fn
+  ) {
+    return combine(this, a.toCompletableFuture(), b.toCompletableFuture(), c.toCompletableFuture(), Promise::thenCompose, fn);
+  }
+
+  public <A, O> OptionalPromise<O> thenCombineComposeOptional(
+          CompletionStage<A> a,
+          BiFunction<? super T, ? super A, ? extends CompletionStage<Optional<O>>> fn
+  ) {
+    return combine(this, a.toCompletableFuture(), Promise::thenComposeOptional, fn);
+  }
+
+  public <A, B, O> OptionalPromise<O> thenCombineComposeOptional(
+          CompletionStage<A> a,
+          CompletionStage<B> b,
+          TriFunction<? super T, ? super A, ? super B, ? extends CompletionStage<Optional<O>>> fn
+  ) {
+    return combine(this, a.toCompletableFuture(), b.toCompletableFuture(), Promise::thenComposeOptional, fn);
+  }
+
+  public <A, B, C, O> OptionalPromise<O> thenCombineComposeOptional(
+          CompletionStage<A> a,
+          CompletionStage<B> b,
+          CompletionStage<C> c,
+          QuadFunction<? super T, ? super A, ? super B, ? super C, ? extends CompletionStage<Optional<O>>> fn
+  ) {
+    return combine(this, a.toCompletableFuture(), b.toCompletableFuture(), c.toCompletableFuture(), Promise::thenComposeOptional, fn);
   }
 
   public Promise<T> onCancel(Runnable callback) {
@@ -461,6 +440,37 @@ public sealed class Promise<T> extends CompletableFuture<T> implements BiConsume
   public boolean isCompletedNormally() {
     return isDone() && !isCompletedExceptionally();
   }
+
+  protected static <A, B, R, P extends Promise<?>> P combine(
+          CompletableFuture<A> a,
+          CompletableFuture<B> b,
+          BiFunction<Promise<Void>, Function<Void, R>, P> continuation,
+          BiFunction<? super A, ? super B, ? extends R> combiner
+  ) {
+    return continuation.apply(allOf(a, b), ignored -> combiner.apply(a.join(), b.join()));
+  }
+
+  protected static <A, B, C, R, P extends Promise<?>> P combine(
+          CompletableFuture<A> a,
+          CompletableFuture<B> b,
+          CompletableFuture<C> c,
+          BiFunction<Promise<Void>, Function<Void, R>, P> continuation,
+          TriFunction<? super A, ? super B, ? super C, ? extends R> combiner
+  ) {
+    return continuation.apply(allOf(a, b, c), ignored -> combiner.apply(a.join(), b.join(), c.join()));
+  }
+
+  protected static <A, B, C, D, R, P extends Promise<?>> P combine(
+          CompletableFuture<A> a,
+          CompletableFuture<B> b,
+          CompletableFuture<C> c,
+          CompletableFuture<D> d,
+          BiFunction<Promise<Void>, Function<Void, R>, P> continuation,
+          QuadFunction<? super A, ? super B, ? super C, ? super D, ? extends R> combiner
+  ) {
+    return continuation.apply(allOf(a, b, c, d), ignored -> combiner.apply(a.join(), b.join(), c.join(), d.join()));
+  }
+
 
   ///////////////////// CompletableFuture methods /////////////////////
 
