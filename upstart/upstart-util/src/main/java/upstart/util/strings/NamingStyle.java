@@ -162,9 +162,13 @@ public enum NamingStyle {
   public abstract StringBuilder combineWordsTo(StringBuilder sb, Stream<String> words);
 
   public String convertTo(NamingStyle newStyle, String str) {
+    return appendConvertedTo(newStyle, str, new StringBuilder()).toString();
+  }
+
+  public StringBuilder appendConvertedTo(NamingStyle newStyle, String str, StringBuilder sb) {
     return newStyle != this
-            ? newStyle.combineWordsTo(new StringBuilder(), extractWords(str)).toString()
-            : str;
+            ? newStyle.combineWordsTo(sb, extractWords(str))
+            : sb.append(str);
   }
 
   public UnaryOperator<String> converterTo(NamingStyle newStyle) {
