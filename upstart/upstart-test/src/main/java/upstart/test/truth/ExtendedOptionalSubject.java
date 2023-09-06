@@ -4,6 +4,7 @@ import com.google.common.truth.FailureMetadata;
 import com.google.common.truth.Subject;
 
 import java.util.Optional;
+import java.util.function.Function;
 
 import static com.google.common.truth.Fact.fact;
 import static com.google.common.truth.Fact.simpleFact;
@@ -24,6 +25,10 @@ public class ExtendedOptionalSubject<T> extends Subject {
 
   public static <T> ExtendedOptionalSubject<T> assertThat(Optional<T> optional) {
     return assertAbout(ExtendedOptionalSubject.<T>optionals()).that(optional);
+  }
+
+  public static <T> Factory<ExtendedOptionalSubject<T>, Optional<T>> optionals() {
+    return (metadata, subject) -> new ExtendedOptionalSubject<>(metadata, subject);
   }
 
   /**
@@ -77,12 +82,16 @@ public class ExtendedOptionalSubject<T> extends Subject {
     }
   }
 
+  public <O> ExtendedOptionalSubject<O> mappedThrough(Function<T, O> mapper) {
+    return check("map()").about(ExtendedOptionalSubject.<O>optionals()).that(actual.map(mapper));
+  }
+
+  public <O> ExtendedOptionalSubject<O> flatMappedThrough(Function<T, Optional<O>> flatMapper) {
+    return check("flatMap()").about(ExtendedOptionalSubject.<O>optionals()).that(actual.flatMap(flatMapper));
+  }
+
   public <S extends Subject> S hasValueThat(Factory<S, ? super T> factory) {
     isPresent();
     return check("get()").about(factory).that(actual.get());
-  }
-
-  public static <T> Factory<ExtendedOptionalSubject<T>, Optional<T>> optionals() {
-    return (metadata, subject) -> new ExtendedOptionalSubject<>(metadata, subject);
   }
 }
