@@ -1,6 +1,5 @@
 package upstart.util.collect;
 
-import com.google.common.base.Equivalence;
 import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSetMultimap;
@@ -207,6 +206,16 @@ public class PairStream<K, V> implements Stream<Map.Entry<K, V>> {
 
   public Map<K, V> toMap() {
     return stream.collect(Collectors.toMap(Entries.getKey(), Entries.getValue()));
+  }
+
+  /** @see upstart.util.collect.MoreCollectors#enumMapSupplier */
+  public <M extends Map<K, V>> M toMap(Supplier<M> mapSupplier) {
+    return stream.collect(Collectors.toMap(
+            Entries.getKey(),
+            Entries.getValue(),
+            (a, b) -> {throw new IllegalStateException("Duplicate key");},
+            mapSupplier
+    ));
   }
 
   public Map<K, V> toMap(BinaryOperator<V> combiner) {

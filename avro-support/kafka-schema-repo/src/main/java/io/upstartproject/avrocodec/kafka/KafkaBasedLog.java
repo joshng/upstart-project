@@ -290,7 +290,7 @@ public class KafkaBasedLog<K, V> {
           }
         }
       } catch (Throwable t) {
-        log.error("Unexpected exception in WorkerThread, LOG IS PERMANENTLY STALLED!: ", KafkaBasedLog.this, t);
+        log.error("Unexpected exception in WorkerThread, LOG IS PERMANENTLY STALLED!: {}", KafkaBasedLog.this, t);
         synchronized (KafkaBasedLog.this) {
           failureException = t instanceof Exception ? (Exception) t : new RuntimeException(t);
           readLogEndOffsetCallbacks.forEach(cb -> cb.accept(null, failureException));

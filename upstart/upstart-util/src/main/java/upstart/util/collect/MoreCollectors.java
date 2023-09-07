@@ -3,9 +3,11 @@ package upstart.util.collect;
 import com.google.common.collect.ImmutableMap;
 import upstart.util.concurrent.SimpleReference;
 
+import java.util.EnumMap;
 import java.util.Optional;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collector;
 
 public interface MoreCollectors {
@@ -30,5 +32,9 @@ public interface MoreCollectors {
             (left, right) -> { throw new UnsupportedOperationException("findLast does not support parallelism/merging, use Stream#reduce instead"); },
             SimpleReference::getOptional
     );
+  }
+
+  static <K extends Enum<K>, V> Supplier<EnumMap<K, V>> enumMapSupplier(Class<K> enumClass) {
+    return () -> new EnumMap<>(enumClass);
   }
 }

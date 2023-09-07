@@ -21,8 +21,20 @@ public class MoreStrings {
     return splitAroundCharAt(str, str.lastIndexOf(delimiter));
   }
 
+  public static Pair<String,String> splitAroundFirst(String str, String delimiter) {
+    return splitAroundCharsAt(str, str.indexOf(delimiter), delimiter.length());
+  }
+
+  public static Pair<String,String> splitAroundLast(String str, String delimiter) {
+    return splitAroundCharsAt(str, str.lastIndexOf(delimiter), delimiter.length());
+  }
+
   public static Pair<String, String> splitAroundCharAt(String str, int idx) {
-    return Pair.of(str.substring(0, idx), str.substring(idx + 1));
+    return splitAroundCharsAt(str, idx, 1);
+  }
+
+  public static Pair<String, String> splitAroundCharsAt(String str, int skipFromIdx, int skipChars) {
+    return Pair.of(str.substring(0, skipFromIdx), str.substring(skipFromIdx + skipChars));
   }
 
   public static Stream<String> splitOnSpaces(String str) {
