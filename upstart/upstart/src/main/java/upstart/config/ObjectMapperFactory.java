@@ -22,8 +22,7 @@ public interface ObjectMapperFactory {
 
     @Override
     public ObjectMapper buildObjectMapper() {
-      return HojackConfigMapper.buildDefaultObjectMapper()
-              .registerModule(new ImmutablesModule());
+      return HojackConfigMapper.buildDefaultObjectMapper();
     }
   }
 }

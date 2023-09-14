@@ -12,12 +12,14 @@ import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import org.kohsuke.MetaInfServices;
 import upstart.config.annotations.AlternativeImmutableAnnotation;
 import upstart.config.annotations.DeserializedImmutable;
 import upstart.util.reflect.Reflect;
 
 import java.util.Optional;
 
+@MetaInfServices(Module.class)
 public class ImmutablesModule extends Module {
   @Override
   public String getModuleName() {
