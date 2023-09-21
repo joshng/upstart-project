@@ -46,6 +46,22 @@ public interface Pair<A, B> extends Map.Entry<A, B> {
     return visitor.apply(getKey(), getValue());
   }
 
+  default <T> Pair<T, B> mapKey(Function<? super A, ? extends T> f) {
+    return of(f.apply(getKey()), getValue());
+  }
+
+  default <T> Pair<T, B> mapKey(BiFunction<? super A, ? super B, ? extends T> f) {
+    return map2(f.andThen(factoryWithValue(getValue())));
+  }
+
+  default <T> Pair<A, T> mapValue(Function<? super B, T> f) {
+    return of(getKey(), f.apply(getValue()));
+  }
+
+  default <T> Pair<A, T> mapValue(BiFunction<? super A, ? super B, ? extends T> f) {
+    return map2(f.andThen(factoryWithKey(getKey())));
+  }
+
   default Pair<B, A> swap() {
     return swap(this);
   }
