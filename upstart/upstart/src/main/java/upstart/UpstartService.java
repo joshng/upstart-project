@@ -1,8 +1,8 @@
 package upstart;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.base.Ticker;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.Service;
 import com.google.inject.AbstractModule;
 import com.google.inject.CreationException;
@@ -12,7 +12,6 @@ import com.google.inject.Module;
 import com.google.inject.Scopes;
 import com.google.inject.Stage;
 import com.google.inject.spi.Message;
-import com.typesafe.config.ConfigException;
 import io.upstartproject.hojack.ConfigMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,6 +49,8 @@ import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static com.google.common.base.Preconditions.checkArgument;
 
 /**
  * A managed upstart service!
@@ -92,14 +93,20 @@ public final class UpstartService extends BaseComposableService<ManagedServiceGr
 
   @Inject
   UpstartService(
-          @ServiceLifecycle(ServiceLifecycle.Phase.Infrastructure) ManagedServiceGraph serviceGraph,
+          @ServiceLifecycle(ServiceLifecycle.Phase.Infrastructure) ManagedServiceGraph infrastructureGraph,
           UpstartApplicationConfig applicationConfig,
           Injector injector
   ) {
-    super(serviceGraph);
+    super(infrastructureGraph);
     this.applicationConfig = applicationConfig;
     this.injector = injector;
     LOG.info("Services created:\n{}\n", delegate());
+    ManagedServiceGraph applicationGraph = infrastructureGraph.getService(ManagedServiceGraph.class);
+    Sets.SetView<Service> doubleRegisteredServices = Sets.intersection(
+            applicationGraph.getAllServices(),
+            infrastructureGraph.getAllServices()
+    );
+    checkArgument(doubleRegisteredServices.isEmpty(), "Services registered in multiple ServiceLifecycle phases: %s", doubleRegisteredServices);
   }
 
   public UpstartApplicationConfig config() {

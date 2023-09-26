@@ -110,14 +110,13 @@ public class LifecycleCoordinator extends NotifyingService {
             .thenCompose(__ -> STOP_QUIETLY.apply(underlyingService))
             .thenAccept(state -> {
               switch (state) {
-                case TERMINATED:
+                case TERMINATED -> {
                   logger.info("Stopped ({}): {}", state, underlyingService);
                   notifyStopped();
-                  break;
-                case FAILED: // if FAILED, then notifyFailed and logging will have happened elsewhere
-                  break;
-                default:
-                  throw new IllegalStateException("Expected stopped service to be TERMINATED or FAILED, but was " + state);
+                }
+                case FAILED -> { } // if FAILED, then notifyFailed and logging will have happened elsewhere
+                default ->
+                        throw new IllegalStateException("Expected stopped service to be TERMINATED or FAILED, but was " + state);
               }
             }));
   }

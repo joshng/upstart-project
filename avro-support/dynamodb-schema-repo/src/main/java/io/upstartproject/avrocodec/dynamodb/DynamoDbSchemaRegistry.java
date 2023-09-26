@@ -28,12 +28,12 @@ import upstart.config.UpstartConfigBinder;
 import upstart.config.UpstartModule;
 import upstart.config.annotations.DeserializedImmutable;
 import upstart.dynamodb.DynamoDbClientService;
-import upstart.dynamodb.DynamoDbModule;
 import upstart.dynamodb.DynamoDbNamespace;
-import upstart.dynamodb.DynamoTableInitializer;
+import upstart.dynamodb.DynamoTable;
+import upstart.dynamodb.SimpleDynamoTableReader;
 import upstart.guice.AnnotationKeyedPrivateModule;
+import upstart.guice.NumberedAnnotation;
 import upstart.guice.PrivateBinding;
-import upstart.provisioning.ProvisionedResource;
 import upstart.util.collect.PairStream;
 import upstart.util.concurrent.BlockingBoundedActor;
 import upstart.util.concurrent.CompletableFutures;
@@ -52,6 +52,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 
 @Singleton
@@ -92,13 +93,12 @@ public class DynamoDbSchemaRegistry implements SchemaRegistry {
   }
 
   @Singleton
-  public static class SchemaTable extends DynamoTableInitializer<SchemaTable.SchemaDocument> {
+  public static class SchemaTable extends SimpleDynamoTableReader<SchemaTable.SchemaDocument> {
 
     public static final String FINGERPRINT_IDX = "byFingerprint";
     public static final Expression WHERE_NOT_EXISTS = Expression.builder().expression("attribute_not_exists(seqNo)").build();
     public static final Predicate<CancellationReason> CONDITIONAL_CHECK_FAILED = reason -> reason.code().equals("ConditionalCheckFailed");
     private final Map<SchemaDescriptor, Integer> knownSchemas = new ConcurrentHashMap<>();
-    private final String namespace;
     private volatile int latestObservedSeqNo = -1;
     private SchemaListener listener;
 
@@ -106,10 +106,9 @@ public class DynamoDbSchemaRegistry implements SchemaRegistry {
     public SchemaTable(
             DynamoDbRegistryConfig config,
             DynamoDbClientService db,
-            @PrivateBinding DynamoDbNamespace namespace
+            @PrivateBinding DynamoTable table
     ) {
-      super(config.repoTableNameSuffix(), SchemaDocument.class, db, namespace);
-      this.namespace = namespace.namespace();
+      super(SchemaDocument.class, table);
     }
 
     public void setListener(SchemaListener listener) {
@@ -137,14 +136,14 @@ public class DynamoDbSchemaRegistry implements SchemaRegistry {
       for (SchemaDescriptor schema : page) {
         if (!knownSchemas.containsKey(schema)) {
           SchemaDocument item = new SchemaDocument(schema, seqNo++);
-          tx.addPutItem(table, req.item(item).build());
+          tx.addPutItem(enhancedTable, req.item(item).build());
           newSchemas.put(schema, item.getSeqNo());
         }
       }
 
       return newSchemas.isEmpty()
               ? CompletableFutures.nullFuture()
-              : Promise.of(enhancedClient().transactWriteItems(tx.build()))
+              : Promise.of(table.enhancedClient().transactWriteItems(tx.build()))
                       .thenRun(() -> {
                         latestObservedSeqNo += newSchemas.size();
                         knownSchemas.putAll(newSchemas);
@@ -163,7 +162,7 @@ public class DynamoDbSchemaRegistry implements SchemaRegistry {
     }
 
     public CompletableFuture<Boolean> insert(SchemaDescriptor schemaDescriptor, int seqNo) {
-      return Promise.of(table().putItem(b -> b.conditionExpression(WHERE_NOT_EXISTS)
+      return Promise.of(enhancedTable().putItem(b -> b.conditionExpression(WHERE_NOT_EXISTS)
               .item(new SchemaDocument(schemaDescriptor, seqNo))))
               .thenReplace(true)
               .recover(ConditionalCheckFailedException.class, e -> false);
@@ -174,7 +173,7 @@ public class DynamoDbSchemaRegistry implements SchemaRegistry {
     }
 
     public Promise<Void> refresh() {
-      return Promise.of(itemFlux(table.scan(b -> {
+      return Promise.of(scan(b -> {
         b.consistentRead(true);
         if (latestObservedSeqNo >= 0) {
           // so verbose ... does anyone at amazon actually work with these APIs?
@@ -185,7 +184,7 @@ public class DynamoDbSchemaRegistry implements SchemaRegistry {
                   .build();
           b.filterExpression(filter);
         }
-      })).reduce(0, (ignored, item) -> {
+      }).reduce(0, (ignored, item) -> {
         int seqNo = item.getSeqNo();
         assert seqNo > latestObservedSeqNo : "SeqNo was out of order: " + seqNo + " <= " + latestObservedSeqNo;
         latestObservedSeqNo = seqNo;
@@ -203,12 +202,7 @@ public class DynamoDbSchemaRegistry implements SchemaRegistry {
         LOG.warn("Tried to delete unknown schema: {}", schema);
         return CompletableFutures.nullFuture();
       }
-      return Promise.of(table().deleteItem(SchemaDocument.sortKey(seqNo))).toVoid();
-    }
-
-    @Override
-    public String serviceName() {
-      return "SchemaTable{" + namespace + "}";
+      return Promise.of(enhancedTable().deleteItem(SchemaDocument.sortKey(seqNo))).toVoid();
     }
 
     @DynamoDbBean
@@ -283,6 +277,7 @@ public class DynamoDbSchemaRegistry implements SchemaRegistry {
   }
 
   public static class DynamoDbSchemaRegistryModule extends UpstartModule {
+    private final static NumberedAnnotation TABLE_ANNOTATION = new NumberedAnnotation();
     private final Annotation annotation;
     private final DynamoDbNamespace namespace;
     private final DynamoDbRegistryConfig config;
@@ -296,7 +291,7 @@ public class DynamoDbSchemaRegistry implements SchemaRegistry {
                                         DynamoDbRegistryConfig config
     ) {
       super(annotation, namespace, config);
-      this.annotation = annotation;
+      this.annotation = checkNotNull(annotation, "annotation");
       this.namespace = namespace;
       this.config = config;
     }
@@ -304,7 +299,7 @@ public class DynamoDbSchemaRegistry implements SchemaRegistry {
     @Override
     protected void configure() {
       install(new AvroTaxonomyModule(annotation));
-      install(new DynamoDbModule());
+      var tableAnnotation = TABLE_ANNOTATION.nextKey(DynamoTable.class);
 
       AnnotationKeyedPrivateModule privateModule = new AnnotationKeyedPrivateModule(
               annotation,
@@ -317,10 +312,11 @@ public class DynamoDbSchemaRegistry implements SchemaRegistry {
           bind(DynamoDbRegistryConfig.class).toInstance(config);
           bind(SchemaRegistry.class).to(DynamoDbSchemaRegistry.class);
           bindPrivateBinding(DynamoDbNamespace.class).toInstance(namespace);
+          bindPrivateBinding(DynamoTable.class).to(tableAnnotation);
         }
       };
       install(privateModule);
-      install(new DynamoTableInitializer.TableInitializerModule(privateModule.annotatedKey(SchemaTable.class)));
+      install(new DynamoTable.TableModule(config.repoTableNameSuffix(), tableAnnotation, namespace));
     }
   }
 

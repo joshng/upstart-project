@@ -3,13 +3,15 @@ package upstart.dynamodb;
 import com.google.common.util.concurrent.MoreExecutors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.enhanced.dynamodb.DynamoDbAsyncTable;
+import software.amazon.awssdk.core.waiters.WaiterResponse;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedAsyncClient;
-import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
-import software.amazon.awssdk.enhanced.dynamodb.model.CreateTableEnhancedRequest;
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient;
-import software.amazon.awssdk.services.dynamodb.model.*;
-import upstart.managedservices.ServiceLifecycle;
+import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
+import software.amazon.awssdk.services.dynamodb.model.DescribeTableResponse;
+import software.amazon.awssdk.services.dynamodb.model.DynamoDbException;
+import software.amazon.awssdk.services.dynamodb.model.ResourceInUseException;
+import software.amazon.awssdk.services.dynamodb.model.TableAlreadyExistsException;
+import software.amazon.awssdk.services.dynamodb.model.UpdateTimeToLiveResponse;
 import upstart.util.concurrent.BlockingBoundedActor;
 import upstart.util.concurrent.Promise;
 
@@ -48,15 +50,13 @@ public class DynamoDbClientService {
   }
 
   public Promise<Void> ensureTableCreated(
-          String tableName,
-          TableSchema<?> tableSchema,
-          CreateTableEnhancedRequest request
+          CreateTableRequest request
   ) {
-    DynamoDbAsyncTable<?> table = enhancedClient.table(tableName, tableSchema);
+    String tableName = request.tableName();
     return tableCreationActor.requestAsync(() -> {
               // TODO: dynamo doesn't support concurrent DDL operations, but what exception is thrown if a different table is creating?
-              LOG.debug("Initiating table creation: {}", table.tableName());
-              return Promise.of(table.createTable(request))
+              LOG.debug("Initiating table creation: {}", tableName);
+              return Promise.of(client.createTable(request))
                       .recover(
                               DynamoDbException.class,
                               e -> (e instanceof ResourceInUseException) || (e instanceof TableAlreadyExistsException),
@@ -64,23 +64,21 @@ public class DynamoDbClientService {
                       );
             }, MoreExecutors.directExecutor())
             .recover(Exception.class, e -> {
-              throw new RuntimeException("Error ensuring table readiness: " + tableName, e);
-            });
+              throw new RuntimeException("Error creating table: " + tableName, e);
+            }).toVoid();
   }
 
   public CompletableFuture<UpdateTimeToLiveResponse> updateTimeToLive(String tableName, String attributeName) {
     return client.updateTimeToLive(b -> b.tableName(tableName).timeToLiveSpecification(s -> s.attributeName(attributeName).enabled(true)));
   }
 
-  public <T> Promise<DynamoDbAsyncTable<T>> waitUntilTableExists(
+  public <T> Promise<WaiterResponse<DescribeTableResponse>> waitUntilTableExists(
           String tableName,
-          TableSchema<T> tableSchema,
           Duration incompleteStatusTimeout,
-          Consumer<? super Promise<DynamoDbAsyncTable<T>>> incompleteStatusCallback
+          Consumer<? super Promise<WaiterResponse<DescribeTableResponse>>> incompleteStatusCallback
   ) {
-    DynamoDbAsyncTable<T> table = enhancedClient.table(tableName, tableSchema);
     return new IncompleteFuturePoller<>(
-            Promise.of(client().waiter().waitUntilTableExists(b -> b.tableName(table.tableName()))).thenReplace(table),
+            Promise.of(client().waiter().waitUntilTableExists(b -> b.tableName(tableName))),
             incompleteStatusCallback,
             incompleteStatusTimeout
     ).start();

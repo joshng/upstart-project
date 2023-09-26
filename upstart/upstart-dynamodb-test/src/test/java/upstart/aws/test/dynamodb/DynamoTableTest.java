@@ -7,6 +7,7 @@ import static upstart.test.truth.CompletableFutureSubject.assertThat;
 import com.google.common.truth.Truth;
 import java.time.Duration;
 import javax.inject.Inject;
+import javax.inject.Named;
 import javax.inject.Singleton;
 import org.junit.jupiter.api.Test;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
@@ -15,23 +16,24 @@ import software.amazon.awssdk.services.dynamodb.model.TimeToLiveStatus;
 import upstart.config.UpstartModule;
 import upstart.dynamodb.*;
 import upstart.test.UpstartLibraryServiceTest;
-import upstart.test.UpstartServiceTest;
 import upstart.util.concurrent.Deadline;
 
 @LocalDynamoDbTest
 @UpstartLibraryServiceTest
-public class DynamoTableInitializerTest extends UpstartModule {
+public class DynamoTableTest extends UpstartModule {
 
-  @Inject private TestInitializer testInitializer;
+  public static final String TEST_TABLE_NAME = "test-table";
+  @Inject private TestTableReader testInitializer;
   @Inject private DynamoDbClientService dbService;
+  @Inject private @Named(TEST_TABLE_NAME) DynamoTable table;
+  private DynamoDbNamespace namespace;
 
   @Override
   protected void configure() {
     super.configure();
     install(new DynamoDbModule());
-    bind(DynamoDbNamespace.class)
-        .toInstance(DynamoDbNamespace.environmentNamespace(upstartContext()));
-    serviceManager().manage(TestInitializer.class);
+    namespace = DynamoDbNamespace.environmentNamespace(upstartContext());
+    install(new DynamoTable.TableModule(TEST_TABLE_NAME, namespace));
   }
 
   @Test
@@ -41,16 +43,16 @@ public class DynamoTableInitializerTest extends UpstartModule {
         .atMost(Duration.ofSeconds(5))
         .untilAsserted(
             () -> {
-              assertThat(testInitializer.describeTable().thenApply(r -> r.table().tableName()))
+              assertThat(table.describeTable().thenApply(r -> r.table().tableName()))
                   .doneWithin(deadline)
                   .completedWithResultSatisfying(Truth::assertThat)
-                  .isEqualTo(testInitializer.tableName());
+                  .isEqualTo(table.tableName());
 
               var ttlDesc =
                   assertThat(
                           dbService
                               .client()
-                              .describeTimeToLive(b -> b.tableName(testInitializer.tableName())))
+                              .describeTimeToLive(b -> b.tableName(namespace.tableName(TEST_TABLE_NAME))))
                       .doneWithin(deadline)
                       .completedNormally();
               assertThat(ttlDesc.timeToLiveDescription().timeToLiveStatus())
@@ -60,11 +62,11 @@ public class DynamoTableInitializerTest extends UpstartModule {
   }
 
   @Singleton
-  public static class TestInitializer extends DynamoTableInitializer<TestBean> {
+  public static class TestTableReader extends DynamoTableDao<TestBean, TestBean> {
 
     @Inject
-    public TestInitializer(DynamoDbClientService dbService, DynamoDbNamespace namespace) {
-      super("test-table", TestBean.class, dbService, namespace);
+    public TestTableReader(@Named(TEST_TABLE_NAME) DynamoTable table) {
+      super(TestBean.class, table, ItemExtractor.identity());
     }
   }
 

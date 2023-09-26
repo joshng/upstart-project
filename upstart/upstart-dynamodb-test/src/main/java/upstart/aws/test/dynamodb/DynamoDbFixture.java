@@ -9,7 +9,7 @@ import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import upstart.UpstartService;
 import upstart.config.EnvironmentConfigFixture;
 import upstart.config.TestConfigBuilder;
-import upstart.dynamodb.DynamoTableInitializer;
+import upstart.dynamodb.DynamoTable;
 import upstart.test.AvailablePortAllocator;
 import upstart.test.UpstartApplicationSandbox;
 import upstart.test.systemStreams.SystemOutCaptor;
@@ -107,6 +107,6 @@ public class DynamoDbFixture extends IdleService implements EnvironmentConfigFix
 
   @Override
   public void initializeSandbox(UpstartService.Builder builder) {
-    builder.installModule(DynamoTableInitializer.PROVISIONED_RESOURCE_TYPE.startupProvisioningModule());
+    builder.installModule(DynamoTable.PROVISIONED_RESOURCE_TYPE.startupProvisioningModule());
   }
 }

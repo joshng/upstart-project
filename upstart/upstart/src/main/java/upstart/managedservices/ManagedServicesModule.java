@@ -35,9 +35,11 @@ import static com.google.common.base.Preconditions.checkState;
 
 public class ManagedServicesModule extends UpstartModule {
   private static final ServiceLifecycle INFRA_LIFECYCLE = ServiceLifecycle.Phase.Infrastructure.annotation();
+  private static final ServiceLifecycle APP_LIFECYCLE = ServiceLifecycle.Phase.Application.annotation();
   public static final Key<ManagedServiceGraph> INFRASTRUCTURE_GRAPH_KEY = Key.get(ManagedServiceGraph.class, INFRA_LIFECYCLE);
   public static final Key<ManagedServiceGraph> APP_GRAPH_KEY = Key.get(ManagedServiceGraph.class, ServiceLifecycle.Phase.Application.annotation());
   private static final ManagedServicesModule INFRA_MODULE = new ManagedServicesModule(INFRA_LIFECYCLE);
+  private static final ManagedServicesModule APP_MODULE = new ManagedServicesModule(APP_LIFECYCLE);
   private static final TypeLiteral<Set<KeyRef>> KEYREF_SET_TYPE = new TypeLiteral<>() {};
   private static final TypeLiteral<Set<Service>> SERVICE_SET_TYPE = new TypeLiteral<>() {};
   private static final TypeLiteral<Set<Service.Listener>> LISTENER_SET_TYPE = new TypeLiteral<>() {};
@@ -68,6 +70,7 @@ public class ManagedServicesModule extends UpstartModule {
 
     if (lifecycle.value() == ServiceLifecycle.Phase.Infrastructure) {
       install(new GuiceDependencyGraph.GuiceModule());
+      install(APP_MODULE);
     } else {// install infrastructure here, in case there are no infrastructure services
       install(INFRA_MODULE);
       new ServiceManager(binder()).manage(annotatedGraphKey, ServiceLifecycle.Phase.Infrastructure);

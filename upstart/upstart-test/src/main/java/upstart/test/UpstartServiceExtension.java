@@ -4,6 +4,7 @@ import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Service;
 import upstart.InternalTestBuilder;
 import upstart.UpstartApplication;
+import upstart.UpstartService;
 import upstart.managedservices.ManagedServiceGraph;
 import upstart.managedservices.ManagedServicesModule;
 import upstart.test.truth.CompletableFutureSubject;
@@ -68,7 +69,12 @@ public class UpstartServiceExtension implements BeforeEachCallback, AfterTestExe
                 .that(shutdownFuture)
                 .doneWithin(Deadline.within(timeoutNanos, TimeUnit.NANOSECONDS));
       } catch (AssertionError e) {
-        throw new AssertionError("Timed out waiting to stop:\n" + graph + "\n" + Threads.formatThreadDump(), e);
+        AssertionError error = new AssertionError(
+                "Timed out waiting to stop:\n" + graph + "\n" + Threads.formatThreadDump(),
+                e
+        );
+        context.getExecutionException().ifPresent(error::addSuppressed);
+        throw error;
       }
       testBuilder.shutdownVisitor().ifPresentOrElse(
               expectation -> expectation.accept(shutdownFuture),
@@ -77,9 +83,9 @@ public class UpstartServiceExtension implements BeforeEachCallback, AfterTestExe
     });
   }
 
-  private void withServiceGraph(UpstartTestBuilder testBuilder, ThrowingConsumer<ManagedServiceGraph> consumer) {
+  private void withServiceGraph(UpstartTestBuilder testBuilder, ThrowingConsumer<UpstartService> consumer) {
     testBuilder.withInjector(
-            injector -> consumer.acceptOrThrow(injector.getInstance(ManagedServicesModule.INFRASTRUCTURE_GRAPH_KEY))
+            injector -> consumer.acceptOrThrow(injector.getInstance(UpstartService.class))
     );
   }
 

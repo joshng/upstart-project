@@ -1,14 +1,13 @@
 package upstart.aws.test.dynamodb;
 
-import org.junit.jupiter.api.extension.AfterEachCallback;
-import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.jupiter.api.extension.ParameterResolver;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
-import upstart.dynamodb.DynamoTableInitializer;
+import upstart.dynamodb.DynamoTable;
+import upstart.dynamodb.DynamoTableDao;
 import upstart.provisioning.ProvisionedResource;
 import upstart.test.BaseSingletonExtension;
 import upstart.test.SingletonServiceExtension;
@@ -27,7 +26,7 @@ public class LocalDynamoDbExtension extends BaseSingletonExtension<DynamoDbFixtu
   public DynamoDbFixture createService(ExtensionContext extensionContext) throws Exception {
     UpstartExtension.getOptionalTestBuilder(extensionContext)
             .ifPresent(testBuilder -> testBuilder.installModule(binder -> ProvisionedResource
-                    .provisionAtStartup(binder, DynamoTableInitializer.PROVISIONED_RESOURCE_TYPE)));
+                    .provisionAtStartup(binder, DynamoTable.PROVISIONED_RESOURCE_TYPE)));
 
     return new DynamoDbFixture();
   }
@@ -50,7 +49,7 @@ public class LocalDynamoDbExtension extends BaseSingletonExtension<DynamoDbFixtu
       return Optional.ofNullable(parameterContext.getParameter().getAnnotation(Named.class))
               .map(named -> {
                 var beanType = (Class<?>) Reflect.getFirstGenericType(parameterContext.getParameter().getParameterizedType());
-                return fixture.enhancedClient().table(named.value(), DynamoTableInitializer.getTableSchema(beanType));
+                return fixture.enhancedClient().table(named.value(), DynamoTableDao.getTableSchema(beanType));
               }).orElseThrow(() -> new IllegalArgumentException("DynamoDbTable<> parameter is missing @Named annotation: " + parameterContext.getParameter().getName()));
     } else if (paramType == DynamoDbClient.class) {
       return fixture.client();
