@@ -35,6 +35,7 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.lang.annotation.Annotation;
 import java.time.Duration;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -51,7 +52,7 @@ public class DynamoTable extends BaseProvisionedResource implements HealthCheck 
 
   private final DynamoDbClientService dbService;
   private final String tableName;
-  private final Set<DynamoTableDao<?, ?>> readers = new HashSet<>();
+  private final Set<DynamoTableApi> registeredApis = new HashSet<>();
 
   @Inject
   public DynamoTable(
@@ -63,26 +64,26 @@ public class DynamoTable extends BaseProvisionedResource implements HealthCheck 
     this.dbService = dbService;
   }
 
-  public synchronized void registerReader(DynamoTableDao<?, ?> reader) {
+  public synchronized void registerApi(DynamoTableApi reader) {
     checkState(state() == State.NEW, "Cannot register readers after startup");
-    readers.add(reader);
+    registeredApis.add(reader);
   }
 
-  @SuppressWarnings("unchecked")
+  @Override
+  protected synchronized CompletableFuture<?> startUp() throws Exception {
+    return super.startUp();
+  }
+
+  public Set<DynamoTableApi> registeredApis() {
+    return Collections.unmodifiableSet(registeredApis);
+  }
+
   public CompletableFuture<TableStatus> getTableStatus() {
     return describeTable().thenApply(resp -> resp.table().tableStatus());
   }
 
   public CompletableFuture<DescribeTableResponse> describeTable() {
     return dbService.describeTable(tableName);
-  }
-
-  private Promise<Void> initTable(Promise<?> tablePromise) {
-    return tablePromise.thenReplaceFuture(this::onTableInitializedAsync);
-  }
-
-  protected Promise<Void> onTableInitializedAsync() {
-    return Promise.allOf(readers.stream().map(reader -> reader.onTableInitialized(this)));
   }
 
   protected <T> DynamoDbAsyncTable<T> enhancedTable(TableSchema<T> schema) {
@@ -116,8 +117,8 @@ public class DynamoTable extends BaseProvisionedResource implements HealthCheck 
   private CreateTableRequest createTableRequest() {
     OperationContext operationContext = DefaultOperationContext.create(tableName);
 
-    List<CreateTableRequest> createTableRequests = readers.stream()
-            .map(reader -> buildCreateTableRequest(reader, operationContext))
+    List<CreateTableRequest> createTableRequests = registeredApis.stream()
+            .map(api -> buildCreateTableRequest(api, api.tableSchema(), operationContext))
             .toList();
 
     return switch (createTableRequests.size()) {
@@ -127,51 +128,46 @@ public class DynamoTable extends BaseProvisionedResource implements HealthCheck 
     };
   }
 
-  private CreateTableRequest mergeCreateTableRequest(List<CreateTableRequest> readerRequests) {
-    CreateTableRequest.Builder builder = CreateTableRequest.builder();
-    CreateTableRequest request = builder.tableName(tableName)
-            .attributeDefinitions(readerRequests.stream()
+  private CreateTableRequest mergeCreateTableRequest(List<CreateTableRequest> apiRequests) {
+    CreateTableRequest request = CreateTableRequest.builder().tableName(tableName)
+            .attributeDefinitions(apiRequests.stream()
                                           .flatMap(r -> r.attributeDefinitions().stream()).distinct().toList())
-            .keySchema(readerRequests.stream()
+            .keySchema(apiRequests.stream()
                                .flatMap(r -> r.keySchema().stream()).distinct().toList())
-            .globalSecondaryIndexes(omitEmptyList(
-                    readerRequests.stream().flatMap(r -> r.globalSecondaryIndexes().stream()).distinct().toList()))
-            .localSecondaryIndexes(omitEmptyList(
-                    readerRequests.stream().flatMap(r -> r.localSecondaryIndexes().stream()).distinct().toList()))
-            .tableClass(readerRequests.stream()
+            .globalSecondaryIndexes(apiRequests.stream()
+                                            .flatMap(r -> r.globalSecondaryIndexes().stream()).distinct().toList())
+            .localSecondaryIndexes(apiRequests.stream()
+                                           .flatMap(r -> r.localSecondaryIndexes().stream()).distinct().toList())
+            .tableClass(apiRequests.stream()
                                 .map(CreateTableRequest::tableClass).distinct().collect(MoreCollectors.onlyElement()))
-            .streamSpecification(readerRequests.stream()
+            .streamSpecification(apiRequests.stream()
                                          .map(CreateTableRequest::streamSpecification)
                                          .filter(Objects::nonNull)
                                          .distinct()
                                          .collect(MoreCollectors.toOptional())
                                          .orElse(null))
-            .billingMode(readerRequests.stream()
+            .billingMode(apiRequests.stream()
                                  .map(CreateTableRequest::billingMode).distinct()
                                  .collect(MoreCollectors.onlyElement()))
-            .provisionedThroughput(readerRequests.stream()
+            .provisionedThroughput(apiRequests.stream()
                                            .map(CreateTableRequest::provisionedThroughput)
                                            .filter(Objects::nonNull)
                                            .distinct()
-                                           .collect(MoreCollectors.toOptional()).orElse(null))
-            .tags(readerRequests.stream().flatMap(r -> r.tags().stream()).distinct().toList())
+                                           .collect(MoreCollectors.toOptional())
+                                           .orElse(null))
+            .tags(apiRequests.stream().flatMap(r -> r.tags().stream()).distinct().toList())
             .build();
     return request;
   }
 
-  private static <T> List<T> omitEmptyList(List<T> list) {
-    return Optional.of(list)
-            .filter(l -> !l.isEmpty())
-            .orElse(null);
-  }
-
   static <T> CreateTableRequest buildCreateTableRequest(
-          DynamoTableDao<T, ?> reader,
+          DynamoTableApi api,
+          TableSchema<T> tableSchema,
           OperationContext operationContext
   ) {
-    CreateTableEnhancedRequest enhancedRequest = reader.prepareCreateTableRequest(CreateTableEnhancedRequest.builder()).build();
+    CreateTableEnhancedRequest enhancedRequest = api.prepareCreateTableRequest(CreateTableEnhancedRequest.builder()).build();
     return CreateTableOperation.<T>create(enhancedRequest)
-            .generateRequest(reader.tableSchema(), operationContext, null);
+            .generateRequest(tableSchema, operationContext, null);
   }
 
   @Override
@@ -184,17 +180,17 @@ public class DynamoTable extends BaseProvisionedResource implements HealthCheck 
 
   @Override
   public Promise<Void> waitUntilProvisioned() {
-    return initTable(dbService.waitUntilTableExists(tableName, Duration.ofSeconds(5), promise -> {
+    return dbService.waitUntilTableExists(tableName, Duration.ofSeconds(5), promise -> {
       if (wasStartupCanceled()) {
         promise.completeExceptionally(new ShutdownException("Startup was canceled"));
       } else {
         LOG.warn("Waiting for table '{}' to be ready...", tableName);
       }
-    }));
+    }).toVoid();
   }
 
   private Optional<String> getTtlAttribute() {
-    return readers.stream().map(DynamoTableDao::getTtlAttribute).flatMap(Optional::stream).collect(MoreCollectors.toOptional());
+    return registeredApis.stream().map(DynamoTableApi::getTtlAttribute).flatMap(Optional::stream).collect(MoreCollectors.toOptional());
   }
 
   private Promise<Void> applyTtl(String ttlAttr) {
@@ -243,8 +239,8 @@ public class DynamoTable extends BaseProvisionedResource implements HealthCheck 
   }
 
   public static class TableModule extends UpstartModule {
-    private static final TypeLiteral<DynamoTableDao<?, ?>> TABLE_READER_TYPE = new TypeLiteral<>() {};
-    public static final TypeLiteral<Set<DynamoTableDao<?, ?>>> TABLE_READER_SET_TYPE = new TypeLiteral<>(){};
+    private static final TypeLiteral<DynamoTableApi> TABLE_READER_TYPE = new TypeLiteral<>() {};
+    public static final TypeLiteral<Set<DynamoTableApi>> TABLE_READER_SET_TYPE = new TypeLiteral<>(){};
     private final Key<DynamoTable> key;
     private final DynamoDbNamespace namespace;
     private final String tableNameSuffix;

@@ -1,9 +1,20 @@
 package upstart.dynamodb.heterogeneous;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
+import software.amazon.awssdk.enhanced.dynamodb.DynamoDbAsyncIndex;
 import software.amazon.awssdk.enhanced.dynamodb.internal.AttributeValues;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbAttribute;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbPartitionKey;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSecondaryPartitionKey;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSecondarySortKey;
+import software.amazon.awssdk.enhanced.dynamodb.model.CreateTableEnhancedRequest;
+import software.amazon.awssdk.enhanced.dynamodb.model.QueryConditional;
+import software.amazon.awssdk.services.dynamodb.model.ProjectionType;
 import upstart.aws.test.dynamodb.LocalDynamoDbTest;
 import upstart.config.UpstartModule;
 import upstart.dynamodb.DynamoDbNamespace;
@@ -18,8 +29,9 @@ import javax.inject.Named;
 import javax.inject.Singleton;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
-import static com.google.common.base.Preconditions.checkState;
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.truth.Truth.assertThat;
 
 @LocalDynamoDbTest
@@ -37,18 +49,36 @@ class MixedDynamoTableReaderTest extends UpstartModule {
 
   @Test
   void roundtrip() {
-    Circle redCircle = new Circle(1.0, Color.RED);
-    Square redSquare = new Square(2.0, Color.RED);
-    Square greenSquare = new Square(2.0, Color.GREEN);
+    Circle redCircle = new Circle(1, Color.RED);
+    Square redSquare = new Square(2, Color.RED);
+    Square greenSquare = new Square(2, Color.GREEN);
     Promise.allOf(
             circleDao.write(redCircle),
             squareDao.write(redSquare),
             squareDao.write(greenSquare)
     ).join();
 
-    List<Shape> results = reader.allByColor(Color.RED).collectList().block();
+    List<Shape> redShapes = reader.allByColor(Color.RED).collectList().block();
+    assertThat(redShapes).containsExactly(redCircle, redSquare).inOrder();
 
-    assertThat(results).containsExactly(redCircle, redSquare).inOrder();
+    List<Square> sideResults = squareDao.queryBySide(2).collectList().block();
+    assertThat(sideResults).containsExactly(greenSquare, redSquare).inOrder();
+
+    List<Shape> squareResults = reader.queryByVertices(4).collectList().block();
+    assertThat(squareResults).containsExactly(redSquare, greenSquare);
+  }
+
+  @Test
+  void provisionsIndex() throws JsonProcessingException {
+    ObjectMapper objectMapper = new ObjectMapper();
+    ObjectNode obj = objectMapper.convertValue(
+            circleDao.table().resourceRequirement().resourceConfig(),
+            ObjectNode.class
+    );
+
+    List<String> globalIndexNames = obj.get("globalSecondaryIndexes").findValuesAsText("indexName");
+    assertThat(globalIndexNames).containsExactly(SingleTableReader.VERTEX_INDEX, SquareDao.SIDE_INDEX);
+//    System.out.println(objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(obj));
   }
 
   enum Color {
@@ -67,18 +97,19 @@ class MixedDynamoTableReaderTest extends UpstartModule {
     }
   }
 
-  record Square(double side, Color color) implements Shape {
+  record Square(int side, Color color) implements Shape {
     @Override
     public double area() {
       return side * side;
     }
   }
 
-  public abstract static class BaseShapeBlob<S extends Shape> extends MixedDynamoTableReader.SortKeyTypePrefixItem {
+  @DynamoDbBean
+  public abstract static class BaseShapeBean<S extends Shape> extends MixedTableDynamoBean.Base implements SortKeyTypePrefixDynamoBean {
     private String partitionKey;
     private String sortKey;
 
-    public BaseShapeBlob(S shape) {
+    public BaseShapeBean(S shape) {
       partitionKey = shape.color().toString();
       sortKey = "%06f".formatted(shape.area());
     }
@@ -92,8 +123,19 @@ class MixedDynamoTableReaderTest extends UpstartModule {
       return s;
     }
 
+    @DynamoDbSecondaryPartitionKey(indexNames = SingleTableReader.VERTEX_INDEX)
+    public int getVertices() {
+      return vertices();
+    }
+
+    protected abstract int vertices();
+
+    public void setVertices(int v) {
+      checkArgument(v == vertices(), "Mismatched vertices");
+    }
+
     @Deprecated
-    public BaseShapeBlob() {
+    public BaseShapeBean() {
     }
 
 
@@ -103,27 +145,32 @@ class MixedDynamoTableReaderTest extends UpstartModule {
     }
 
     @Override
-    protected String sortKeySuffix() {
+    public String sortKeySuffix() {
       return sortKey;
     }
   }
 
   @DynamoTypeId("circle")
   @DynamoDbBean
-  public static class CircleBlob extends BaseShapeBlob<Circle> {
+  public static class CircleBean extends BaseShapeBean<Circle> {
     private double radius;
 
-    public CircleBlob(Circle shape) {
+    public CircleBean(Circle shape) {
       super(shape);
       this.radius = shape.radius();
     }
 
-    public CircleBlob() {
+    public CircleBean() {
     }
 
     @Override
     public Circle buildShape() {
       return new Circle(radius, Color.valueOf(getPartitionKey()));
+    }
+
+    @Override
+    public int vertices() {
+      return Integer.MAX_VALUE;
     }
 
     public double getRadius() {
@@ -137,22 +184,36 @@ class MixedDynamoTableReaderTest extends UpstartModule {
 
   @DynamoTypeId("square")
   @DynamoDbBean
-  public static class SquareBlob extends BaseShapeBlob<Square> {
-    private double side;
+  public static class SquareBean extends BaseShapeBean<Square> {
+    private int side;
 
-    public SquareBlob(Square shape) {
+    public SquareBean(Square shape) {
       super(shape);
       this.side = shape.side();
     }
 
-    public SquareBlob() {
+    public SquareBean() {
     }
 
-    public double getSide() {
+    @DynamoDbPartitionKey
+    @DynamoDbSecondarySortKey(indexNames = SquareDao.SIDE_INDEX)
+    @DynamoDbAttribute(PARTITION_KEY_ATTRIBUTE)
+    @Override
+    public String getPartitionKey() {
+      return super.getPartitionKey();
+    }
+
+    @Override
+    public int vertices() {
+      return 4;
+    }
+
+    @DynamoDbSecondaryPartitionKey(indexNames = SquareDao.SIDE_INDEX)
+    public int getSide() {
       return side;
     }
 
-    public void setSide(double side) {
+    public void setSide(int side) {
       this.side = side;
     }
 
@@ -164,60 +225,77 @@ class MixedDynamoTableReaderTest extends UpstartModule {
 
   @DynamoTypeId("circle")
   @Singleton
-  static class CircleDao extends DynamoTableDao<CircleBlob, Circle> {
+  static class CircleDao extends DynamoTableDao<CircleBean, Circle> {
     @Inject
     public CircleDao(@Named(TABLE_NAME) DynamoTable table) {
-      super(CircleBlob.class, table, ItemExtractor.of(CircleBlob::toShape));
+      super(CircleBean.class, table, ItemExtractor.of(CircleBean::toShape));
     }
 
     Promise<Void> write(Circle circle) {
-      return Promise.of(enhancedTable.putItem(b -> b.item(new CircleBlob(circle))));
+      return Promise.of(enhancedTable.putItem(b -> b.item(new CircleBean(circle))));
     }
   }
 
   @DynamoTypeId("square")
   @Singleton
-  static class SquareDao extends DynamoTableDao<SquareBlob, Square> {
+  static class SquareDao extends DynamoTableDao<SquareBean, Square> {
+    public static final String SIDE_INDEX = "side-index";
+    private DynamoDbAsyncIndex<SquareBean> sideIndex;
+
     @Inject
     public SquareDao(@Named(TABLE_NAME) DynamoTable table) {
-      super(SquareBlob.class, table, ItemExtractor.of(SquareBlob::toShape));
+      super(SquareBean.class, table, ItemExtractor.of(SquareBean::toShape));
+      sideIndex = enhancedTable.index(SIDE_INDEX);
     }
 
     Promise<Void> write(Square square) {
-      return Promise.of(enhancedTable.putItem(b -> b.item(new SquareBlob(square))));
+      return Promise.of(enhancedTable.putItem(b -> b.item(new SquareBean(square))));
+    }
+
+    Flux<Square> queryBySide(int side) {
+      return queryIndex(sideIndex, b -> b.queryConditional(QueryConditional.keyEqualTo(kb -> kb.partitionValue(side))));
+    }
+
+
+    @Override
+    public CreateTableEnhancedRequest.Builder prepareCreateTableRequest(CreateTableEnhancedRequest.Builder builder) {
+      return builder.globalSecondaryIndices(
+              b -> b.indexName(SIDE_INDEX).projection(proj -> proj.projectionType(ProjectionType.ALL))
+      );
     }
   }
 
-  static class SingleTableReader extends MixedDynamoTableReader<BaseShapeBlob<?>, Shape> {
+  static class SingleTableReader extends MixedDynamoTableReader<BaseShapeBean<?>, Shape> {
+    public static final String VERTEX_INDEX = "vertex-index";
+
     @Inject
     private SingleTableReader(
             CircleDao circleReader,
             SquareDao squareReader,
             @Named(TABLE_NAME) DynamoTable table
     ) {
-      super(new SortKeyTypePrefixExtractor(), table, List.of(circleReader, squareReader));
+      super(BaseShapeBean.class, new SortKeyTypePrefixExtractor(), table, Set.of(circleReader, squareReader));
     }
 
     public Flux<Shape> allByColor(Color color) {
       return query(b -> b
               .keyConditionExpression("#pk = :pk")
-              .expressionAttributeNames(Map.of("#pk", BaseShapeBlob.PARTITION_KEY_ATTRIBUTE))
+              .expressionAttributeNames(Map.of("#pk", BaseShapeBean.PARTITION_KEY_ATTRIBUTE))
               .expressionAttributeValues(Map.of(":pk", AttributeValues.stringValue(color.toString())))
       );
     }
-  }
 
-//  static class CircleWriter extends DynamoTableWriter<CircleBlob, PackedRecord> {
-//    @Inject
-//    public CircleWriter(AvroDynamoWriteSupport<PackedRecord, CircleBlob> writeSupport) {
-//      super(writeSupport);
-//    }
-//  }
-//
-//  static class SquareWriter extends AvroDynamoTableWriter<SquareBlob, PackedRecord> {
-//    @Inject
-//    public SquareWriter(AvroDynamoWriteSupport<PackedRecord, SquareBlob> writeSupport) {
-//      super(writeSupport);
-//    }
-//  }
+    public Flux<Shape> queryByVertices(int vertices) {
+      return query(b -> b.indexName(VERTEX_INDEX)
+              .keyConditionExpression("#v = :v")
+              .expressionAttributeNames(Map.of("#v", "vertices"))
+              .expressionAttributeValues(Map.of(":v", AttributeValues.numberValue(vertices)))
+      );
+    }
+
+    @Override
+    public CreateTableEnhancedRequest.Builder prepareCreateTableRequest(CreateTableEnhancedRequest.Builder builder) {
+      return builder.globalSecondaryIndices(b -> b.indexName(VERTEX_INDEX).projection(pb -> pb.projectionType(ProjectionType.ALL)));
+    }
+  }
 }

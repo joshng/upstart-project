@@ -6,6 +6,8 @@ import upstart.util.functions.AsyncFunction;
 
 import java.util.concurrent.CompletableFuture;
 
+import static com.google.common.base.Preconditions.checkState;
+
 /**
  * A process that can be {@link #start}ed and {@link #stop}ped, based on the guava {@link Service} library.
  * This interface extends the guava {@link Service} API by offering {@link CompletableFuture}s to simplify the
@@ -50,6 +52,18 @@ public interface ComposableService extends Service {
 
   default boolean noLongerRunning() {
     return !isStoppable();
+  }
+
+  default boolean notYetStarted() {
+    return state().compareTo(State.RUNNING) < 0;
+  }
+
+  default void checkRunning() {
+    checkState(isRunning(), "%s: Service is not running", this);
+  }
+
+  default void checkNotYetStarted() {
+    checkState(notYetStarted(), "%s: Service has already started", this);
   }
 
   class AdapterService extends BaseComposableService<Service> {

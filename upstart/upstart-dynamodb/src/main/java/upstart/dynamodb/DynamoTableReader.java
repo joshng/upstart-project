@@ -1,5 +1,6 @@
 package upstart.dynamodb;
 
+import com.google.common.collect.MoreCollectors;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import software.amazon.awssdk.core.async.SdkPublisher;
@@ -7,6 +8,8 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbAsyncIndex;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbAsyncTable;
 import software.amazon.awssdk.enhanced.dynamodb.Key;
 import software.amazon.awssdk.enhanced.dynamodb.NestedAttributeName;
+import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbAttribute;
 import software.amazon.awssdk.enhanced.dynamodb.model.Page;
 import software.amazon.awssdk.enhanced.dynamodb.model.PagePublisher;
 import software.amazon.awssdk.enhanced.dynamodb.model.QueryEnhancedRequest;
@@ -15,22 +18,26 @@ import upstart.aws.FluxPromise;
 import upstart.util.concurrent.ListPromise;
 import upstart.util.concurrent.OptionalPromise;
 import upstart.util.concurrent.Promise;
+import upstart.util.reflect.Reflect;
+import upstart.util.strings.NamingStyle;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Optional;
 import java.util.function.Consumer;
 
-public interface DynamoTableReader<S, T> {
-  default Flux<S> itemFlux(PagePublisher<S> pagePublisher) {
-    return Flux.from(pagePublisher.items());
-  }
+import static com.google.common.base.Preconditions.checkState;
 
+public interface DynamoTableReader<B, T> extends DynamoTableApi {
   Consumer<QueryEnhancedRequest.Builder> queryDecorator();
-  ItemExtractor<S, T> extractor();
 
-  DynamoTableDao<S, ?> dao();
+  ItemExtractor<B, T> extractor();
+  DynamoTableDao<B, ?> dao();
 
-  default DynamoDbAsyncTable<S> enhancedTable() {
+  @Override
+  TableSchema<B> tableSchema();
+
+  default DynamoDbAsyncTable<B> enhancedTable() {
     return dao().enhancedTable();
   }
 
@@ -56,7 +63,7 @@ public interface DynamoTableReader<S, T> {
   }
 
   default Flux<T> queryIndex(
-          DynamoDbAsyncIndex<S> index,
+          DynamoDbAsyncIndex<B> index,
           Consumer<QueryEnhancedRequest.Builder> requestConsumer,
           NestedAttributeName... extraAttributes
   ) {
@@ -64,7 +71,7 @@ public interface DynamoTableReader<S, T> {
   }
 
   default Flux<T> queryIndex(
-          DynamoDbAsyncIndex<S> index,
+          DynamoDbAsyncIndex<B> index,
           Consumer<QueryEnhancedRequest.Builder> requestConsumer,
           Collection<NestedAttributeName> extraAttributes
   ) {
@@ -79,7 +86,7 @@ public interface DynamoTableReader<S, T> {
     return toFlux(enhancedTable().scan(requestConsumer));
   }
 
-  default Promise<T> unpack(S blob) {
+  default Promise<T> unpack(B blob) {
     return Promise.of(extractor().extract(blob));
   }
 
@@ -87,53 +94,45 @@ public interface DynamoTableReader<S, T> {
     return FluxPromise.toListPromise(items);
   }
 
-  default Flux<T> toFlux(SdkPublisher<Page<S>> pagePublisher) {
+  default Flux<T> toFlux(SdkPublisher<Page<B>> pagePublisher) {
     return toFlux(PagePublisher.create(pagePublisher));
   }
 
-  default Flux<T> toFlux(PagePublisher<S> pagePublisher) {
-    return itemFlux(pagePublisher)
+  default Flux<T> toFlux(PagePublisher<B> pagePublisher) {
+    return beanFlux(pagePublisher)
             .map(this::unpack)
             .flatMap(Mono::fromFuture);
   }
 
-  default <V> DynamoTableReader<S, V> withReadTransformer(ItemTransformer<? super S, ? super T, V> transform) {
-    ItemExtractor<S, V> extractorChain = extractor().andThen(transform);
-    var reader = dao();
-    return new DynamoTableReader<>() {
-      @Override
-      public Consumer<QueryEnhancedRequest.Builder> queryDecorator() {
-        return DynamoTableReader.this.queryDecorator();
-      }
-
-      public ItemExtractor<S, V> extractor() {
-        return extractorChain;
-      }
-
-      @Override
-      public DynamoTableDao<S, ?> dao() {
-        return reader;
-      }
-    };
+  @Override
+  default Optional<String> getTtlAttribute() {
+    return Reflect.allAnnotatedMethods(
+                    beanClass(), TimeToLiveAttribute.class, Reflect.LineageOrder.SubclassBeforeSuperclass)
+            .collect(MoreCollectors.toOptional())
+            .map(
+                    meth ->
+                            Optional.ofNullable(meth.getAnnotation(DynamoDbAttribute.class))
+                                    .map(DynamoDbAttribute::value)
+                                    .orElseGet(
+                                            () -> {
+                                              checkState(
+                                                      meth.getName().startsWith("get"),
+                                                      "Annotated bean method should start with 'get': %s",
+                                                      meth.getName());
+                                              return NamingStyle.UpperCamelCase.convertTo(
+                                                      NamingStyle.LowerCamelCase, meth.getName().substring(3));
+                                            }));
   }
 
-  default DynamoTableReader<S, T> withQueryDecorator(Consumer<QueryEnhancedRequest.Builder> decorator) {
-    var reader = dao();
-    var decoratorChain = queryDecorator().andThen(decorator);
-    return new DynamoTableReader<>() {
-      @Override
-      public Consumer<QueryEnhancedRequest.Builder> queryDecorator() {
-        return decoratorChain;
-      }
+  default <V> DynamoTableReader<B, V> withReadTransformer(ItemTransformer<? super B, ? super T, V> transform) {
+    return new TransformedTableReader<>(dao(), queryDecorator(), extractor().andThen(transform));
+  }
 
-      public ItemExtractor<S, T> extractor() {
-        return DynamoTableReader.this.extractor();
-      }
+  default DynamoTableReader<B, T> withQueryDecorator(Consumer<QueryEnhancedRequest.Builder> decorator) {
+    return new TransformedTableReader<B, T>(dao(), queryDecorator().andThen(decorator), extractor());
+  }
 
-      @Override
-      public DynamoTableDao<S, ?> dao() {
-        return reader;
-      }
-    };
+  default Flux<B> beanFlux(PagePublisher<B> pagePublisher) {
+    return Flux.from(pagePublisher.items());
   }
 }
