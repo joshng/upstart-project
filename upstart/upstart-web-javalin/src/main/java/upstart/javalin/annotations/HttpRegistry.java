@@ -130,8 +130,7 @@ public class HttpRegistry {
 
     @Override
     protected void configure() {
-      AnnotatedEndpointHandler<T> handler =
-          handlerFor(TypeLiterals.getRawType(targetKey.getTypeLiteral()));
+      AnnotatedEndpointHandler<T> handler = handlerFor(TypeLiterals.getRawType(targetKey.getTypeLiteral()));
       Type targetType = targetKey.getTypeLiteral().getType();
       TypeLiteral<AnnotatedEndpointInitializer<T>> initializerType =
           TypeLiterals.getParameterizedWithOwner(

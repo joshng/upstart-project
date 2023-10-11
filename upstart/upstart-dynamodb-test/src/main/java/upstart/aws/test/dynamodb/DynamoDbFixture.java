@@ -74,12 +74,16 @@ public class DynamoDbFixture extends IdleService implements EnvironmentConfigFix
 
   @Override
   public void applyEnvironmentValues(TestConfigBuilder<?> config, Optional<ExtensionContext> testExtensionContext) {
-    config.overrideConfig("""
-                          upstart.aws.dynamodb {
-                            endpoint: "%s"
-                            region: %s
-                          }
-                          """.formatted(endpoint, REGION));
+    config.overrideConfig(upstartOverrideConfig());
+  }
+
+  public String upstartOverrideConfig() {
+    return """
+            upstart.aws.dynamodb {
+              endpoint: "%s"
+              region: %s
+            }
+            """.formatted(endpoint, REGION);
   }
 
   public DynamoDbClient client() {

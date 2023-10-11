@@ -2,7 +2,6 @@ package upstart.dynamodb;
 
 import com.google.common.collect.MoreCollectors;
 import com.google.inject.Key;
-import com.google.inject.TypeLiteral;
 import com.google.inject.name.Names;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,7 +51,7 @@ public class DynamoTable extends BaseProvisionedResource implements HealthCheck 
 
   private final DynamoDbClientService dbService;
   private final String tableName;
-  private final Set<DynamoTableApi> registeredApis = new HashSet<>();
+  private final Set<DynamoTableMapper> registeredApis = new HashSet<>();
 
   @Inject
   public DynamoTable(
@@ -64,8 +63,8 @@ public class DynamoTable extends BaseProvisionedResource implements HealthCheck 
     this.dbService = dbService;
   }
 
-  public synchronized void registerApi(DynamoTableApi reader) {
-    checkState(state() == State.NEW, "Cannot register readers after startup");
+  public synchronized void registerApi(DynamoTableMapper reader) {
+    checkState(state() == State.NEW, "Tried to register after startup");
     registeredApis.add(reader);
   }
 
@@ -74,7 +73,7 @@ public class DynamoTable extends BaseProvisionedResource implements HealthCheck 
     return super.startUp();
   }
 
-  public Set<DynamoTableApi> registeredApis() {
+  public Set<DynamoTableMapper> registeredApis() {
     return Collections.unmodifiableSet(registeredApis);
   }
 
@@ -101,6 +100,33 @@ public class DynamoTable extends BaseProvisionedResource implements HealthCheck 
     return PROVISIONED_RESOURCE_TYPE;
   }
 
+  public String tableName() {
+    return tableName;
+  }
+
+  @Override
+  public CompletableFuture<HealthStatus> checkHealth() {
+    return getTableStatus()
+            .thenApply(tableStatus -> HealthStatus.healthyIf(
+                    tableStatus == TableStatus.ACTIVE,
+                    "DynamoDB table '%s' was not ACTIVE: %s",
+                    tableName(),
+                    tableStatus
+            ));
+  }
+
+  public DynamoDbEnhancedAsyncClient enhancedClient() {
+    return dbService.enhancedClient();
+  }
+
+  public DynamoDbAsyncClient client() {
+    return dbService.client();
+  }
+
+  public CompletableFuture<DescribeTableResponse> describeTable(String tableName) {
+    return dbService.describeTable(tableName);
+  }
+
   @Override
   public Object resourceConfig() {
     PersistentMap<String, Object> tableSpec = SdkPojoSerializer.serialize(createTableRequest(), NamingStyle.LowerCamelCaseSplittingAcronyms);
@@ -112,6 +138,25 @@ public class DynamoTable extends BaseProvisionedResource implements HealthCheck 
                     "enabled", true
                     )
             )).orElse(tableSpec);
+  }
+
+  @Override
+  public Promise<Void> waitUntilProvisioned() {
+    return dbService.waitUntilTableExists(tableName, Duration.ofSeconds(5), promise -> {
+      if (wasStartupCanceled()) {
+        promise.completeExceptionally(new ShutdownException("Startup was canceled"));
+      } else {
+        LOG.warn("Waiting for table '{}' to be ready...", tableName);
+      }
+    }).toVoid();
+  }
+
+  @Override
+  public Promise<Void> provisionIfNotExists() {
+    Promise<Void> created = dbService.ensureTableCreated(createTableRequest());
+    return getTtlAttribute()
+            .map(ttlAttr -> created.thenReplaceFuture(() -> applyTtl(ttlAttr)))
+            .orElse(created);
   }
 
   private CreateTableRequest createTableRequest() {
@@ -126,6 +171,29 @@ public class DynamoTable extends BaseProvisionedResource implements HealthCheck 
       case 1 -> createTableRequests.get(0);
       default -> mergeCreateTableRequest(createTableRequests);
     };
+  }
+
+  private static <T> CreateTableRequest buildCreateTableRequest(
+          DynamoTableMapper api,
+          TableSchema<T> tableSchema,
+          OperationContext operationContext
+  ) {
+    CreateTableEnhancedRequest enhancedRequest = api.prepareCreateTableRequest(CreateTableEnhancedRequest.builder()).build();
+    return CreateTableOperation.<T>create(enhancedRequest)
+            .generateRequest(tableSchema, operationContext, null);
+  }
+
+  private Promise<Void> applyTtl(String ttlAttr) {
+    return waitUntilProvisioned()
+            .thenReplaceFuture(() -> dbService.client().describeTimeToLive(b -> b.tableName(tableName)))
+            .thenFilterOptional(
+                    r -> r.timeToLiveDescription().timeToLiveStatus() != TimeToLiveStatus.ENABLED)
+            .thenMapCompose(
+                    __ ->
+                            Promise.of(dbService.updateTimeToLive(tableName, ttlAttr))
+                                    .thenFilterOptional(r -> r.timeToLiveSpecification().enabled())
+                                    .orElseThrow(() -> new RuntimeException("Failed to enable TTL"))
+            ).toVoid();
   }
 
   private CreateTableRequest mergeCreateTableRequest(List<CreateTableRequest> apiRequests) {
@@ -160,77 +228,8 @@ public class DynamoTable extends BaseProvisionedResource implements HealthCheck 
     return request;
   }
 
-  static <T> CreateTableRequest buildCreateTableRequest(
-          DynamoTableApi api,
-          TableSchema<T> tableSchema,
-          OperationContext operationContext
-  ) {
-    CreateTableEnhancedRequest enhancedRequest = api.prepareCreateTableRequest(CreateTableEnhancedRequest.builder()).build();
-    return CreateTableOperation.<T>create(enhancedRequest)
-            .generateRequest(tableSchema, operationContext, null);
-  }
-
-  @Override
-  public Promise<Void> provisionIfNotExists() {
-    Promise<Void> created = dbService.ensureTableCreated(createTableRequest());
-    return getTtlAttribute()
-            .map(ttlAttr -> created.thenReplaceFuture(() -> applyTtl(ttlAttr)))
-            .orElse(created);
-  }
-
-  @Override
-  public Promise<Void> waitUntilProvisioned() {
-    return dbService.waitUntilTableExists(tableName, Duration.ofSeconds(5), promise -> {
-      if (wasStartupCanceled()) {
-        promise.completeExceptionally(new ShutdownException("Startup was canceled"));
-      } else {
-        LOG.warn("Waiting for table '{}' to be ready...", tableName);
-      }
-    }).toVoid();
-  }
-
   private Optional<String> getTtlAttribute() {
-    return registeredApis.stream().map(DynamoTableApi::getTtlAttribute).flatMap(Optional::stream).collect(MoreCollectors.toOptional());
-  }
-
-  private Promise<Void> applyTtl(String ttlAttr) {
-    return waitUntilProvisioned()
-            .thenReplaceFuture(() -> dbService.client().describeTimeToLive(b -> b.tableName(tableName)))
-            .thenFilterOptional(
-                    r -> r.timeToLiveDescription().timeToLiveStatus() != TimeToLiveStatus.ENABLED)
-            .thenMapCompose(
-                    __ ->
-                            Promise.of(dbService.updateTimeToLive(tableName, ttlAttr))
-                                    .thenFilterOptional(r -> r.timeToLiveSpecification().enabled())
-                                    .orElseThrow(() -> new RuntimeException("Failed to enable TTL"))
-            ).toVoid();
-  }
-
-  public String tableName() {
-    return tableName;
-  }
-
-  @Override
-  public CompletableFuture<HealthStatus> checkHealth() {
-    return getTableStatus()
-            .thenApply(tableStatus -> HealthStatus.healthyIf(
-                    tableStatus == TableStatus.ACTIVE,
-                    "DynamoDB table '%s' was not ACTIVE: %s",
-                    tableName(),
-                    tableStatus
-            ));
-  }
-
-  public DynamoDbEnhancedAsyncClient enhancedClient() {
-    return dbService.enhancedClient();
-  }
-
-  public DynamoDbAsyncClient client() {
-    return dbService.client();
-  }
-
-  public CompletableFuture<DescribeTableResponse> describeTable(String tableName) {
-    return dbService.describeTable(tableName);
+    return registeredApis.stream().map(DynamoTableMapper::getTtlAttribute).flatMap(Optional::stream).collect(MoreCollectors.toOptional());
   }
 
   @Override
@@ -239,8 +238,6 @@ public class DynamoTable extends BaseProvisionedResource implements HealthCheck 
   }
 
   public static class TableModule extends UpstartModule {
-    private static final TypeLiteral<DynamoTableApi> TABLE_READER_TYPE = new TypeLiteral<>() {};
-    public static final TypeLiteral<Set<DynamoTableApi>> TABLE_READER_SET_TYPE = new TypeLiteral<>(){};
     private final Key<DynamoTable> key;
     private final DynamoDbNamespace namespace;
     private final String tableNameSuffix;

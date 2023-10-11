@@ -5,6 +5,8 @@ import com.fasterxml.jackson.annotation.JsonValue;
 import upstart.util.annotations.Tuple;
 import org.immutables.value.Value;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -12,7 +14,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 
 @Value.Immutable
 @Tuple
-public abstract class S3Key {
+public abstract class S3Key implements Serializable {
   public static final Pattern VALID_KEY_IDENTIFIER = Pattern.compile("[a-zA-Z0-9@_./-]+");
   // TODO: this is a placeholder structure, may change when we implement real s3 integration
   public static final Pattern S3_URI_PATTERN = Pattern.compile("^(s3a?)://([^/]+)/(.*)$");
@@ -87,5 +89,18 @@ public abstract class S3Key {
   public enum Scheme {
     s3,
     s3a
+  }
+
+  @Serial
+  Object writeReplace() {
+    return new Serialized(uri());
+  }
+
+
+  private record Serialized(String uri) implements Serializable {
+    @Serial
+    Object readResolve() {
+      return S3Key.ofUri(uri);
+    }
   }
 }

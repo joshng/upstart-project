@@ -94,6 +94,11 @@ public final class ListPromise<T> extends ExtendedPromise<List<T>, ListPromise<T
                     : new ListPromise<T>().completeWith(future);
   }
 
+  @Deprecated
+  public static <T> ListPromise<T> ofFutureList(ListPromise<T> already) {
+    return already;
+  }
+
   public <O> ListPromise<O> thenMap(Function<? super T, O> mapper) {
     return thenApplyPromise(LIST_PROMISE_FACTORY, Contextualized.liftFunction(value -> value.stream().map(mapper).toList()));
   }

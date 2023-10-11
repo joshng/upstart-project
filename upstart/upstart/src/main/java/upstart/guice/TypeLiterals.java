@@ -7,7 +7,7 @@ import java.lang.reflect.Type;
 
 public class TypeLiterals {
   @SuppressWarnings("unchecked")
-  public static <T> Class<T> getRawType(TypeLiteral<? extends T> typeLiteral) {
+  public static <T> Class<T> getRawType(TypeLiteral<T> typeLiteral) {
     return (Class<T>) typeLiteral.getRawType();
   }
 

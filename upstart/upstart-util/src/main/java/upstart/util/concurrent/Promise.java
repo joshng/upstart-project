@@ -89,6 +89,11 @@ public sealed class Promise<T> extends CompletableFuture<T> implements BiConsume
     return promise.consumeFailure(() -> initializer.accept(promise));
   }
 
+  @Deprecated
+  public static <T> Promise<T> of(Promise<T> promise) {
+    return promise;
+  }
+
   public static <T> Promise<T> of(CompletionStage<T> stage) {
     return (stage instanceof Promise<T> promise) ? promise : new Promise<>(ContextualizedFuture.captureContext(stage));
   }

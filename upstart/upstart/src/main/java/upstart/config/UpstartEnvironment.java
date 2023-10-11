@@ -135,9 +135,14 @@ public abstract class UpstartEnvironment {
   @Value.Derived
   @Value.Auxiliary
   public Optional<Config> upstartOverrideConfig() {
-    return Ambiance.ambientValue(UPSTART_OVERRIDES)
+    return configOverrideString()
             .map(s -> ConfigFactory.parseString(s, ConfigParseOptions.defaults()
                     .setOriginDescription(UPSTART_OVERRIDES)));
+  }
+
+  @Value.Default
+  public Optional<String> configOverrideString() {
+    return Ambiance.ambientValue(UPSTART_OVERRIDES);
   }
 
   @Value.Derived

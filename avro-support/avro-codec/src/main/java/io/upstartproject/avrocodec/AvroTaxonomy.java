@@ -69,11 +69,6 @@ public class AvroTaxonomy extends NotifyingService {
     return family;
   }
 
-  private void checkRunning() {
-    State state = state();
-    checkState(state == State.RUNNING, "Taxonomy was not running", state);
-  }
-
   RecordTypeFamily findOrCreateTypeFamily(Class<? extends SpecificRecordBase> recordClass) {
     return findOrCreateTypeFamily(recordClass.getName());
   }

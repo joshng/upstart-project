@@ -8,7 +8,7 @@ import java.util.regex.Pattern;
 
 import static com.google.common.base.Preconditions.checkState;
 
-public class SortKeyTypePrefixExtractor implements MixedDynamoTableReader.TypeIdExtractor<SortKeyTypePrefixDynamoBean> {
+public class SortKeyTypePrefixExtractor implements MixedDynamoTableReader.TypeIdExtractor<SortKeyTypePrefixBean> {
 
   public static final Pattern TYPE_PATTERN = Pattern.compile("^#(.+?)#");
   public static final String SORT_KEY_FORMAT = "#%s#%s";

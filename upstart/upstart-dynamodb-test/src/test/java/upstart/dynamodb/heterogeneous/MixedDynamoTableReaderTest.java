@@ -3,6 +3,7 @@ package upstart.dynamodb.heterogeneous;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.base.Converter;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbAsyncIndex;
@@ -105,13 +106,17 @@ class MixedDynamoTableReaderTest extends UpstartModule {
   }
 
   @DynamoDbBean
-  public abstract static class BaseShapeBean<S extends Shape> extends MixedTableDynamoBean.Base implements SortKeyTypePrefixDynamoBean {
+  public abstract static class BaseShapeBean<S extends Shape> extends MixedTableDynamoBean.Base implements SortKeyTypePrefixBean.Converted<Double> {
     private String partitionKey;
-    private String sortKey;
+    private Double area;
 
     public BaseShapeBean(S shape) {
       partitionKey = shape.color().toString();
-      sortKey = "%06f".formatted(shape.area());
+      area = shape.area();
+    }
+
+    @Deprecated
+    public BaseShapeBean() {
     }
 
     protected abstract S buildShape();
@@ -121,6 +126,21 @@ class MixedDynamoTableReaderTest extends UpstartModule {
       double storedArea = Double.parseDouble(strippedSortKeySuffix());
       assertThat(s.area()).isWithin(0.00001).of(storedArea);
       return s;
+    }
+
+    @Override
+    public Double sortValue() {
+      return area;
+    }
+
+    @Override
+    public void setSortValue(Double sortValue) {
+      area = sortValue;
+    }
+
+    @Override
+    public Converter<Double, String> sortValueConverter() {
+      return Converter.from("%04f"::formatted, Double::parseDouble);
     }
 
     @DynamoDbSecondaryPartitionKey(indexNames = SingleTableReader.VERTEX_INDEX)
@@ -134,19 +154,10 @@ class MixedDynamoTableReaderTest extends UpstartModule {
       checkArgument(v == vertices(), "Mismatched vertices");
     }
 
-    @Deprecated
-    public BaseShapeBean() {
-    }
-
 
     @Override
     public String partitionKey() {
       return partitionKey;
-    }
-
-    @Override
-    public String sortKeySuffix() {
-      return sortKey;
     }
   }
 

@@ -4,7 +4,6 @@ import com.google.common.collect.ImmutableMap;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
-import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbAttribute;
 import software.amazon.awssdk.enhanced.dynamodb.model.CreateTableEnhancedRequest;
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
@@ -13,7 +12,7 @@ import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
 import software.amazon.awssdk.services.dynamodb.model.ScanRequest;
 import software.amazon.awssdk.services.dynamodb.model.ScanResponse;
 import upstart.dynamodb.DynamoTable;
-import upstart.dynamodb.DynamoTableApi;
+import upstart.dynamodb.DynamoTableMapper;
 import upstart.dynamodb.DynamoTableDao;
 import upstart.dynamodb.DynamoTableReader;
 import upstart.util.concurrent.Promise;
@@ -27,7 +26,7 @@ import java.util.function.Function;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 
-public class MixedDynamoTableReader<B extends MixedTableDynamoBean.Base, T> implements DynamoTableApi {
+public class MixedDynamoTableReader<B extends MixedTableDynamoBean, T> implements DynamoTableMapper {
   private final Class<? super B> baseBeanClass;
   private final TypeIdExtractor<? super B> discriminator;
   private final DynamoTable table;
@@ -39,7 +38,16 @@ public class MixedDynamoTableReader<B extends MixedTableDynamoBean.Base, T> impl
           Class<? super B> baseBeanClass,
           TypeIdExtractor<? super B> discriminator,
           DynamoTable table,
-          Set<? extends DynamoTableReader<? extends B, ? extends T>> specificTypeReaders
+          DynamoTableReader<? extends B, ? extends T>... specificTypeReaders
+  ) {
+    this(baseBeanClass, discriminator, table, Set.of(specificTypeReaders));
+  }
+
+  protected MixedDynamoTableReader(
+          Class<? super B> baseBeanClass,
+          TypeIdExtractor<? super B> discriminator,
+          DynamoTable table,
+          Set<DynamoTableReader<? extends B, ? extends T>> specificTypeReaders
   ) {
     this.table = table;
     this.client = table.client();
@@ -98,11 +106,11 @@ public class MixedDynamoTableReader<B extends MixedTableDynamoBean.Base, T> impl
     return Mono.fromFuture(() -> mapToItem(fields, reader));
   }
 
-  private static <B extends MixedTableDynamoBean.Base, T> Promise<? extends T> mapToItem(
+  private static <B extends MixedTableDynamoBean, T> Promise<? extends T> mapToItem(
           Map<String, AttributeValue> fields,
           DynamoTableReader<B, T> reader
   ) {
-    return reader.unpack(reader.tableSchema().mapToItem(fields));
+    return reader.transform(reader.tableSchema().mapToItem(fields));
   }
 
   public interface TypeIdExtractor<B extends MixedTableDynamoBean> {

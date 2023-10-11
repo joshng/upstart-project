@@ -30,7 +30,7 @@ import upstart.config.annotations.DeserializedImmutable;
 import upstart.dynamodb.DynamoDbClientService;
 import upstart.dynamodb.DynamoDbNamespace;
 import upstart.dynamodb.DynamoTable;
-import upstart.dynamodb.SimpleDynamoTableReader;
+import upstart.dynamodb.DynamoTableDao;
 import upstart.guice.AnnotationKeyedPrivateModule;
 import upstart.guice.NumberedAnnotation;
 import upstart.guice.PrivateBinding;
@@ -93,7 +93,7 @@ public class DynamoDbSchemaRegistry implements SchemaRegistry {
   }
 
   @Singleton
-  public static class SchemaTable extends SimpleDynamoTableReader<SchemaTable.SchemaDocument> {
+  public static class SchemaTable extends DynamoTableDao.Unmapped<SchemaTable.SchemaDocument> {
 
     public static final String FINGERPRINT_IDX = "byFingerprint";
     public static final Expression WHERE_NOT_EXISTS = Expression.builder().expression("attribute_not_exists(seqNo)").build();

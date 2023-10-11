@@ -18,7 +18,7 @@ public class AsyncSemaphore {
     this.maxConcurrentTasks = maxConcurrentTasks;
   }
 
-  public <T> CompletableFuture<T> submit(Callable<? extends CompletionStage<T>> task) {
+  public <T> Promise<T> submit(Callable<? extends CompletionStage<T>> task) {
     return Promise.thatCompletes(promise -> {
       tasks.offer(() -> promise.tryCompleteWith(task)
               .whenComplete((ignored, e) -> {

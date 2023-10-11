@@ -71,6 +71,11 @@ public final class OptionalPromise<T> extends ExtendedPromise<Optional<T>, Optio
                     : new OptionalPromise<T>().completeWith(future);
   }
 
+  @Deprecated
+  public static <T> OptionalPromise<T> ofFutureOptional(OptionalPromise<T> already) {
+    return already;
+  }
+
   public static <I, O> OptionalPromise<O> mapToFuture(Optional<I> input, Function<? super I, ? extends CompletionStage<O>> mapper) {
     return input.map(mapper).map(OptionalPromise::ofFutureNullable).orElse(empty());
   }

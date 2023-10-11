@@ -59,11 +59,11 @@ public interface ComposableService extends Service {
   }
 
   default void checkRunning() {
-    checkState(isRunning(), "%s: Service is not running", this);
+    checkState(isRunning(), "%s: Service was not running", this);
   }
 
   default void checkNotYetStarted() {
-    checkState(notYetStarted(), "%s: Service has already started", this);
+    checkState(notYetStarted(), "%s: Service already started", this);
   }
 
   class AdapterService extends BaseComposableService<Service> {

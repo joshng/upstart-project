@@ -24,11 +24,16 @@ public interface MixedTableDynamoBean {
 
   String sortKey();
 
+  static String typeId(Class<? extends MixedTableDynamoBean> beanClass) {
+    return TYPE_IDS.get(beanClass);
+  }
+
   @DynamoDbAttribute(PARTITION_KEY_ATTRIBUTE)
   @DynamoDbPartitionKey
   default String getPartitionKey() {
     return partitionKey();
   }
+
   void setPartitionKey(String partitionKey);
 
   @DynamoDbAttribute(SORT_KEY_ATTRIBUTE)
@@ -48,7 +53,9 @@ public interface MixedTableDynamoBean {
     @Override
     public String mixedTableTypeId() {
       String id = typeId;
-      if (id == null) typeId = id = TYPE_IDS.get(getClass());
+      if (id == null) {
+        typeId = id = typeId(getClass());
+      }
       return id;
     }
 

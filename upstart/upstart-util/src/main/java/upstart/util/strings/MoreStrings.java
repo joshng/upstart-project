@@ -89,6 +89,16 @@ public class MoreStrings {
     return snakify(camelCase).toLowerCase();
   }
 
+  private static final char[] HEX_DIGITS = "0123456789abcdef".toCharArray();
+
+  public static String toHex(byte[] bytes) {
+    StringBuilder sb = new StringBuilder(2 * bytes.length);
+    for (byte b : bytes) {
+      sb.append(HEX_DIGITS[(b >> 4) & 0xf]).append(HEX_DIGITS[b & 0xf]);
+    }
+    return sb.toString();
+  }
+
   private static String snakify(String camelCase) {
     return EMBEDDED_UPPERCASE.matcher(camelCase).replaceAll("_");
   }

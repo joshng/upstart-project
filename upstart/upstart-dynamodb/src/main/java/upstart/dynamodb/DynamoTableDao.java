@@ -7,11 +7,10 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbAsyncTable;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
 import software.amazon.awssdk.enhanced.dynamodb.model.CreateTableEnhancedRequest;
 import software.amazon.awssdk.enhanced.dynamodb.model.QueryEnhancedRequest;
-import upstart.util.concurrent.Promise;
 
 import java.util.function.Consumer;
 
-public class DynamoTableDao<B, T> extends BaseTableReader<B, T> implements DynamoTableReader<B, T> {
+public non-sealed class DynamoTableDao<B, T> extends BaseTableReader<B, T> {
   private static final LoadingCache<Class<?>, TableSchema<?>> TABLE_SCHEMAS = CacheBuilder.newBuilder()
           .build(CacheLoader.from(TableSchema::fromBean));
 
@@ -100,5 +99,11 @@ public class DynamoTableDao<B, T> extends BaseTableReader<B, T> implements Dynam
   @Override
   public TableSchema<B> tableSchema() {
     return tableSchema;
+  }
+
+  public static class Unmapped<T> extends DynamoTableDao<T, T> {
+    public Unmapped(Class<T> storageClass, DynamoTable table) {
+      super(storageClass, table, ItemExtractor.identity());
+    }
   }
 }
