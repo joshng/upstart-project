@@ -175,6 +175,14 @@ public sealed class Promise<T> extends CompletableFuture<T> implements BiConsume
     );
   }
 
+  public static <T> Promise<T> callSafely(Callable<? extends CompletionStage<T>> callable) {
+    try {
+      return of(callable.call());
+    } catch (Throwable e) {
+      return failedPromise(e);
+    }
+  }
+
   /**
    * Complete this Future with the result of calling the given {@link Callable}, or with any exception that it throws.
    */

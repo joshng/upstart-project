@@ -7,6 +7,11 @@ import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
 public class MoreFunctions {
+  @SuppressWarnings("unchecked")
+  public static <T> Consumer<T> noopConsumer() {
+    return (Consumer<T>) NoopConsumer.Instance;
+  }
+
   public static <A, B> Predicate<A> onResultOf(Function<A, B> function, Predicate<? super B> predicate) {
     return a -> predicate.test(function.apply(a));
   }
@@ -24,5 +29,13 @@ public class MoreFunctions {
 
   public static <T> Predicate<T> notEqual(T value) {
     return t -> !value.equals(t);
+  }
+
+  private enum NoopConsumer implements Consumer<Object> {
+    Instance;
+
+    @Override
+    public void accept(Object o) {
+    }
   }
 }

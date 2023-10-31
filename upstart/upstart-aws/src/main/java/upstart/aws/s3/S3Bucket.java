@@ -7,6 +7,8 @@ import upstart.util.annotations.Tuple;
 import org.immutables.value.Value;
 import software.amazon.awssdk.regions.Region;
 
+import java.net.URL;
+
 @Identifier
 public abstract class S3Bucket extends StringIdentifier {
   @JsonCreator
@@ -20,6 +22,10 @@ public abstract class S3Bucket extends StringIdentifier {
 
   public S3Key key(S3Key.Scheme scheme, String key) {
     return S3Key.of(scheme, this, key);
+  }
+
+  public String httpHostname(Region region) {
+    return "%s.s3-%s.amazonaws.com".formatted(value(), region.id());
   }
 
   @Override

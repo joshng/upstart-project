@@ -2,9 +2,16 @@ package upstart.aws.s3;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import upstart.aws.AwsConfig;
 import upstart.util.annotations.Tuple;
 import org.immutables.value.Value;
+import upstart.util.exceptions.Unchecked;
 
+import java.net.URL;
+import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -13,7 +20,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 @Value.Immutable
 @Tuple
 public abstract class S3Key {
-  public static final Pattern VALID_KEY_IDENTIFIER = Pattern.compile("[a-zA-Z0-9@_./-]+");
+  public static final Pattern VALID_KEY_IDENTIFIER = Pattern.compile("[{}a-zA-Z0-9@_./-]+");
   // TODO: this is a placeholder structure, may change when we implement real s3 integration
   public static final Pattern S3_URI_PATTERN = Pattern.compile("^(s3a?)://([^/]+)/(.*)$");
 
@@ -69,6 +76,14 @@ public abstract class S3Key {
     return key().endsWith("/") && childKey.key().startsWith(key()) || childKey.key().startsWith(key() + "/");
   }
 
+  public Consumer<PutObjectRequest.Builder> putObjectRequestBuilder() {
+    return b -> b.bucket(bucket().value()).key(key());
+  }
+
+  public Consumer<GetObjectRequest.Builder> getObjectRequestBuilder() {
+    return b -> b.bucket(bucket().value()).key(key());
+  }
+
   @Value.Check
   void checkValidValue() {
     checkArgument(VALID_KEY_IDENTIFIER.matcher(key()).matches(), "Invalid key, must match %s: %s", VALID_KEY_IDENTIFIER, key());
@@ -77,6 +92,10 @@ public abstract class S3Key {
   @Override
   public String toString() {
     return uri();
+  }
+
+  public URL httpUrl(Region region) {
+    return Unchecked.getUnchecked(() -> new URL("https", bucket().httpHostname(region), key()));
   }
 
   private static StringBuilder appendWithSlash(StringBuilder sb, String s) {

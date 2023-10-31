@@ -52,9 +52,13 @@ public abstract class AwsClientModule<C extends SdkClient> extends UpstartModule
 
   @Value.Default
   public Key<AwsConfig> awsConfigKey() {
-    Binder binder = binderForAwsConfig()
-            .orElseThrow(() -> new IllegalStateException("Missing both awsConfigKey and binderForAwsConfig. Provide binderForAwsConfig to use configs from upstart.aws.<service-type>, or use bindAwsConfig()"));
-    return bindAwsConfig(binder, clientType().defaultConfigPath());
+    return bindAwsConfig(requiredBinder(), clientType().defaultConfigPath());
+  }
+
+  public Binder requiredBinder() {
+    return binderForAwsConfig()
+            .orElseThrow(() -> new IllegalStateException(
+                    "Missing both awsConfigKey and binderForAwsConfig. Provide binderForAwsConfig to use configs from upstart.aws.<service-type>, or use bindAwsConfig()"));
   }
 
   @Value.Default

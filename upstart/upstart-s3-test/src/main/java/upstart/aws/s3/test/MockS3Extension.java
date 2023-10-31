@@ -1,11 +1,14 @@
 package upstart.aws.s3.test;
 
 import org.junit.jupiter.api.extension.ExtensionContext;
+import upstart.aws.s3.S3BucketClient;
 import upstart.aws.s3.S3Key;
+import upstart.provisioning.ProvisionedResource;
 import upstart.test.AvailablePortAllocator;
 import upstart.test.BaseSingletonParameterResolver;
 import upstart.test.ExtensionContexts;
 import upstart.test.SingletonServiceExtension;
+import upstart.test.UpstartExtension;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -47,6 +50,10 @@ public class MockS3Extension extends BaseSingletonParameterResolver<MockS3> impl
 
     System.setProperty("fs.s3a.endpoint", mockS3.getEndpointUri().toString());
     System.setProperty("fs.s3a.aws.credentials.provider", "org.apache.hadoop.fs.s3a.AnonymousAWSCredentialsProvider");
+
+    UpstartExtension.getOptionalTestBuilder(extensionContext)
+            .ifPresent(testBuilder -> testBuilder.installModule(binder -> ProvisionedResource
+                    .provisionAtStartup(binder, S3BucketClient.PROVISIONED_RESOURCE_TYPE)));
 
     return mockS3;
   }

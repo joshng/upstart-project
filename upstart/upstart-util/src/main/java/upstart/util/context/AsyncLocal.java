@@ -4,7 +4,10 @@ import upstart.util.concurrent.MutableReference;
 import upstart.util.concurrent.OptionalPromise;
 import upstart.util.concurrent.Promise;
 
+import java.util.Objects;
 import java.util.function.BinaryOperator;
+
+import static com.google.common.base.Preconditions.checkState;
 
 public abstract class AsyncLocal<T> implements MutableReference<T> {
   private final String name;
@@ -19,6 +22,15 @@ public abstract class AsyncLocal<T> implements MutableReference<T> {
         return b;
       }
     };
+  }
+  public static <T> AsyncLocal<T> newImmutableAsyncLocal(String name) {
+    return new AsyncLocal<>(name) {
+      public T merge(T a, T b) {
+        checkState(Objects.equals(a, b), "Conflicting values for immutable AsyncLocal: %s != %s", a, b);
+        return a;
+      }
+    };
+
   }
   public static <T> AsyncLocal<T> newAsyncLocal(String name, BinaryOperator<T> mergeStrategy) {
     return new AsyncLocal<>(name) {

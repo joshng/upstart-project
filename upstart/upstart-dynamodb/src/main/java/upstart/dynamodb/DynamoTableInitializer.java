@@ -52,6 +52,7 @@ public class DynamoTableInitializer<T> extends BaseProvisionedResource implement
   private final String tableName;
   private final TableSchema<T> tableSchema;
   private final Class<T> mappedClass;
+  private final DynamoDbNamespace namespace;
   protected volatile DynamoDbAsyncTable<T> table;
 
   @Inject
@@ -62,7 +63,8 @@ public class DynamoTableInitializer<T> extends BaseProvisionedResource implement
           DynamoDbNamespace namespace
   ) {
     this.mappedClass = mappedClass;
-    tableName = namespace.tableName(tableNameSuffix);
+    this.namespace = namespace;
+    tableName = this.namespace.tableName(tableNameSuffix);
     tableSchema = getTableSchema(mappedClass);
     this.dbService = dbService;
   }
@@ -108,6 +110,11 @@ public class DynamoTableInitializer<T> extends BaseProvisionedResource implement
   @Override
   public ResourceType resourceType() {
     return PROVISIONED_RESOURCE_TYPE;
+  }
+
+  @Override
+  public String ownerEnvironment() {
+    return namespace.namespace();
   }
 
   @Override
