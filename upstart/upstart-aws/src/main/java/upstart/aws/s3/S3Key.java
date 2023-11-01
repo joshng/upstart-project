@@ -95,12 +95,16 @@ public abstract class S3Key {
   }
 
   public URL httpUrl(Region region) {
-    return Unchecked.getUnchecked(() -> new URL("https", bucket().httpHostname(region), key()));
+    return Unchecked.getUnchecked(() -> new URL("https", bucket().httpHostname(region), '/' + key()));
   }
 
   private static StringBuilder appendWithSlash(StringBuilder sb, String s) {
     if (!s.isEmpty() && !s.startsWith("/") && !sb.isEmpty() && sb.charAt(sb.length() - 1) != '/') sb.append('/');
     return sb.append(s);
+  }
+
+  public S3Key ensureDirectory() {
+    return !key().endsWith("/") ? resolve("/") : this;
   }
 
   public enum Scheme {
