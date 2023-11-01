@@ -346,10 +346,6 @@ public class S3BucketClient extends BaseProvisionedResource {
   }
 
   public interface S3BucketConfig {
-    static ImmutableS3BucketConfig.Builder builder() {
-      return ImmutableS3BucketConfig.builder();
-    }
-
     String ownerEnvironment();
   }
 }
