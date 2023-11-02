@@ -288,28 +288,17 @@ public class AnnotatedEndpointHandler<T> {
 
     private ParamResolver buildResolver(Parameter parameter) {
       Class<?> paramType = parameter.getType();
+      ParamResolver resolver;
       if (paramType == Context.class) {
         return ParamResolver.nonUrlParam(parameter, Optional.empty(), ctx -> ctx);
       } else if (parameter.isAnnotationPresent(PathParam.class)) {
         return UrlParamStrategy.Path.resolver(parameter);
       } else if (parameter.isAnnotationPresent(QueryParam.class)) {
         return UrlParamStrategy.Query.resolver(parameter);
-      } else if (parameter.isAnnotationPresent(Session.class)) {
-        String name = paramName(parameter.getAnnotation(Session.class).value(), parameter);
-        return ParamResolver.nonUrlParam(
-                parameter,
-                Optional.empty(),
-                ctx -> checkNotNull(ctx.sessionAttribute(name),
-                                    "missing session attribute '%s' for %s", name, this)
-        );
-      } else if (parameter.isAnnotationPresent(Request.class)) {
-        String name = paramName(parameter.getAnnotation(Request.class).value(), parameter);
-        return ParamResolver.nonUrlParam(
-                parameter,
-                Optional.empty(),
-                ctx -> checkNotNull(ctx.attribute(name),
-                                    "missing request attribute '%s' for %s", name, this)
-        );
+      } else if ((resolver = sessionParamResolver(parameter)) != null) {
+        return resolver;
+      } else if ((resolver = requestParamResolver(parameter)) != null) {
+        return resolver;
       } else {
         checkArgument(!mappedBody, "Method has multiple unannotated parameters", method);
         mappedBody = true;
@@ -340,6 +329,34 @@ public class AnnotatedEndpointHandler<T> {
           });
         }
       }
+    }
+
+    private ParamResolver requestParamResolver(Parameter parameter) {
+      Request annotation = parameter.getAnnotation(Request.class);
+      if (annotation == null) annotation = parameter.getType().getAnnotation(Request.class);
+      if (annotation == null) return null;
+      String name = paramName(annotation.value(), parameter);
+      return ParamResolver.nonUrlParam(
+              parameter,
+              Optional.empty(),
+              ctx -> checkNotNull(ctx.attribute(name),
+                                  "missing request attribute '%s' for %s", name, this
+              )
+      );
+    }
+
+    private ParamResolver sessionParamResolver(Parameter parameter) {
+      Session annotation = parameter.getAnnotation(Session.class);
+      if (annotation == null) annotation = parameter.getType().getAnnotation(Session.class);
+      if (annotation == null) return null;
+      String name = paramName(annotation.value(), parameter);
+      return ParamResolver.nonUrlParam(
+              parameter,
+              Optional.empty(),
+              ctx -> checkNotNull(ctx.sessionAttribute(name),
+                                  "missing session attribute '%s' for %s", name, this
+              )
+      );
     }
 
     private static ObjectMapper objectMapper(Context ctx) {

@@ -12,6 +12,10 @@ public class RequestAttribute<T> {
     this.key = key;
   }
 
+  public String key() {
+    return key;
+  }
+
   public T get(Context ctx) {
     return ctx.attribute(key);
   }
