@@ -25,7 +25,7 @@ public abstract class S3Bucket extends StringIdentifier {
   }
 
   public String httpHostname(Region region) {
-    return "%s.s3-%s.amazonaws.com".formatted(value(), region.id());
+    return "%s.s3.%s.amazonaws.com".formatted(value(), region.id());
   }
 
   @Override

@@ -95,7 +95,7 @@ public abstract class S3Key {
   }
 
   public URL httpUrl(Region region) {
-    return Unchecked.getUnchecked(() -> new URL("https", bucket().httpHostname(region), '/' + key()));
+    return Unchecked.getUnchecked(() -> new URL("https", "s3.%s.amazonaws.com".formatted(region.id()), '/' + bucket().value() + '/' + key()));
   }
 
   private static StringBuilder appendWithSlash(StringBuilder sb, String s) {
