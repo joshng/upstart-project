@@ -12,11 +12,11 @@ import java.util.concurrent.ConcurrentHashMap;
 @Singleton
 public class ResourceProvisioningCoordinator {
   private final Set<ProvisionedResource> resources = ConcurrentHashMap.newKeySet();
-  private final Set<ProvisionedResource.ResourceType> resourcesToProvision;
+  private final Set<ProvisionedResource.ResourceType> resourcesTypesToProvision;
 
   @Inject
-  public ResourceProvisioningCoordinator(Set<ProvisionedResource.ResourceType> resourcesToProvision) {
-    this.resourcesToProvision = resourcesToProvision;
+  public ResourceProvisioningCoordinator(Set<ProvisionedResource.ResourceType> resourcesTypesToProvision) {
+    this.resourcesTypesToProvision = resourcesTypesToProvision;
   }
 
   public void addResource(ProvisionedResource resource) {
@@ -28,7 +28,7 @@ public class ResourceProvisioningCoordinator {
   }
 
   public Promise<Void> ensureProvisioned(ProvisionedResource resource) {
-    return resourcesToProvision.contains(resource.resourceType())
+    return resourcesTypesToProvision.contains(resource.resourceType())
             ? resource.provisionIfNotExists().thenReplaceFuture(resource::waitUntilProvisioned)
             : resource.waitUntilProvisioned();
   }

@@ -27,6 +27,10 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 
 public class MixedDynamoTableReader<B extends MixedTableDynamoBean, T> implements DynamoTableMapper {
+  public static final DynamoTableReader.ExpressionAttribute PK_ATTR = DynamoTableReader.ExpressionAttribute.of(MixedTableDynamoBean.PARTITION_KEY_ATTRIBUTE);
+  // sort key expression attribute
+  public static final DynamoTableReader.ExpressionAttribute SK_EXPRESSION_ATTR = DynamoTableReader.ExpressionAttribute.of(MixedTableDynamoBean.SORT_KEY_ATTRIBUTE);
+  public static final String PRIMARY_KEY_CONDITION = PK_ATTR.equalityExpression();
   private final Class<? super B> baseBeanClass;
   private final TypeIdExtractor<? super B> discriminator;
   private final DynamoTable table;
@@ -34,6 +38,7 @@ public class MixedDynamoTableReader<B extends MixedTableDynamoBean, T> implement
   private final Consumer<QueryRequest.Builder> defaultQuery;
   private final DynamoDbAsyncClient client;
 
+  @SafeVarargs
   protected MixedDynamoTableReader(
           Class<? super B> baseBeanClass,
           TypeIdExtractor<? super B> discriminator,
@@ -65,6 +70,24 @@ public class MixedDynamoTableReader<B extends MixedTableDynamoBean, T> implement
 
   public String tableName() {
     return table.tableName();
+  }
+
+  public Flux<T> primaryKeyQuery(String pk) {
+    return primaryKeyQuery(pk, b -> {});
+  }
+
+  public Flux<T> primaryKeyQuery(String pk, Consumer<QueryRequest.Builder> queryRequest) {
+    return query(b -> b
+            .applyMutation(primaryKeyQueryBuilder(pk))
+            .applyMutation(queryRequest)
+    );
+  }
+
+  protected static Consumer<QueryRequest.Builder> primaryKeyQueryBuilder(String pk) {
+    return b -> b
+            .keyConditionExpression(PRIMARY_KEY_CONDITION)
+            .expressionAttributeNames(PK_ATTR.attrNameMap())
+            .expressionAttributeValues(PK_ATTR.expressionValue(pk));
   }
 
   public Flux<T> query(Consumer<QueryRequest.Builder> queryRequest) {

@@ -289,11 +289,7 @@ class MixedDynamoTableReaderTest extends UpstartModule {
     }
 
     public Flux<Shape> allByColor(Color color) {
-      return query(b -> b
-              .keyConditionExpression("#pk = :pk")
-              .expressionAttributeNames(Map.of("#pk", BaseShapeBean.PARTITION_KEY_ATTRIBUTE))
-              .expressionAttributeValues(Map.of(":pk", AttributeValues.stringValue(color.toString())))
-      );
+      return primaryKeyQuery(color.toString());
     }
 
     public Flux<Shape> queryByVertices(int vertices) {

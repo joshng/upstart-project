@@ -2,11 +2,13 @@ package upstart.aws.s3;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import upstart.util.annotations.Tuple;
 import org.immutables.value.Value;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -47,13 +49,24 @@ public abstract class S3Key implements Serializable {
   }
 
   @Value.Lazy
+  public S3Key parentDirectory() {
+    return withKey(key().substring(0, key().lastIndexOf('/')));
+  }
+
+  @Value.Lazy
   public String filename() {
     return key().substring(key().lastIndexOf('/') + 1);
   }
 
+  public abstract S3Key withBucket(S3Bucket bucket);
+
   public abstract S3Key withScheme(Scheme scheme);
 
   public abstract S3Key withKey(String key);
+
+  public S3Key withFilename(String filename) {
+    return parentDirectory().resolve(filename);
+  }
 
   public S3Key resolve(String relativePath) {
     return withKey(appendWithSlash(new StringBuilder(key()), relativePath).toString());
@@ -69,6 +82,10 @@ public abstract class S3Key implements Serializable {
 
   public boolean contains(S3Key childKey) {
     return key().endsWith("/") && childKey.key().startsWith(key()) || childKey.key().startsWith(key() + "/");
+  }
+
+  public Consumer<PutObjectRequest.Builder> putObjectRequestBuilder() {
+    return b -> b.bucket(bucket().value()).key(key());
   }
 
   @Value.Check

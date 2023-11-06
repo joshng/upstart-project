@@ -1,6 +1,7 @@
 package upstart.dynamodb;
 
 import com.google.common.collect.MoreCollectors;
+import org.immutables.value.Value;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import software.amazon.awssdk.core.async.SdkPublisher;
@@ -9,13 +10,16 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbAsyncTable;
 import software.amazon.awssdk.enhanced.dynamodb.Key;
 import software.amazon.awssdk.enhanced.dynamodb.NestedAttributeName;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
+import software.amazon.awssdk.enhanced.dynamodb.internal.AttributeValues;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbAttribute;
 import software.amazon.awssdk.enhanced.dynamodb.model.CreateTableEnhancedRequest;
 import software.amazon.awssdk.enhanced.dynamodb.model.Page;
 import software.amazon.awssdk.enhanced.dynamodb.model.PagePublisher;
 import software.amazon.awssdk.enhanced.dynamodb.model.QueryEnhancedRequest;
 import software.amazon.awssdk.enhanced.dynamodb.model.ScanEnhancedRequest;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import upstart.aws.FluxPromise;
+import upstart.util.collect.PersistentMap;
 import upstart.util.concurrent.ListPromise;
 import upstart.util.concurrent.OptionalPromise;
 import upstart.util.concurrent.Promise;
@@ -143,6 +147,70 @@ public interface DynamoTableReader<B, T> extends DynamoTableMapper {
 
   default Flux<B> beanFlux(PagePublisher<B> pagePublisher) {
     return Flux.from(pagePublisher.items());
+  }
+
+  @Value.Immutable
+  interface ExpressionAttribute {
+    static ExpressionAttribute of(String symbol) {
+      return builder().symbol(symbol).build();
+    }
+
+    static ExpressionAttribute of(String symbol, String fieldName) {
+      return builder().symbol(symbol).fieldName(fieldName).build();
+    }
+
+    static ImmutableExpressionAttribute.Builder builder() {
+      return ImmutableExpressionAttribute.builder();
+    }
+
+    String symbol();
+
+    @Value.Default
+    default String fieldName() {
+      return symbol();
+    }
+
+    @Value.Default
+    default String lhs() {
+      return "#" + symbol();
+    }
+
+    @Value.Default
+    default String rhs() {
+      return ":" + symbol();
+    }
+
+    @Value.Lazy
+    default String equalityExpression() {
+      return relationExpression("=");
+    }
+
+    @Value.Lazy
+    default PersistentMap<String, String> attrNameMap() {
+      return PersistentMap.of(lhs(), fieldName());
+    }
+
+    default PersistentMap<String, AttributeValue> expressionValue(String value) {
+      return expressionValue(AttributeValues.stringValue(value));
+    }
+
+    default PersistentMap<String, AttributeValue> expressionValue(Number value) {
+      return expressionValue(AttributeValues.numberValue(value));
+    }
+
+    default PersistentMap<String, AttributeValue> expressionValue(AttributeValue value) {
+      return PersistentMap.of(rhs(), value);
+    }
+
+    default String relationExpression(String relation) {
+      return String.join(" ", lhs(), relation, rhs());
+    }
+
+    @Value.Check
+    default void checkSymbols() {
+      checkState(lhs().startsWith("#"), "LHS must start with #");
+      checkState(rhs().startsWith(":"), "RHS must start with :");
+    }
   }
 
   final class Transformed<B, T> extends BaseTableReader<B, T> {

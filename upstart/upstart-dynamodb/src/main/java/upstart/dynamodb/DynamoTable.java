@@ -52,6 +52,7 @@ public class DynamoTable extends BaseProvisionedResource implements HealthCheck 
   private final DynamoDbClientService dbService;
   private final String tableName;
   private final Set<DynamoTableMapper> registeredApis = new HashSet<>();
+  private final DynamoDbNamespace namespace;
 
   @Inject
   public DynamoTable(
@@ -59,7 +60,8 @@ public class DynamoTable extends BaseProvisionedResource implements HealthCheck 
           @PrivateBinding DynamoDbNamespace namespace,
           DynamoDbClientService dbService
   ) {
-    tableName = namespace.tableName(tableNameSuffix);
+    this.namespace = namespace;
+    tableName = this.namespace.tableName(tableNameSuffix);
     this.dbService = dbService;
   }
 
@@ -93,6 +95,11 @@ public class DynamoTable extends BaseProvisionedResource implements HealthCheck 
   @Override
   public String resourceId() {
     return tableName;
+  }
+
+  @Override
+  public String ownerEnvironment() {
+    return namespace.namespace();
   }
 
   @Override

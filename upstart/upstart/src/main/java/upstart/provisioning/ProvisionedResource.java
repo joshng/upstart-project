@@ -39,6 +39,8 @@ public interface ProvisionedResource extends Service {
 
   String resourceId();
 
+  String ownerEnvironment();
+
   BaseProvisionedResource.ResourceType resourceType();
 
   Object resourceConfig();
