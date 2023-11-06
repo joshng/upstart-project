@@ -9,6 +9,7 @@ import upstart.aws.AwsConfig;
 import upstart.util.annotations.Tuple;
 import org.immutables.value.Value;
 
+import java.io.Serial;
 import java.io.Serializable;
 import upstart.util.exceptions.Unchecked;
 
@@ -87,10 +88,6 @@ public abstract class S3Key implements Serializable {
 
   public boolean contains(S3Key childKey) {
     return key().endsWith("/") && childKey.key().startsWith(key()) || childKey.key().startsWith(key() + "/");
-  }
-
-  public Consumer<PutObjectRequest.Builder> putObjectRequestBuilder() {
-    return b -> b.bucket(bucket().value()).key(key());
   }
 
   public Consumer<PutObjectRequest.Builder> putObjectRequestBuilder() {
