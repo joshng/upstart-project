@@ -16,10 +16,14 @@ public class RandomId {
   }
 
   public static String newRandomId(BaseEncoding encoding) {
-    return encoding.encode(toBytes(UUID.randomUUID()));
+    return encoding.encode(newRandomBytes());
   }
 
-  private static byte[] toBytes(UUID identifier) {
+  public static byte[] newRandomBytes() {
+    return toBytes(UUID.randomUUID());
+  }
+
+  public static byte[] toBytes(UUID identifier) {
     return putBytes(ByteBuffer.allocate(UUID_BYTE_LENGTH), identifier).array();
   }
 

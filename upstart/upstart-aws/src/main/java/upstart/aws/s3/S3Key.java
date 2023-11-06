@@ -2,12 +2,17 @@ package upstart.aws.s3;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import upstart.aws.AwsConfig;
 import upstart.util.annotations.Tuple;
 import org.immutables.value.Value;
 
-import java.io.Serial;
 import java.io.Serializable;
+import upstart.util.exceptions.Unchecked;
+
+import java.net.URL;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -88,6 +93,14 @@ public abstract class S3Key implements Serializable {
     return b -> b.bucket(bucket().value()).key(key());
   }
 
+  public Consumer<PutObjectRequest.Builder> putObjectRequestBuilder() {
+    return b -> b.bucket(bucket().value()).key(key());
+  }
+
+  public Consumer<GetObjectRequest.Builder> getObjectRequestBuilder() {
+    return b -> b.bucket(bucket().value()).key(key());
+  }
+
   @Value.Check
   void checkValidValue() {
     checkArgument(VALID_KEY_IDENTIFIER.matcher(key()).matches(), "Invalid key, must match %s: %s", VALID_KEY_IDENTIFIER, key());
@@ -98,9 +111,17 @@ public abstract class S3Key implements Serializable {
     return uri();
   }
 
+  public URL httpUrl(Region region) {
+    return Unchecked.getUnchecked(() -> new URL("https", "s3.%s.amazonaws.com".formatted(region.id()), '/' + bucket().value() + '/' + key()));
+  }
+
   private static StringBuilder appendWithSlash(StringBuilder sb, String s) {
     if (!s.isEmpty() && !s.startsWith("/") && !sb.isEmpty() && sb.charAt(sb.length() - 1) != '/') sb.append('/');
     return sb.append(s);
+  }
+
+  public S3Key ensureDirectory() {
+    return !key().endsWith("/") ? resolve("/") : this;
   }
 
   public enum Scheme {

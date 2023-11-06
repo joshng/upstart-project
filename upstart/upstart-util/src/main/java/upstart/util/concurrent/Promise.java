@@ -14,6 +14,7 @@ import upstart.util.functions.QuadFunction;
 import upstart.util.functions.TriFunction;
 import upstart.util.reflect.Reflect;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -52,6 +53,16 @@ public sealed class Promise<T> extends CompletableFuture<T> implements BiConsume
   protected Promise(CompletableFuture<Contextualized<T>> completion) {
     this.completion = completion;
     arrangeCompletion();
+  }
+
+  public static Promise<Void> delayed(Duration duration) {
+    return delayed(duration, ForkJoinPool.commonPool());
+  }
+
+  public static Promise<Void> delayed(Duration duration, Executor executor) {
+    Promise<Void> promise = new Promise<>();
+    promise.completeAsync(() -> null, CompletableFuture.delayedExecutor(duration.toNanos(), TimeUnit.NANOSECONDS, executor));
+    return promise;
   }
 
   public CompletableFuture<Contextualized<T>> contextualizedFuture() {
@@ -164,11 +175,7 @@ public sealed class Promise<T> extends CompletableFuture<T> implements BiConsume
     return new Promise<>(cf);
   }
 
-  public static <T> Promise<T> completeAsync(Callable<? extends CompletionStage<? extends T>> completionSupplier) {
-    return completeAsync(completionSupplier, ForkJoinPool.commonPool());
-  }
-
-  public static <T> Promise<T> completeAsync(Callable<? extends CompletionStage<? extends T>> completionSupplier, Executor executor) {
+  public static <T> Promise<T> callFuture(Callable<? extends CompletionStage<? extends T>> completionSupplier, Executor executor) {
     return Promise.thatCompletes(promise -> CompletableFuture.runAsync(
             AsyncContext.snapshot().wrapRunnable(() -> promise.tryCompleteWith(completionSupplier)), executor)
     );
@@ -484,65 +491,6 @@ public sealed class Promise<T> extends CompletableFuture<T> implements BiConsume
     return continuation.apply(allOf(a, b, c, d), ignored -> combiner.apply(a.join(), b.join(), c.join(), d.join()));
   }
 
-
-  ///////////////////// CompletableFuture methods /////////////////////
-
-  @Override
-  public T join() {
-    try {
-      return super.join();
-    } finally {
-      applyCompletionContext();
-    }
-  }
-
-  @Override
-  public T get() throws InterruptedException, ExecutionException {
-    boolean haveResult = true;
-    try {
-      return super.get();
-    } catch (InterruptedException e) {
-      haveResult = false;
-      Thread.currentThread().interrupt();
-      throw e;
-    } finally {
-      if (haveResult) applyCompletionContext();
-    }
-  }
-
-  @Override
-  public T get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
-    boolean haveResult = true;
-    try {
-      return super.get(timeout, unit);
-    } catch (TimeoutException e) {
-      haveResult = false;
-      throw e;
-    } finally {
-      if (haveResult) applyCompletionContext();
-    }
-  }
-
-  private static final Object NO_VALUE = new Object();
-
-  @SuppressWarnings("unchecked")
-  @Override
-  public T getNow(T valueIfAbsent) {
-    boolean haveResult = true;
-    T result;
-    try {
-      result = super.getNow((T) NO_VALUE); // if this throws, then haveResult = true
-      haveResult = result != NO_VALUE;
-      return haveResult ? result : valueIfAbsent;
-    } finally {
-      // only apply the context if the caller will observe the actual result
-      if (haveResult) applyCompletionContext();
-    }
-  }
-
-  private void applyCompletionContext() {
-    if (completion.isDone()) completion.join().contextSnapshot().applyToCurrent();
-  }
 
   ///////////////////// CompletionStage /////////////////////
   @Override

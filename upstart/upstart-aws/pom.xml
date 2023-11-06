@@ -94,6 +94,11 @@
       <artifactId>reactor-core</artifactId>
       <version>3.4.14</version>
     </dependency>
+    <dependency>
+      <groupId>org.immutables</groupId>
+      <artifactId>builder</artifactId>
+      <version>${immutables.version}</version>
+    </dependency>
 
 
     <dependency>

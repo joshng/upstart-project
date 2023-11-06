@@ -51,7 +51,7 @@ public interface ProvisionedResource extends Service {
 
 
   default ResourceRequirement resourceRequirement() {
-    return new ResourceRequirement(resourceId(), resourceType(), resourceConfig());
+    return new ResourceRequirement(resourceId(), resourceType(), ownerEnvironment(), resourceConfig());
   }
 
   record ResourceType(String resourceType) {
@@ -65,7 +65,7 @@ public interface ProvisionedResource extends Service {
     }
   }
 
-  record ResourceRequirement(String resourceId, ResourceType resourceType, Object resourceConfig) {
+  record ResourceRequirement(String resourceId, ResourceType resourceType, String ownerEnvironment, Object resourceConfig) {
     public ResourceRequirement {
       if (resourceId == null) {
         throw new IllegalArgumentException("resourceId cannot be null");

@@ -66,6 +66,11 @@ public class KinesisStreamService extends BaseProvisionedResource {
   }
 
   @Override
+  public String ownerEnvironment() {
+    return streamConfig.ownerEnvironment();
+  }
+
+  @Override
   public Object resourceConfig() {
     return SdkPojoSerializer.serialize(createStreamRequest(CreateStreamRequest.builder()).build(),
             NamingStyle.LowerCamelCaseSplittingAcronyms
@@ -116,18 +121,15 @@ public class KinesisStreamService extends BaseProvisionedResource {
   }
 
   @DeserializedImmutable
-  @Tuple
   public interface StreamConfig {
-    Pattern VALID_NAME_PATTERN = Pattern.compile("(\\{APP_ENV})?[a-zA-Z0-9_.-]{1,128}");
-    static StreamConfig named(String streamName) {
-      return ImmutableStreamConfig.of(streamName, OptionalInt.empty());
-    }
+    Pattern VALID_NAME_PATTERN = Pattern.compile("[a-zA-Z0-9_.-]{1,128}");
 
-    static StreamConfig of(String streamName, int shardCount) {
-      return ImmutableStreamConfig.of(streamName, OptionalInt.of(shardCount));
+    static ImmutableStreamConfig.Builder builder() {
+      return ImmutableStreamConfig.builder();
     }
 
     String name();
+    String ownerEnvironment();
     OptionalInt shardCount();
 //    Optional<Duration> retentionPeriod(); // TODO support specifying retention , which might require a two-step init?
 

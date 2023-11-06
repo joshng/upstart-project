@@ -103,8 +103,10 @@ class AsyncLocalPromiseTest {
               .doneWithin(deadline)
               .havingResultThat().isEqualTo("foobarbutterflybubblegum");
 
-      assertThat(state1.get()).isEqualTo("butterfly");
-      assertThat(state2.get()).isEqualTo("oops");
+      assertThat(state1.get()).isEqualTo("foo");
+      assertThat(state1.getFromCompletion(finalPromise).join().orElseThrow()).isEqualTo("butterfly");
+      assertThat(state2.getFromCompletion(finalPromise).join().orElseThrow()).isEqualTo("oops");
+      assertThat(state2.get()).isNull();
     }
 
     assertThat(state1.get()).isNull();
@@ -153,7 +155,7 @@ class AsyncLocalPromiseTest {
     assertThat(state1.getFromCompletion(p1)).havingResultThat(optionals()).hasValue("bar");
     assertThat(p2).doneWithin(Deadline.withinSeconds(5)).completedExceptionallyWith(ArithmeticException.class);
     assertThat(state1.getFromCompletion(p2)).havingResultThat(optionals()).hasValue("baz");
-    assertThat(state1.get()).isEqualTo("baz");
+//    assertThat(state1.get()).isEqualTo("baz");
   }
 
 
@@ -173,8 +175,6 @@ class AsyncLocalPromiseTest {
     p1.complete("foo");
     assertThat(p2).doneWithin(Deadline.withinSeconds(5)).havingResultThat().isEqualTo("abc");
     assertThat(state2.getFromCompletion(p2)).havingResultThat(optionals()).hasValue("x");
-
-    assertThat(state2.get()).isEqualTo("x"); // we joined p2 when we observed its result
   }
 
   @Test
@@ -195,7 +195,6 @@ class AsyncLocalPromiseTest {
     state2.set("y");
     p1.complete("foo");
     assertThat(p2).doneWithin(Deadline.withinSeconds(5)).completedExceptionallyWith(ArithmeticException.class);
-    assertThat(state2.get()).isEqualTo("x"); // we joined p2 when we observed its result
     assertThat(state1.getFromCompletion(p2)).havingResultThat(optionals()).hasValue("abc");
     assertThat(state2.getFromCompletion(p2)).havingResultThat(optionals()).hasValue("x");
 
@@ -378,7 +377,7 @@ class AsyncLocalPromiseTest {
 
     @BeforeEach
     void setUp() {
-      threadLocal.set(null);
+      threadLocal.remove();
 
       AsyncContext.registerContextManager(contextManager);
     }
@@ -396,7 +395,7 @@ class AsyncLocalPromiseTest {
       ).doneWithin(Deadline.withinSeconds(5))
               .havingResultThat().isEqualTo("start middle end");
 
-      assertThat(threadLocal.get()).isEqualTo("start middle end");
+      assertThat(threadLocal.get()).isEqualTo("start");
     }
   }
 }

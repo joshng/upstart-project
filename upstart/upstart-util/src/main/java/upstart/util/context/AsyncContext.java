@@ -5,6 +5,8 @@ import com.google.common.util.concurrent.MoreExecutors;
 import upstart.util.collect.PairStream;
 import upstart.util.collect.PersistentMap;
 import upstart.util.concurrent.ExecutionContext;
+import upstart.util.exceptions.Fallible;
+import upstart.util.exceptions.FallibleSupplier;
 import upstart.util.reflect.Reflect;
 
 import java.util.List;
@@ -12,17 +14,19 @@ import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.concurrent.Executor;
 
+import static com.google.common.base.Preconditions.checkState;
+
 public class AsyncContext implements TransientContext {
   public static final AsyncContext EMPTY = new AsyncContext(PersistentMap.empty());
   private static final ContextedExecutor DIRECT_CONTEXTED_EXECUTOR = new ContextedExecutor(MoreExecutors.directExecutor());
+  private static final List<AsyncContextManager<Object>> MANAGERS = Lists.newCopyOnWriteArrayList(
+          Reflect.blindCast(ServiceLoader.load(AsyncContextManager.class)));
   private final PersistentMap<AsyncContextManager<Object>, Object> managedContexts;
+
 
   private AsyncContext(PersistentMap<AsyncContextManager<Object>, Object> managedContexts) {
     this.managedContexts = managedContexts;
   }
-
-  private static final List<AsyncContextManager<Object>> MANAGERS = Lists.newCopyOnWriteArrayList(
-          Reflect.blindCast(ServiceLoader.load(AsyncContextManager.class)));
 
   @SuppressWarnings("unchecked")
   public static void registerContextManager(AsyncContextManager<?> manager) {
