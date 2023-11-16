@@ -10,6 +10,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 public sealed abstract class ExtendedPromise<T, P extends ExtendedPromise<T, P>> extends Promise<T> implements SelfType<P> permits OptionalPromise, ListPromise {
@@ -75,6 +76,15 @@ public sealed abstract class ExtendedPromise<T, P extends ExtendedPromise<T, P>>
   @Override
   public P uponSuccess(Runnable sideEffect) {
     return selfType(super.uponSuccess(sideEffect));
+  }
+
+  public P uponFailure(Runnable sideEffect) {
+    return selfType(super.uponFailure(sideEffect));
+  }
+
+  @Override
+  public P uponFailure(Consumer<Throwable> sideEffect) {
+    return selfType(super.uponFailure(sideEffect));
   }
 
   public <E extends Throwable> P recover(Class<E> exceptionType, Function<? super E, ? extends T> recovery) {

@@ -118,6 +118,7 @@ public class KinesisStreamService extends BaseProvisionedResource {
       install(privateModule);
       ProvisionedResource.bindProvisionedResource(binder(), privateModule.annotatedKey(KinesisStreamService.class));
     }
+
   }
 
   @DeserializedImmutable

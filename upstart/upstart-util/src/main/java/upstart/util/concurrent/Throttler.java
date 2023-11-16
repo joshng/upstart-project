@@ -38,6 +38,10 @@ public class Throttler {
     return isAvailable && nextAvailableTime.compareAndSet(whenAvailable, now + intervalMillis);
   }
 
+  public void forceAcquire() {
+    nextAvailableTime.set(getCurrentTime() + intervalMillis);
+  }
+
   public boolean mayBeAvailable() {
     return nextAvailableTime.get() <= getCurrentTime();
   }

@@ -314,7 +314,7 @@ public class S3BucketClient extends BaseProvisionedResource {
             S3BucketConfig bucketConfig,
             AwsClientModule<S3AsyncClient> clientModule
     ) {
-      super(bucket); // intentionally not considering other parameters for equality, to reject multiple bindings for the same bucket
+      super(bucket, bindingAnnotation, createBucketRequestKey, bucketConfig, clientModule);
       this.bucket = bucket;
       this.bindingAnnotation = bindingAnnotation;
       this.createBucketRequestKey = createBucketRequestKey;

@@ -6,6 +6,7 @@ import upstart.util.context.AsyncContext;
 import upstart.util.context.AsyncLocal;
 import upstart.util.context.Contextualized;
 import upstart.util.context.ContextualizedFuture;
+import upstart.util.exceptions.Exceptions;
 import upstart.util.exceptions.ThrowingConsumer;
 import upstart.util.exceptions.ThrowingRunnable;
 
@@ -273,6 +274,24 @@ public sealed class Promise<T> extends CompletableFuture<T> implements BiConsume
       sideEffect.run();
       return t;
     })));
+  }
+
+  public Promise<T> uponFailure(Runnable sideEffect) {
+    return uponFailure(e -> sideEffect.run());
+  }
+
+  public Promise<T> uponFailure(Consumer<Throwable> sideEffect) {
+    return sameTypeSubsequentFactory().newPromise(completion.thenApply(ctx -> {
+      Try<T> attempt = ctx.value();
+      if (attempt.isFailure()) {
+        try {
+          sideEffect.accept(attempt.getException());
+        } catch (Throwable e) {
+          attempt.getException().addSuppressed(e);
+        }
+      }
+      return ctx;
+    }));
   }
 
   public Promise<Void> toVoid() {
