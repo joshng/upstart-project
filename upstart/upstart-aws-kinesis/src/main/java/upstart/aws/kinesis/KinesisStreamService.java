@@ -16,6 +16,7 @@ import upstart.provisioning.BaseProvisionedResource;
 import upstart.provisioning.ProvisionedResource;
 import upstart.util.annotations.Tuple;
 import upstart.util.concurrent.Promise;
+import upstart.util.functions.MoreFunctions;
 import upstart.util.strings.NamingStyle;
 
 import javax.inject.Inject;
@@ -80,9 +81,9 @@ public class KinesisStreamService extends BaseProvisionedResource {
   @Override
   public Promise<Void> provisionIfNotExists() {
     return Promise.of(client().createStream(this::createStreamRequest))
-            .recover(ResourceInUseException.class, e -> null)
+            .toVoid()
+            .recover(ResourceInUseException.class, e -> null);
              // could still fail due to LimitExceededException, or other conditions? probably ok, supervisor will respawn
-            .thenReplaceFuture(this::waitUntilProvisioned);
   }
 
   @Override

@@ -40,6 +40,7 @@
     <module>upstart-aws-kinesis</module>
     <module>upstart-aws-kinesis-client</module>
     <module>upstart-aws-test</module>
+    <module>upstart-aws-test-localstack</module>
     <module>upstart-s3</module>
     <module>upstart-s3-test</module>
     <module>upstart-dynamodb</module>
